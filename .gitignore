@@ -1,6 +1,12 @@
 # Prerequisites
 *.d
 
+# VS Code
+.vscode
+
+# Glade backup
+*~
+
 # Compiled Object files
 *.slo
 *.lo
@@ -27,6 +33,4 @@
 *.lib
 
 # Executables
-*.exe
-*.out
-*.app
+qndv
