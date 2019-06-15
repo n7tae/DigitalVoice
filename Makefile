@@ -9,10 +9,10 @@ SRCS = $(wildcard *.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-qnetdv :  $(OBJS)
-	g++ $(CPPFLAGS) -o sgs $(OBJS) `pkg-config --libs gtkmm-3.0` -pthread
+qndv :  $(OBJS)
+	g++ $(CPPFLAGS) -o $@ $(OBJS) `pkg-config --libs gtkmm-3.0` -pthread
 
-%.o : %.cpp
+%.o : %.cpp DigitalVoice.glade
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
 
 .PHONY: clean

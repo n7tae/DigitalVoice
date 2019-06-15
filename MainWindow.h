@@ -20,18 +20,19 @@
 
 #include <gtkmm.h>
 
-class CSettingsDlg
+class CMainWindow
 {
 public:
-    CSettingsDlg();
-    ~CSettingsDlg();
-    bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
-    void Show();
-private:
-	// widgets
-    Gtk::Dialog *pDlg;
-	Gtk::CheckButton *pUseMyCall;
-	Gtk::Entry *pStationCallsign;
-	// events
-	void on_UseMyCallsignCheckButton_clicked();
+    CMainWindow();
+    ~CMainWindow();
+
+    bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &);
+	void Run();
+protected:
+    // events
+    void on_QuitButton_clicked();
+    void on_SettingsButton_clicked();
+    // objects
+    Gtk::Window *pWin;
+    Gtk::Button *pQuit, *pSettings;
 };

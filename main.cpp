@@ -19,73 +19,42 @@
 #include <gtkmm.h>
 #include <iostream>
 
-#include "SettingsDlg.h"
+#include "MainWindow.h"
 
-Gtk::Window *pWindow = nullptr;
-
-SettingsDlg settings;
-
-static void on_QuitButton_clicked()
-{
-  if(pWindow)
-    pWindow->hide(); //hide() will cause main::run() to end.
-}
-
-static void on_SettingsButton_clicked()
-{
-    settings.show();
-}
+// Globals
+CMainWindow MainWindow;
+Glib::RefPtr<Gtk::Application> theApp;
 
 int main (int argc, char **argv)
 {
-  auto app = Gtk::Application::create(argc, argv, "org.gtkmm.example");
+	theApp = Gtk::Application::create(argc, argv, "org.gtkmm.example");
 
-  //Load the GtkBuilder file and instantiate its widgets:
-  auto refBuilder = Gtk::Builder::create();
-  try
-  {
-    refBuilder->add_from_file("QnetDV.glade");
-  }
-  catch(const Glib::FileError& ex)
-  {
-    std::cerr << "FileError: " << ex.what() << std::endl;
-    return 1;
-  }
-  catch(const Glib::MarkupError& ex)
-  {
-    std::cerr << "MarkupError: " << ex.what() << std::endl;
-    return 1;
-  }
-  catch(const Gtk::BuilderError& ex)
-  {
-    std::cerr << "BuilderError: " << ex.what() << std::endl;
-    return 1;
-  }
+	//Load the GtkBuilder file and instantiate its widgets:
+	Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
+	try
+	{
+		builder->add_from_file("DigitalVoice.glade");
+	}
+	catch(const Glib::FileError& ex)
+	{
+		std::cerr << "FileError: " << ex.what() << std::endl;
+		return 1;
+	}
+	catch(const Glib::MarkupError& ex)
+	{
+		std::cerr << "MarkupError: " << ex.what() << std::endl;
+		return 1;
+	}
+	catch(const Gtk::BuilderError& ex)
+	{
+		std::cerr << "BuilderError: " << ex.what() << std::endl;
+		return 1;
+	}
 
-  //Get the GtkBuilder-instantiated Window:
-  refBuilder->get_widget("AppWindow", pWindow);
-  refBuilder->get_widget("SettingsDialog", settings.pWindow);
+	if (MainWindow.Init(builder, "AppWindow"))
+		return 1;
 
-  if(pWindow)
-  {
-    //Get the GtkBuilder-instantiated Button, and connect a signal handler:
-    Gtk::Button *pQuitButton = nullptr;
-    refBuilder->get_widget("QuitButton", pQuitButton);
-    if(pQuitButton)
-    {
-      pQuitButton->signal_clicked().connect( sigc::ptr_fun(on_QuitButton_clicked));
-    }
+	MainWindow.Run();
 
-    Gtk::Button *pSettingsButton = nullptr;
-    refBuilder->get_widget("SettingsButton", pSettingsButton);
-    if (pSettingsButton) {
-        pSettingsButton->signal_clicked().connect(sigc::ptr_fun(on_SettingsButton_clicked));
-    }
-
-    app->run(*pWindow);
-  }
-
-  delete pWindow;
-
-  return 0;
+	return 0;
 }
