@@ -143,7 +143,7 @@ void CSettingsDlg::on_StationCallsignEntry_changed()
 void CSettingsDlg::on_MessageEntry_changed()
 {
 	int pos = pMessage->get_position();
-	const Glib::ustring good(" ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/.,:_");
+	const Glib::ustring good(" ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/().,:_");
 	Glib::ustring s = pMessage->get_text();
 	Glib::ustring n;
 	for (auto it=s.begin(); it!=s.end(); it++) {
