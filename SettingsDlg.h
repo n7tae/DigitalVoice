@@ -31,7 +31,11 @@ private:
 	// widgets
     Gtk::Dialog *pDlg;
 	Gtk::CheckButton *pUseMyCall;
-	Gtk::Entry *pStationCallsign;
+	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pDevice;
 	// events
 	void on_UseMyCallsignCheckButton_clicked();
+	void on_MyCallsignEntry_changed();
+	void on_MyNameEntry_changed();
+	void on_StationCallsignEntry_changed();
+	void on_MessageEntry_changed();
 };

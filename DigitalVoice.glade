@@ -38,41 +38,57 @@ Author: Thomas A. Early, N7TAE
       <object class="GtkBox">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="valign">end</property>
-        <property name="spacing">8</property>
-        <property name="baseline_position">bottom</property>
-        <child>
-          <object class="GtkButton" id="SettingsButton">
-            <property name="label" translatable="yes">Settings...</property>
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <signal name="clicked" handler="on_SettingsButton_clicked" swapped="no"/>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
+        <property name="margin_left">10</property>
+        <property name="margin_right">10</property>
+        <property name="margin_top">10</property>
+        <property name="margin_bottom">10</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">5</property>
         <child>
           <placeholder/>
         </child>
         <child>
-          <placeholder/>
-        </child>
-        <child>
-          <object class="GtkButton" id="QuitButton">
-            <property name="label" translatable="yes">Quit</property>
+          <object class="GtkBox">
             <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <signal name="clicked" handler="on_QuitButton_clicked" swapped="no"/>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkButton" id="SettingsButton">
+                <property name="label" translatable="yes">Settings...</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <signal name="clicked" handler="on_SettingsButton_clicked" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <object class="GtkButton" id="QuitButton">
+                <property name="label" translatable="yes">Quit</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <signal name="clicked" handler="on_QuitButton_clicked" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="pack_type">end</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">3</property>
+            <property name="pack_type">end</property>
+            <property name="position">2</property>
           </packing>
         </child>
       </object>
@@ -80,18 +96,21 @@ Author: Thomas A. Early, N7TAE
   </object>
   <object class="GtkDialog" id="SettingsDialog">
     <property name="can_focus">False</property>
-    <property name="type">popup</property>
+    <property name="title" translatable="yes">Qnet Digital Voice Settings</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="type_hint">dialog</property>
     <property name="skip_taskbar_hint">True</property>
-    <property name="decorated">False</property>
-    <child>
+    <child type="titlebar">
       <placeholder/>
     </child>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
+        <property name="margin_left">10</property>
+        <property name="margin_right">10</property>
+        <property name="margin_top">10</property>
+        <property name="margin_bottom">10</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
@@ -118,18 +137,6 @@ Author: Thomas A. Early, N7TAE
             <property name="orientation">vertical</property>
             <property name="spacing">4</property>
             <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Qnet Digital Voice Settings</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
               <object class="GtkFrame" id="StationConfigFrame">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
@@ -147,18 +154,6 @@ Author: Thomas A. Early, N7TAE
                         <property name="orientation">vertical</property>
                         <property name="spacing">5</property>
                         <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">Station Configuration</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
                           <object class="GtkGrid">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -168,12 +163,16 @@ Author: Thomas A. Early, N7TAE
                               <object class="GtkEntry" id="MyCallsignEntry">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="has_focus">True</property>
+                                <property name="halign">start</property>
                                 <property name="max_length">6</property>
-                                <property name="width_chars">6</property>
+                                <property name="width_chars">10</property>
                                 <property name="max_width_chars">6</property>
-                                <property name="text" translatable="yes">CHNGME</property>
+                                <property name="text" translatable="yes">CHANGE</property>
                                 <property name="xalign">0.5</property>
+                                <property name="truncate_multiline">True</property>
                                 <property name="primary_icon_tooltip_text" translatable="yes">Must be a valid callsign with a maximum of six characters.</property>
+                                <signal name="changed" handler="on_MyCallsignEntry_changed" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -184,12 +183,15 @@ Author: Thomas A. Early, N7TAE
                               <object class="GtkEntry" id="StationCallsignEntry">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="halign">start</property>
                                 <property name="max_length">6</property>
-                                <property name="width_chars">6</property>
+                                <property name="width_chars">10</property>
                                 <property name="max_width_chars">6</property>
-                                <property name="text" translatable="yes">CHNGME</property>
+                                <property name="text" translatable="yes">CHANGE</property>
                                 <property name="xalign">0.5</property>
+                                <property name="truncate_multiline">True</property>
                                 <property name="primary_icon_tooltip_text" translatable="yes">Must be a vaid callsign with a maximum of six characters.</property>
+                                <signal name="changed" handler="on_StationCallsignEntry_changed" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -251,16 +253,20 @@ Author: Thomas A. Early, N7TAE
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkEntry" id="TextMessageEntry">
+                              <object class="GtkEntry" id="MessageEntry">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="halign">start</property>
                                 <property name="max_length">20</property>
-                                <property name="width_chars">20</property>
+                                <property name="width_chars">29</property>
+                                <property name="truncate_multiline">True</property>
                                 <property name="primary_icon_tooltip_text" translatable="yes">Up to twenty characters</property>
+                                <signal name="changed" handler="on_MessageEntry_changed" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">2</property>
+                                <property name="width">2</property>
                               </packing>
                             </child>
                             <child>
@@ -273,7 +279,7 @@ Author: Thomas A. Early, N7TAE
                                   <object class="GtkLabel">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">Suffix:</property>
+                                    <property name="label" translatable="yes">Name:</property>
                                     <property name="width_chars">7</property>
                                     <property name="max_width_chars">7</property>
                                     <property name="xalign">1</property>
@@ -284,14 +290,15 @@ Author: Thomas A. Early, N7TAE
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkEntry" id="SuffixCallsignEntry">
+                                  <object class="GtkEntry" id="MyNameEntry">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="max_length">4</property>
-                                    <property name="width_chars">4</property>
+                                    <property name="width_chars">9</property>
                                     <property name="max_width_chars">4</property>
+                                    <property name="truncate_multiline">True</property>
                                     <property name="primary_icon_tooltip_text" translatable="yes">Up to four characters</property>
-                                    <property name="input_purpose">alpha</property>
+                                    <signal name="changed" handler="on_MyNameEntry_changed" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
@@ -303,9 +310,6 @@ Author: Thomas A. Early, N7TAE
                                 <property name="left_attach">2</property>
                                 <property name="top_attach">0</property>
                               </packing>
-                            </child>
-                            <child>
-                              <placeholder/>
                             </child>
                           </object>
                           <packing>
@@ -322,6 +326,7 @@ Author: Thomas A. Early, N7TAE
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Station Configuration</property>
                   </object>
                 </child>
               </object>
@@ -348,19 +353,73 @@ Author: Thomas A. Early, N7TAE
                         <property name="can_focus">False</property>
                         <property name="orientation">vertical</property>
                         <child>
-                          <object class="GtkLabel">
+                          <object class="GtkGrid">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">AMBE Device</property>
+                            <property name="row_spacing">10</property>
+                            <property name="column_spacing">6</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Device Path:</property>
+                                <property name="xalign">1</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="DevicePathEntry">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="max_length">12</property>
+                                <property name="width_chars">12</property>
+                                <property name="truncate_multiline">True</property>
+                                <property name="placeholder_text" translatable="yes">not found</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Baudrate:</property>
+                                <property name="xalign">1</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="ScanForDeviceButton">
+                                <property name="label" translatable="yes">Rescan</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">True</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">2</property>
+                                <property name="top_attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <placeholder/>
+                            </child>
+                            <child>
+                              <placeholder/>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
                             <property name="fill">True</property>
-                            <property name="position">0</property>
+                            <property name="position">1</property>
                           </packing>
-                        </child>
-                        <child>
-                          <placeholder/>
                         </child>
                       </object>
                     </child>
@@ -370,6 +429,7 @@ Author: Thomas A. Early, N7TAE
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">AMBE Device</property>
                   </object>
                 </child>
               </object>
@@ -377,59 +437,6 @@ Author: Thomas A. Early, N7TAE
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">2</property>
-              </packing>
-            </child>
-            <child type="center">
-              <object class="GtkGrid">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Device Path:</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">0</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkEntry" id="DevicePathEntry">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="max_length">12</property>
-                    <property name="width_chars">12</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xpad">4</property>
-                    <property name="label" translatable="yes">Baudrate:</property>
-                    <property name="xalign">1</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">2</property>
-                    <property name="top_attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">3</property>
               </packing>
             </child>
           </object>
