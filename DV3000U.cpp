@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-#include <string.h>
+#include <cstring>
 #include <cassert>
 #include <iostream>
 #include <iomanip>
@@ -83,6 +83,46 @@ bool CDV3000U::checkResponse(PDV3K_PACKET p, unsigned char response)
 		return true;
 
 	return false;
+}
+
+bool CDV3000U::IsOpen()
+{
+	return fd >= 0;
+}
+
+std::string CDV3000U::GetDevicePath()
+{
+	return devicepath;
+}
+
+std::string CDV3000U::GetVersion()
+{
+	return version;
+}
+
+std::string CDV3000U::GetProductID()
+{
+	return productid;
+}
+
+void CDV3000U::FindandOpen(int baudrate, Eencoding type)
+{
+	bool rval = true;
+	char device[16];
+
+	for (int i=0; rval && i<32; i++) {
+		sprintf(device, "/dev/ttyUSB%d", i);
+
+		if (access(device, R_OK | W_OK) != 0)
+			continue;
+
+		rval = OpenDevice(device, baudrate, type);
+	}
+
+	if (rval)
+		devicepath.clear();
+	else
+		devicepath.assign(device);
 }
 
 bool CDV3000U::SetBaudRate(int baudrate)
@@ -149,7 +189,7 @@ bool CDV3000U::OpenDevice(char *ttyname, int baudrate, Eencoding dvtype)
 bool CDV3000U::initDV3K(Eencoding dvtype)
 {
 	char prodId[17];
-	char version[49];
+	char versionstr[49];
 	DV3K_PACKET responsePacket, ctrlPacket;
 
     ctrlPacket.start_byte = DV3K_START_BYTE;
@@ -188,6 +228,7 @@ bool CDV3000U::initDV3K(Eencoding dvtype)
 	   return true;
 	}
 	strncpy(prodId, responsePacket.payload.ctrl.data.prodid, sizeof(prodId));
+	productid.assign(prodId);
 
 	ctrlPacket.field_id = DV3K_CONTROL_VERSTRING;
 	if (write(fd, &ctrlPacket, dv3k_packet_size(ctrlPacket)) == -1) {
@@ -204,8 +245,8 @@ bool CDV3000U::initDV3K(Eencoding dvtype)
 	   std::cerr << "initDV3k: invalid response to version query" << std::endl;
 	   return true;
 	}
-	strncpy(version, responsePacket.payload.ctrl.data.version, sizeof(version));
-
+	strncpy(versionstr, responsePacket.payload.ctrl.data.version, sizeof(version));
+	version.assign(versionstr);
 	std::cout << "Initialized " << prodId << " version " << version << std::endl;
 
 	ctrlPacket.header.payload_length = htons(13);

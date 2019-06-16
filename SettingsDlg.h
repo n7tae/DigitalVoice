@@ -27,15 +27,22 @@ public:
     ~CSettingsDlg();
     bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
     void Show();
+	// parameter values
+	int baudrate;
 private:
 	// widgets
     Gtk::Dialog *pDlg;
+	Gtk::Button *pRescanButton;
 	Gtk::CheckButton *pUseMyCall;
-	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pDevice;
+	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage;
+	Gtk::RadioButton *p230k, *p460k;
+	Gtk::Label *pDevicePath, *pProductID, *pVersion;
 	// events
 	void on_UseMyCallsignCheckButton_clicked();
 	void on_MyCallsignEntry_changed();
 	void on_MyNameEntry_changed();
 	void on_StationCallsignEntry_changed();
 	void on_MessageEntry_changed();
+	void on_RescanButton_clicked();
+	void on_BaudrateRadioButton_toggled();
 };

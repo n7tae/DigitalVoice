@@ -20,9 +20,11 @@
 #include <iostream>
 
 #include "MainWindow.h"
+#include "DV3000U.h"
 
 // Globals
 CMainWindow MainWindow;
+CDV3000U AMBEDevice;
 Glib::RefPtr<Gtk::Application> theApp;
 
 int main (int argc, char **argv)

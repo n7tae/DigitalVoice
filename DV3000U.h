@@ -19,6 +19,9 @@
  *
  */
 
+#include <string>
+#include <sstream>
+
 #define DV3K_TYPE_CONTROL 0x00U
 #define DV3K_TYPE_AMBE 0x01U
 #define DV3K_TYPE_AUDIO 0x02U
@@ -68,7 +71,7 @@ class CDV3000U {
 public:
 	CDV3000U();
 	~CDV3000U();
-	bool OpenDevice(char *ttyname, int baudrate, Eencoding dvtype);
+	void FindandOpen(int baudrate, Eencoding type);
 	bool SetBaudRate(int baudrate);
 	bool EncodeAudio(const short *audio, unsigned char *data);
 	bool SendAudio(const short *audio);
@@ -77,8 +80,14 @@ public:
 	bool SendData(const unsigned char *data);
 	bool GetAudio(short *audio);
 	void CloseDevice();
+	bool IsOpen();
+	std::string GetDevicePath();
+	std::string GetProductID();
+	std::string GetVersion();
 private:
 	int fd;
+	std::string devicepath, productid, version;
+	bool OpenDevice(char *ttyname, int baudrate, Eencoding dvtype);
 	void dump(const char *title, void *data, int length);
 	bool getresponse(PDV3K_PACKET packet);
 	bool initDV3K(Eencoding dvtype);
