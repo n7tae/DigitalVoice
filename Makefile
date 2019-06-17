@@ -22,4 +22,7 @@ clean:
 
 -include $(DEPS)
 
-# install, uninstall and removehostfiles need root priviledges
+hostfiles :
+	/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
+	/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
+	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt

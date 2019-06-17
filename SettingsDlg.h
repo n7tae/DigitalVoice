@@ -20,6 +20,8 @@
 
 #include <gtkmm.h>
 
+#include "HostFile.h"
+
 class CSettingsDlg
 {
 public:
@@ -30,10 +32,15 @@ public:
 	// parameter values
 	int baudrate;
 private:
+	// data
+	CHostFile xrfFile, dcsFile, refFile, customFile;
+	// helpers
 	// widgets
     Gtk::Dialog *pDlg;
 	Gtk::Button *pRescanButton;
 	Gtk::CheckButton *pUseMyCall;
+	Gtk::CheckButton *pXRFCheck, *pDCSCheck, *pREFCheck, *pCustomCheck, *pDPlusRefCheck, *pDPlusRepCheck;
+	Gtk::Label       *pXRFLabel, *pDCSLabel, *pREFLabel, *pCustomLabel, *pDPlusRefLabel, *pDPlusRepLabel;
 	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage;
 	Gtk::RadioButton *p230k, *p460k;
 	Gtk::Label *pDevicePath, *pProductID, *pVersion;

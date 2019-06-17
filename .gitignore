@@ -32,5 +32,10 @@
 *.a
 *.lib
 
+# host files
+DExtra_Hosts.txt
+DPlus_Hosts.txt
+DCS_Hosts.txt
+
 # Executables
 qndv

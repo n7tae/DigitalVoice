@@ -17,6 +17,7 @@
  */
 
 #include <iostream>
+
 #include "DV3000U.h"
 #include "SettingsDlg.h"
 
@@ -35,6 +36,8 @@ CSettingsDlg::~CSettingsDlg()
 		delete pDlg;
 }
 
+#define GET_WIDGET(a,b) builder->get_widget(a, b); if (nullptr == b) { std::cerr << "Failed to initialize " << a << std::endl; return true; }
+
 bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
 {
 	builder->get_widget(name, pDlg);
@@ -46,76 +49,34 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pDlg->add_button("Cancel", Gtk::RESPONSE_CANCEL);
 	pDlg->add_button("Okay", Gtk::RESPONSE_OK);
 
-	builder->get_widget("UseMyCallsignCheckButton", pUseMyCall);
-	if (nullptr == pUseMyCall) {
-		std::cerr << "Failed to get UserMyCallsignCheckButton!" << std::endl;
-		return true;
-	}
+	GET_WIDGET("UseMyCallsignCheckButton", pUseMyCall);
 	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
 
-	builder->get_widget("StationCallsignEntry", pStationCallsign);
-	if (nullptr == pStationCallsign) {
-		std::cerr << "Failed to get StationCallsignEntry" << std::endl;
-		return true;
-	}
+	GET_WIDGET("StationCallsignEntry", pStationCallsign);
 
-	builder->get_widget("MyCallsignEntry", pMyCallsign);
-	if (nullptr == pMyCallsign) {
-		std::cerr << "Failed to get MyCallsignEntry" << std::endl;
-		return true;
-	}
+	GET_WIDGET("MyCallsignEntry", pMyCallsign);
 	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
 
-	builder->get_widget("MyNameEntry", pMyName);
-	if (nullptr == pMyName) {
-		std::cerr << "Failed to get MyNameEntry" << std::endl;
-		return true;
-	}
+	GET_WIDGET("MyNameEntry", pMyName);
 	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
 
-	builder->get_widget("StationCallsignEntry", pStationCallsign);
-	if (nullptr == pStationCallsign) {
-		std::cerr << "Failed to get StationCallsignEntry" << std::endl;
-		return true;
-	}
+	GET_WIDGET("StationCallsignEntry", pStationCallsign);
 	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
 
-	builder->get_widget("MessageEntry", pMessage);
-	if (nullptr == pMessage) {
-		std::cerr << "Failed to get MessageEntry" << std::endl;
-		return true;
-	}
+	GET_WIDGET("MessageEntry", pMessage);
 	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
 
-	builder->get_widget("DeviceLabel", pDevicePath);
-	if (nullptr == pDevicePath) {
-		std::cerr << "Failed to get DevicePathEntry" << std::endl;
-		return true;
-	}
-
-	builder->get_widget("ProductIDLabel", pProductID);
-
-	builder->get_widget("VersionLabel", pVersion);
-	if (nullptr == pVersion) {
-		std::cerr << "Failed to get VersionLabel" << std::endl;
-		return true;
-	}
+	GET_WIDGET("DeviceLabel", pDevicePath);
+	GET_WIDGET("ProductIDLabel", pProductID);
+	GET_WIDGET("VersionLabel", pVersion);
 
 	baudrate = 0;
-	builder->get_widget("Baud230kRadioButton", p230k);
-	if (nullptr == p230k) {
-		std::cerr << "Failed to get Baud230kRadioButton" << std::endl;
-		return true;
-	}
+	GET_WIDGET("Baud230kRadioButton", p230k);
 	p230k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
 	if (p230k->get_active())
 		baudrate = 230400;
 
-	builder->get_widget("Baud460kRadioButton", p460k);
-	if (nullptr == p460k) {
-		std::cerr << "Failed to get Baud460kRadioButton" << std::endl;
-		return true;
-	}
+	GET_WIDGET("Baud460kRadioButton", p460k);
 	p460k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
 	if (p460k->get_active())
 		baudrate = 460800;
@@ -125,14 +86,31 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 		return true;
 	}
 
-	builder->get_widget("RescanButton", pRescanButton);
-	if (nullptr == pRescanButton) {
-		std::cerr << "Failed to get RescanButton" << std::endl;
-		return true;
-	}
+	GET_WIDGET("RescanButton", pRescanButton);
 	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
 
-	on_RescanButton_clicked();
+	xrfFile.Open("DExtra_Hosts.txt", 30001);
+	GET_WIDGET("XRFCheckButton", pXRFCheck);
+	GET_WIDGET("XRFCountLabel", pXRFLabel);
+	pXRFLabel->set_text(std::to_string(xrfFile.hostmap.size()));
+
+	dcsFile.Open("DCS_Hosts.txt", 30051);
+	GET_WIDGET("DCSCheckButton", pDCSCheck);
+	GET_WIDGET("DCSCountLabel", pDCSLabel);
+	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
+
+	refFile.Open("DPlus_Hosts.txt", 20001);
+	GET_WIDGET("REFCheckButton", pREFCheck);
+	GET_WIDGET("REFCountLabel", pREFLabel);
+	pREFLabel->set_text(std::to_string(refFile.hostmap.size()));
+
+	customFile.Open("Custom_Hosts.txt", 20001);
+	GET_WIDGET("CustomCheckButton", pCustomCheck);
+	GET_WIDGET("CustomCountLabel", pCustomLabel);
+	pCustomLabel->set_text(std::to_string(customFile.hostmap.size()));
+
+	on_RescanButton_clicked();	// load it up on init
+
 	return false;
 }
 
