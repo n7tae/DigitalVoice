@@ -100,7 +100,7 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, SDATA *> &gwy_map, 
 
 			// An empty name or IP address or an inactive gateway/reflector is not added
 			if (address.size()>0U && name.size()>0U && active) {
-				std::cout << "name:" << name << " address:" << address << std::endl;
+				//std::cout << "name:" << name << " address:" << address << std::endl;
 				if (reflectors && 0==name.compare(0, 3, "REF")) {
 					SDATA *pData = new SDATA;
 					if (pData) {

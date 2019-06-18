@@ -23,6 +23,38 @@
 
 #include "HostFile.h"
 
+class CWaitCursor
+{
+// https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html
+public:
+	CWaitCursor()
+	{
+		screen = gdk_screen_get_default();
+		win = gdk_screen_get_root_window(screen);
+		display = gdk_screen_get_display(screen);
+		gtkSetCursor(GDK_WATCH);
+	}
+
+	~CWaitCursor()
+	{
+		gtkSetCursor(GDK_LEFT_PTR);
+	}
+
+private:
+	// params
+	GdkDisplay *display;
+	GdkScreen *screen;
+	GdkWindow *win;
+	// methods
+	void gtkSetCursor(GdkCursorType cursorType)
+	{
+		GdkCursor *cursor = gdk_cursor_new_for_display(display, cursorType);
+		gdk_window_set_cursor(win, cursor);
+		while (gtk_events_pending())
+			gtk_main_iteration();
+	}
+};
+
 class CSettingsDlg
 {
 public:

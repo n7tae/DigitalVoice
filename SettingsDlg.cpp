@@ -158,8 +158,12 @@ void CSettingsDlg::on_DPlusEnableCheck_toggled()
 	int ref = 0, rep = 0;
 	dplusFile.ClearMap();
 	if (pDPlusEnableCheck->get_active()) {
-		//GdkCursor *cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "wait");
-		//gdk_window_set_cursor(gdk_get_default_root_window(), cursor);
+		CWaitCursor wait;
+		//GdkDisplay *disp = gdk_display_get_default();
+		//GdkCursor *cursor = gdk_cursor_new_for_display(disp, GDK_WATCH);
+		//GdkWindow *win = gdk_get_default_root_window();
+		//GdkCursor *old = gdk_window_get_cursor(win);
+		//gdk_window_set_cursor(win, cursor);
 		pDPlusRefCheck->show();
 		pDPlusRefLabel->show();
 		pDPlusRepCheck->show();
@@ -178,7 +182,7 @@ void CSettingsDlg::on_DPlusEnableCheck_toggled()
 		}
 		pDPlusRefLabel->set_text(std::to_string(ref));
 		pDPlusRepLabel->set_text(std::to_string(rep));
-		//gdk_window_set_cursor(gdk_get_default_root_window(), NULL);
+		//gdk_window_set_cursor(win, old);
 	} else {
 		pDPlusRefCheck->hide();
 		pDPlusRefLabel->hide();
