@@ -25,13 +25,12 @@
 
 class CWaitCursor
 {
-// https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html
 public:
-	CWaitCursor()
+	CWaitCursor() :
+	screen(gdk_screen_get_default()),
+	win(gdk_screen_get_root_window(screen)),
+	display(gdk_screen_get_display(screen))
 	{
-		screen = gdk_screen_get_default();
-		win = gdk_screen_get_root_window(screen);
-		display = gdk_screen_get_display(screen);
 		gtkSetCursor(GDK_WATCH);
 	}
 
@@ -42,9 +41,9 @@ public:
 
 private:
 	// params
-	GdkDisplay *display;
 	GdkScreen *screen;
 	GdkWindow *win;
+	GdkDisplay *display;
 	// methods
 	void gtkSetCursor(GdkCursorType cursorType)
 	{
