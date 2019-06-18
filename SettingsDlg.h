@@ -19,6 +19,7 @@
 #pragma once
 
 #include <gtkmm.h>
+#include <regex>
 
 #include "HostFile.h"
 
@@ -33,14 +34,15 @@ public:
 	int baudrate;
 private:
 	// data
-	CHostFile xrfFile, dcsFile, refFile, customFile;
+	CHostFile xrfFile, dcsFile, refFile, dplusFile, customFile;
 	// helpers
+	std::regex CallRegEx;
 	// widgets
     Gtk::Dialog *pDlg;
-	Gtk::Button *pRescanButton;
-	Gtk::CheckButton *pUseMyCall;
-	Gtk::CheckButton *pXRFCheck, *pDCSCheck, *pREFCheck, *pCustomCheck, *pDPlusRefCheck, *pDPlusRepCheck;
-	Gtk::Label       *pXRFLabel, *pDCSLabel, *pREFLabel, *pCustomLabel, *pDPlusRefLabel, *pDPlusRepLabel;
+	Gtk::Button *pRescanButton, *pOkayButton;
+	Gtk::CheckButton *pUseMyCall, *pValidCall;
+	Gtk::CheckButton *pXRFCheck, *pDCSCheck, *pREFRefCheck, *pREFRepCheck, *pCustomCheck, *pDPlusRefCheck, *pDPlusRepCheck, *pDPlusEnableCheck;
+	Gtk::Label       *pXRFLabel, *pDCSLabel, *pREFRefLabel, *pREFRepLabel, *pCustomLabel, *pDPlusRefLabel, *pDPlusRepLabel;
 	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage;
 	Gtk::RadioButton *p230k, *p460k;
 	Gtk::Label *pDevicePath, *pProductID, *pVersion;
@@ -52,4 +54,5 @@ private:
 	void on_MessageEntry_changed();
 	void on_RescanButton_clicked();
 	void on_BaudrateRadioButton_toggled();
+	void on_DPlusEnableCheck_toggled();
 };

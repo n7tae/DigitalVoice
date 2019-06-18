@@ -37,7 +37,7 @@ void CHostFile::Open(const char *filename, unsigned short defaultport)
 					unsigned short port;
 					char *p = strtok(NULL, ws);
 					if (p && isdigit(*p))
-						port = (unsigned short)std::stoul(p);
+						port = std::stoul(p);
 					else
 						port = defaultport;
 					SDATA *pData = new SDATA;

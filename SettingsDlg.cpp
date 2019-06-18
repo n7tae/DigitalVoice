@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "DV3000U.h"
+#include "DPlusAuthenticator.h"
 #include "SettingsDlg.h"
 
 // globals
@@ -28,12 +29,29 @@ extern CDV3000U AMBEDevice;
 CSettingsDlg::CSettingsDlg() :
 	pDlg(nullptr)
 {
+	CallRegEx = std::regex("^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 }
 
 CSettingsDlg::~CSettingsDlg()
 {
 	if (pDlg)
 		delete pDlg;
+}
+
+void CSettingsDlg::Show()
+{
+	switch(pDlg->run()) {
+		case Gtk::RESPONSE_CANCEL:
+			std::cout << "Clicked Cancel!" << std::endl;
+			break;
+		case Gtk::RESPONSE_OK:
+			std::cout << "Clicked OK!" << std::endl;
+			break;
+		default:
+			std::cout << "Unexpected return from dlg->run()!" << std::endl;
+			break;
+	}
+	pDlg->hide();
 }
 
 #define GET_WIDGET(a,b) builder->get_widget(a, b); if (nullptr == b) { std::cerr << "Failed to initialize " << a << std::endl; return true; }
@@ -47,13 +65,15 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	}
 	pDlg->set_transient_for(*pWin);
 	pDlg->add_button("Cancel", Gtk::RESPONSE_CANCEL);
-	pDlg->add_button("Okay", Gtk::RESPONSE_OK);
+	pOkayButton = pDlg->add_button("Okay", Gtk::RESPONSE_OK);
+	pOkayButton->set_sensitive(false);
 
 	GET_WIDGET("UseMyCallsignCheckButton", pUseMyCall);
 	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
 
 	GET_WIDGET("StationCallsignEntry", pStationCallsign);
 
+	GET_WIDGET("ValidCallCheckButton", pValidCall);
 	GET_WIDGET("MyCallsignEntry", pMyCallsign);
 	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
 
@@ -100,18 +120,71 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
 
 	refFile.Open("DPlus_Hosts.txt", 20001);
-	GET_WIDGET("REFCheckButton", pREFCheck);
-	GET_WIDGET("REFCountLabel", pREFLabel);
-	pREFLabel->set_text(std::to_string(refFile.hostmap.size()));
+	GET_WIDGET("REFRefCheckButton", pREFRepCheck);
+	GET_WIDGET("REFRefCountLabel", pREFRepLabel);
+	GET_WIDGET("REFRepCheckButton", pREFRefCheck);
+	GET_WIDGET("REFRepCountLabel", pREFRefLabel);
+	int ref = 0, rep = 0;
+	for (auto it=refFile.hostmap.begin(); it!=refFile.hostmap.end(); it++) {
+		if (it->first.compare(0, 3, "REF"))
+			rep++;
+		else
+			ref++;
+	}
+	pREFRefLabel->set_text(std::to_string(ref));
+	pREFRepLabel->set_text(std::to_string(rep));
 
 	customFile.Open("Custom_Hosts.txt", 20001);
 	GET_WIDGET("CustomCheckButton", pCustomCheck);
 	GET_WIDGET("CustomCountLabel", pCustomLabel);
 	pCustomLabel->set_text(std::to_string(customFile.hostmap.size()));
 
-	on_RescanButton_clicked();	// load it up on init
+	GET_WIDGET("DPlusEnableCheckButton", pDPlusEnableCheck);
+	pDPlusEnableCheck->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_DPlusEnableCheck_toggled));
+	GET_WIDGET("DPlusRefCheckButton", pDPlusRefCheck);
+	GET_WIDGET("DPlusRepCheckButton", pDPlusRepCheck);
+	GET_WIDGET("DPlusRefCountLabel", pDPlusRefLabel);
+	GET_WIDGET("DPlusRepCountLabel", pDPlusRepLabel);
+
+	// initialize complex components
+	on_DPlusEnableCheck_toggled();
+	on_RescanButton_clicked();
 
 	return false;
+}
+
+void CSettingsDlg::on_DPlusEnableCheck_toggled()
+{
+	int ref = 0, rep = 0;
+	dplusFile.ClearMap();
+	if (pDPlusEnableCheck->get_active()) {
+		//GdkCursor *cursor = gdk_cursor_new_from_name(gdk_display_get_default(), "wait");
+		//gdk_window_set_cursor(gdk_get_default_root_window(), cursor);
+		pDPlusRefCheck->show();
+		pDPlusRefLabel->show();
+		pDPlusRepCheck->show();
+		pDPlusRepLabel->show();
+		const std::string call(pMyCallsign->get_text().c_str());
+		CDPlusAuthenticator auth(call, "auth.dstargateway.org");
+		if (auth.Process(dplusFile.hostmap, true, true)) {
+			std::cerr << "Error processing D-Plus authorization" << std::endl;
+		} else {
+			for (auto it=dplusFile.hostmap.begin(); it!=dplusFile.hostmap.end(); it++) {
+				if (it->first.compare(0, 3, "REF"))
+					rep++;
+				else
+					ref++;
+			}
+		}
+		pDPlusRefLabel->set_text(std::to_string(ref));
+		pDPlusRepLabel->set_text(std::to_string(rep));
+		//gdk_window_set_cursor(gdk_get_default_root_window(), NULL);
+	} else {
+		pDPlusRefCheck->hide();
+		pDPlusRefLabel->hide();
+		pDPlusRepCheck->hide();
+		pDPlusRepLabel->hide();
+	}
 }
 
 void CSettingsDlg::on_RescanButton_clicked()
@@ -134,22 +207,6 @@ void CSettingsDlg::on_RescanButton_clicked()
 	}
 }
 
-void CSettingsDlg::Show()
-{
-	switch(pDlg->run()) {
-		case Gtk::RESPONSE_CANCEL:
-			std::cout << "Clicked Cancel!" << std::endl;
-			break;
-		case Gtk::RESPONSE_OK:
-			std::cout << "Clicked OK!" << std::endl;
-			break;
-		default:
-			std::cout << "Unexpected return from dlg->run()!" << std::endl;
-			break;
-	}
-	pDlg->hide();
-}
-
 void CSettingsDlg::on_UseMyCallsignCheckButton_clicked()
 {
 	if (pUseMyCall->get_active()) {
@@ -163,9 +220,13 @@ void CSettingsDlg::on_UseMyCallsignCheckButton_clicked()
 void CSettingsDlg::on_MyCallsignEntry_changed()
  {
 	 int pos = pMyCallsign->get_position();
-	 Glib::ustring s = pMyCallsign->get_text();
-	 pMyCallsign->set_text(s.uppercase());
+	 Glib::ustring s = pMyCallsign->get_text().uppercase();
+	 pMyCallsign->set_text(s);
 	 pMyCallsign->set_position(pos);
+	 bool ok = std::regex_match(s.c_str(), CallRegEx);
+	 pValidCall->set_active(ok);
+	 pDPlusEnableCheck->set_sensitive(ok);
+	 pOkayButton->set_sensitive(ok);
 	 if (pUseMyCall->get_active())
 	 	pStationCallsign->set_text(s);
  }

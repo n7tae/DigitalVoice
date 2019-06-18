@@ -35,7 +35,5 @@ public:
 
 	// data
 	std::map<std::string, SDATA *> hostmap;
-
-private:
 	void ClearMap();
 };
