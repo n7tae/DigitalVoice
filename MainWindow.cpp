@@ -50,10 +50,10 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	if (SettingsDlg.Init(builder, "SettingsDialog", pWin))
 		return true;
 
-	GET_WIDGET("QuitButton", pQuit);
+	builder->get_widget("QuitButton", pQuit);
 	pQuit->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuitButton_clicked));
 
-	GET_WIDGET("SettingsButton", pSettings);
+	builder->get_widget("SettingsButton", pSettings);
 	pSettings->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
 
 	return false;

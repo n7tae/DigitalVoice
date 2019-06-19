@@ -20,7 +20,6 @@
 
 #include <string>
 
-#define GET_WIDGET(a,b) builder->get_widget(a, b); if (nullptr == b) { std::cerr << "Failed to initialize " << a << std::endl; return true; }
 #define IS_TRUE(a) (a=='t' || a=='T' || a=='1')
 
 typedef struct data_tag {

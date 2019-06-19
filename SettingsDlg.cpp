@@ -203,33 +203,33 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 
 	SSETTINGSDATA *pData = ReadCfgFile();
 
-	GET_WIDGET("ValidCallCheckButton", pValidCall);
-	GET_WIDGET("MyCallsignEntry", pMyCallsign);
+	builder->get_widget("ValidCallCheckButton", pValidCall);
+	builder->get_widget("MyCallsignEntry", pMyCallsign);
 	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
 	if (pData) pMyCallsign->set_text(pData->MyCall.c_str());
 
-	GET_WIDGET("MyNameEntry", pMyName);
+	builder->get_widget("MyNameEntry", pMyName);
 	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
 	if (pData) pMyName->set_text(pData->MyName.c_str());
 
-	GET_WIDGET("StationCallsignEntry", pStationCallsign);
+	builder->get_widget("StationCallsignEntry", pStationCallsign);
 	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
 	if (pData) pStationCallsign->set_text(pData->StationCall.c_str());
 
-	GET_WIDGET("UseMyCallsignCheckButton", pUseMyCall);
+	builder->get_widget("UseMyCallsignCheckButton", pUseMyCall);
 	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
 	if (pData) pUseMyCall->set_active(pData->UseMyCall);
 
-	GET_WIDGET("MessageEntry", pMessage);
+	builder->get_widget("MessageEntry", pMessage);
 	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
 	if (pData) pMessage->set_text(pData->Message.c_str());
 
-	GET_WIDGET("DeviceLabel", pDevicePath);
-	GET_WIDGET("ProductIDLabel", pProductID);
-	GET_WIDGET("VersionLabel", pVersion);
+	builder->get_widget("DeviceLabel", pDevicePath);
+	builder->get_widget("ProductIDLabel", pProductID);
+	builder->get_widget("VersionLabel", pVersion);
 
-	GET_WIDGET("Baud230kRadioButton", p230k);
-	GET_WIDGET("Baud460kRadioButton", p460k);
+	builder->get_widget("Baud230kRadioButton", p230k);
+	builder->get_widget("Baud460kRadioButton", p460k);
 	if (pData) {
 		if (230400 == pData->BaudRate)
 			p230k->clicked();
@@ -250,28 +250,28 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 		return true;
 	}
 
-	GET_WIDGET("RescanButton", pRescanButton);
+	builder->get_widget("RescanButton", pRescanButton);
 	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
 
 	xrfFile.Open("DExtra_Hosts.txt", 30001);
-	GET_WIDGET("XRFCheckButton", pXRFCheck);
+	builder->get_widget("XRFCheckButton", pXRFCheck);
 	if (pData) pXRFCheck->set_active(pData->XRF);
-	GET_WIDGET("XRFCountLabel", pXRFLabel);
+	builder->get_widget("XRFCountLabel", pXRFLabel);
 	pXRFLabel->set_text(std::to_string(xrfFile.hostmap.size()));
 
 	dcsFile.Open("DCS_Hosts.txt", 30051);
-	GET_WIDGET("DCSCheckButton", pDCSCheck);
+	builder->get_widget("DCSCheckButton", pDCSCheck);
 	if (pData) pDCSCheck->set_active(pData->DCS);
-	GET_WIDGET("DCSCountLabel", pDCSLabel);
+	builder->get_widget("DCSCountLabel", pDCSLabel);
 	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
 
 	refFile.Open("DPlus_Hosts.txt", 20001);
-	GET_WIDGET("REFRefCheckButton", pREFRepCheck);
+	builder->get_widget("REFRefCheckButton", pREFRepCheck);
 	if (pData) pREFRefCheck->set_active(pData->REFref);
-	GET_WIDGET("REFRefCountLabel", pREFRepLabel);
-	GET_WIDGET("REFRepCheckButton", pREFRefCheck);
+	builder->get_widget("REFRefCountLabel", pREFRepLabel);
+	builder->get_widget("REFRepCheckButton", pREFRefCheck);
 	if (pData) pREFRefCheck->set_active(pData->REFrep);
-	GET_WIDGET("REFRepCountLabel", pREFRefLabel);
+	builder->get_widget("REFRepCountLabel", pREFRefLabel);
 	int ref = 0, rep = 0;
 	for (auto it=refFile.hostmap.begin(); it!=refFile.hostmap.end(); it++) {
 		if (it->first.compare(0, 3, "REF"))
@@ -283,20 +283,20 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pREFRepLabel->set_text(std::to_string(rep));
 
 	customFile.Open("Custom_Hosts.txt", 20001);
-	GET_WIDGET("CustomCheckButton", pCustomCheck);
+	builder->get_widget("CustomCheckButton", pCustomCheck);
 	if (pData) pCustomCheck->set_active(pData->MyHost);
-	GET_WIDGET("CustomCountLabel", pCustomLabel);
+	builder->get_widget("CustomCountLabel", pCustomLabel);
 	pCustomLabel->set_text(std::to_string(customFile.hostmap.size()));
 
-	GET_WIDGET("DPlusEnableCheckButton", pDPlusEnableCheck);
+	builder->get_widget("DPlusEnableCheckButton", pDPlusEnableCheck);
 	if (pData) pDPlusEnableCheck->set_active(pData->DPlusEnable);
 	pDPlusEnableCheck->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_DPlusEnableCheck_toggled));
-	GET_WIDGET("DPlusRefCheckButton", pDPlusRefCheck);
+	builder->get_widget("DPlusRefCheckButton", pDPlusRefCheck);
 	if (pData) pDPlusRefCheck->set_active(pData->DPlusRef);
-	GET_WIDGET("DPlusRepCheckButton", pDPlusRepCheck);
+	builder->get_widget("DPlusRepCheckButton", pDPlusRepCheck);
 	if (pData) pDPlusRepCheck->set_active(pData->DPlusRep);
-	GET_WIDGET("DPlusRefCountLabel", pDPlusRefLabel);
-	GET_WIDGET("DPlusRepCountLabel", pDPlusRepLabel);
+	builder->get_widget("DPlusRefCountLabel", pDPlusRefLabel);
+	builder->get_widget("DPlusRepCountLabel", pDPlusRepLabel);
 
 	// initialize complex components
 	on_DPlusEnableCheck_toggled();
