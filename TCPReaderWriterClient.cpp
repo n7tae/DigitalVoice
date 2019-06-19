@@ -76,7 +76,7 @@ bool CTCPReaderWriterClient::Open()
 	struct addrinfo *res;
 	int s = EAI_AGAIN;
 	int count = 0;
-	while (EAI_AGAIN==s and count++<20) {
+	while (EAI_AGAIN==s && count++<20) {
 		// connecting to a server, so we can wait until it's ready
 		s = getaddrinfo(m_address.c_str(), m_port.c_str(), &hints, &res);
 		if (s && s != EAI_AGAIN) {

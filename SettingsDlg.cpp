@@ -173,7 +173,7 @@ void CSettingsDlg::WriteCfgFile()
 		return;
 	}
 	file << "MyCall=" << pMyCallsign->get_text() << std::endl;
-	file << "MyCall=" << pMyName->get_text() << std::endl;
+	file << "MyName=" << pMyName->get_text() << std::endl;
 	file << "StationCall=" << pStationCallsign->get_text() << std::endl;
 	file << "UseMyCall=" << (pUseMyCall->get_active() ? "true" : "false") << std::endl;
 	file << "Message=\"" << pMessage->get_text() << '"' << std::endl;
@@ -203,33 +203,50 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 
 	SSETTINGSDATA *pData = ReadCfgFile();
 
+	// station
 	builder->get_widget("ValidCallCheckButton", pValidCall);
 	builder->get_widget("MyCallsignEntry", pMyCallsign);
-	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
-	if (pData) pMyCallsign->set_text(pData->MyCall.c_str());
-
 	builder->get_widget("MyNameEntry", pMyName);
-	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
-	if (pData) pMyName->set_text(pData->MyName.c_str());
-
-	builder->get_widget("StationCallsignEntry", pStationCallsign);
-	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
-	if (pData) pStationCallsign->set_text(pData->StationCall.c_str());
-
+	builder->get_widget("DPlusEnableCheckButton", pDPlusEnableCheck);
 	builder->get_widget("UseMyCallsignCheckButton", pUseMyCall);
-	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
-	if (pData) pUseMyCall->set_active(pData->UseMyCall);
-
+	builder->get_widget("StationCallsignEntry", pStationCallsign);
 	builder->get_widget("MessageEntry", pMessage);
-	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
-	if (pData) pMessage->set_text(pData->Message.c_str());
-
+	// device
 	builder->get_widget("DeviceLabel", pDevicePath);
 	builder->get_widget("ProductIDLabel", pProductID);
 	builder->get_widget("VersionLabel", pVersion);
-
 	builder->get_widget("Baud230kRadioButton", p230k);
 	builder->get_widget("Baud460kRadioButton", p460k);
+	builder->get_widget("RescanButton", pRescanButton);
+	// linking
+	builder->get_widget("XRFCheckButton", pXRFCheck);
+	builder->get_widget("XRFCountLabel", pXRFLabel);
+	builder->get_widget("DCSCheckButton", pDCSCheck);
+	builder->get_widget("DCSCountLabel", pDCSLabel);
+	builder->get_widget("REFRefCheckButton", pREFRepCheck);
+	builder->get_widget("REFRefCountLabel", pREFRepLabel);
+	builder->get_widget("REFRepCheckButton", pREFRefCheck);
+	builder->get_widget("REFRepCountLabel", pREFRefLabel);
+	builder->get_widget("CustomCheckButton", pCustomCheck);
+	builder->get_widget("CustomCountLabel", pCustomLabel);
+	builder->get_widget("DPlusRefCheckButton", pDPlusRefCheck);
+	builder->get_widget("DPlusRepCheckButton", pDPlusRepCheck);
+	builder->get_widget("DPlusRefCountLabel", pDPlusRefLabel);
+	builder->get_widget("DPlusRepCountLabel", pDPlusRepLabel);
+
+	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
+	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
+	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
+	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
+	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
+	if (pData) {
+		pMyCallsign->set_text(pData->MyCall.c_str());
+		pMyName->set_text(pData->MyName.c_str());
+		pStationCallsign->set_text(pData->StationCall.c_str());
+		pUseMyCall->set_active(pData->UseMyCall);
+		pMessage->set_text(pData->Message.c_str());
+	}
+
 	if (pData) {
 		if (230400 == pData->BaudRate)
 			p230k->clicked();
@@ -250,28 +267,15 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 		return true;
 	}
 
-	builder->get_widget("RescanButton", pRescanButton);
 	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
 
 	xrfFile.Open("DExtra_Hosts.txt", 30001);
-	builder->get_widget("XRFCheckButton", pXRFCheck);
-	if (pData) pXRFCheck->set_active(pData->XRF);
-	builder->get_widget("XRFCountLabel", pXRFLabel);
-	pXRFLabel->set_text(std::to_string(xrfFile.hostmap.size()));
-
 	dcsFile.Open("DCS_Hosts.txt", 30051);
-	builder->get_widget("DCSCheckButton", pDCSCheck);
-	if (pData) pDCSCheck->set_active(pData->DCS);
-	builder->get_widget("DCSCountLabel", pDCSLabel);
-	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
-
 	refFile.Open("DPlus_Hosts.txt", 20001);
-	builder->get_widget("REFRefCheckButton", pREFRepCheck);
-	if (pData) pREFRefCheck->set_active(pData->REFref);
-	builder->get_widget("REFRefCountLabel", pREFRepLabel);
-	builder->get_widget("REFRepCheckButton", pREFRefCheck);
-	if (pData) pREFRefCheck->set_active(pData->REFrep);
-	builder->get_widget("REFRepCountLabel", pREFRefLabel);
+	customFile.Open("My_Hosts.txt", 20001);
+
+	pXRFLabel->set_text(std::to_string(xrfFile.hostmap.size()));
+	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
 	int ref = 0, rep = 0;
 	for (auto it=refFile.hostmap.begin(); it!=refFile.hostmap.end(); it++) {
 		if (it->first.compare(0, 3, "REF"))
@@ -281,22 +285,18 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	}
 	pREFRefLabel->set_text(std::to_string(ref));
 	pREFRepLabel->set_text(std::to_string(rep));
-
-	customFile.Open("Custom_Hosts.txt", 20001);
-	builder->get_widget("CustomCheckButton", pCustomCheck);
-	if (pData) pCustomCheck->set_active(pData->MyHost);
-	builder->get_widget("CustomCountLabel", pCustomLabel);
 	pCustomLabel->set_text(std::to_string(customFile.hostmap.size()));
-
-	builder->get_widget("DPlusEnableCheckButton", pDPlusEnableCheck);
-	if (pData) pDPlusEnableCheck->set_active(pData->DPlusEnable);
+	if (pData) {
+		pXRFCheck->set_active(pData->XRF);
+		pDCSCheck->set_active(pData->DCS);
+		pREFRefCheck->set_active(pData->REFref);
+		pREFRepCheck->set_active(pData->REFrep);
+		pCustomCheck->set_active(pData->MyHost);
+		pDPlusEnableCheck->set_active(pData->DPlusEnable);
+		pDPlusRefCheck->set_active(pData->DPlusRef);
+		pDPlusRepCheck->set_active(pData->DPlusRep);
+	}
 	pDPlusEnableCheck->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_DPlusEnableCheck_toggled));
-	builder->get_widget("DPlusRefCheckButton", pDPlusRefCheck);
-	if (pData) pDPlusRefCheck->set_active(pData->DPlusRef);
-	builder->get_widget("DPlusRepCheckButton", pDPlusRepCheck);
-	if (pData) pDPlusRepCheck->set_active(pData->DPlusRep);
-	builder->get_widget("DPlusRefCountLabel", pDPlusRefLabel);
-	builder->get_widget("DPlusRepCountLabel", pDPlusRepLabel);
 
 	// initialize complex components
 	on_DPlusEnableCheck_toggled();
@@ -342,6 +342,7 @@ void CSettingsDlg::on_DPlusEnableCheck_toggled()
 
 void CSettingsDlg::on_RescanButton_clicked()
 {
+	CWaitCursor wait;
 	if (AMBEDevice.IsOpen())
 		AMBEDevice.CloseDevice();
 
@@ -417,20 +418,18 @@ void CSettingsDlg::on_MessageEntry_changed()
 
 void CSettingsDlg::on_BaudrateRadioButton_toggled()
 {
-	if (AMBEDevice.IsOpen()) {
-		int baudrate = 0;
-		if (p230k->get_active())
-			baudrate = 230400;
-		else if (p460k->get_active())
-			baudrate = 460800;
+	baudrate = 0;
+	if (p230k->get_active())
+		baudrate = 230400;
+	else if (p460k->get_active())
+		baudrate = 460800;
 
-		if (baudrate) {
-			if (AMBEDevice.SetBaudRate(baudrate)) {
-				AMBEDevice.CloseDevice();
-				pDevicePath->set_text("Error");
-				pProductID->set_text("Setting the baudrate failed");
-				pVersion->set_text("Pleae Rescan.");
-			}
+	if (AMBEDevice.IsOpen() && baudrate) {
+		if (AMBEDevice.SetBaudRate(baudrate)) {
+			AMBEDevice.CloseDevice();
+			pDevicePath->set_text("Error");
+			pProductID->set_text("Setting the baudrate failed");
+			pVersion->set_text("Pleae Rescan.");
 		}
 	}
 }
