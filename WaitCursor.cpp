@@ -16,20 +16,24 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#pragma once
+#include "WaitCursor.h"
 
-#include <string>
-#include <map>
-
-#include "Defines.h"
-class CHostFile
+CWaitCursor::CWaitCursor() :
+	screen(gdk_screen_get_default()),
+	win(gdk_screen_get_root_window(screen)),
+	display(gdk_screen_get_display(screen))
 {
-public:
-	CHostFile() {}
-	~CHostFile();
-	void Open(const char *filename, unsigned short defaultport);
+	gtkSetCursor(GDK_WATCH);
+}
 
-	// data
-	std::map<std::string, SDATA *> hostmap;
-	void ClearMap();
-};
+CWaitCursor::~CWaitCursor()
+{
+	gtkSetCursor(GDK_LEFT_PTR);
+}
+void CWaitCursor::gtkSetCursor(GdkCursorType cursorType)
+{
+	GdkCursor *cursor = gdk_cursor_new_for_display(display, cursorType);
+	gdk_window_set_cursor(win, cursor);
+	while (gtk_events_pending())
+		gtk_main_iteration();
+}

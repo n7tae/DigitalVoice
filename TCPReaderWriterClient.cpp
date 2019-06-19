@@ -110,8 +110,8 @@ bool CTCPReaderWriterClient::Open()
 				struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)rp->ai_addr;
 				addr = &(addr6->sin6_addr);
 			}
-			//if (inet_ntop(rp->ai_family, addr, buf, INET6_ADDRSTRLEN))
-			// std::cout << "Successfully connected to " << m_address << " at [" << buf << "]:" << m_port << std::endl;
+			if (inet_ntop(rp->ai_family, addr, buf, INET6_ADDRSTRLEN))
+				std::cout << "Successfully connected to " << m_address << " at [" << buf << "]:" << m_port << std::endl;
 			break;
 		}
 	}

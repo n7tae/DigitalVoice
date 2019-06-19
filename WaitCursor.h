@@ -18,18 +18,19 @@
 
 #pragma once
 
-#include <string>
-#include <map>
+#include <gtkmm.h>
 
-#include "Defines.h"
-class CHostFile
+class CWaitCursor
 {
 public:
-	CHostFile() {}
-	~CHostFile();
-	void Open(const char *filename, unsigned short defaultport);
+	CWaitCursor();
+	~CWaitCursor();
 
-	// data
-	std::map<std::string, SDATA *> hostmap;
-	void ClearMap();
+private:
+	// params
+	GdkScreen *screen;
+	GdkWindow *win;
+	GdkDisplay *display;
+	// methods
+	void gtkSetCursor(GdkCursorType cursorType);
 };

@@ -21,38 +21,8 @@
 #include <gtkmm.h>
 #include <regex>
 
+#include "Defines.h"
 #include "HostFile.h"
-
-class CWaitCursor
-{
-public:
-	CWaitCursor() :
-	screen(gdk_screen_get_default()),
-	win(gdk_screen_get_root_window(screen)),
-	display(gdk_screen_get_display(screen))
-	{
-		gtkSetCursor(GDK_WATCH);
-	}
-
-	~CWaitCursor()
-	{
-		gtkSetCursor(GDK_LEFT_PTR);
-	}
-
-private:
-	// params
-	GdkScreen *screen;
-	GdkWindow *win;
-	GdkDisplay *display;
-	// methods
-	void gtkSetCursor(GdkCursorType cursorType)
-	{
-		GdkCursor *cursor = gdk_cursor_new_for_display(display, cursorType);
-		gdk_window_set_cursor(win, cursor);
-		while (gtk_events_pending())
-			gtk_main_iteration();
-	}
-};
 
 class CSettingsDlg
 {
@@ -61,13 +31,17 @@ public:
     ~CSettingsDlg();
     bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
     void Show();
-	// parameter values
-	int baudrate;
+	static SSETTINGSDATA *ReadCfgFile();
+
 private:
-	// data
+	// data classes
 	CHostFile xrfFile, dcsFile, refFile, dplusFile, customFile;
-	// helpers
+	// other data
+	int baudrate;
+	// regular expression for testing callsign
 	std::regex CallRegEx;
+	// persistance
+	void WriteCfgFile();
 	// widgets
     Gtk::Dialog *pDlg;
 	Gtk::Button *pRescanButton, *pOkayButton;

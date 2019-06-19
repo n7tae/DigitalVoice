@@ -19,17 +19,17 @@
 #pragma once
 
 #include <string>
-#include <map>
 
-#include "Defines.h"
-class CHostFile
-{
-public:
-	CHostFile() {}
-	~CHostFile();
-	void Open(const char *filename, unsigned short defaultport);
+#define GET_WIDGET(a,b) builder->get_widget(a, b); if (nullptr == b) { std::cerr << "Failed to initialize " << a << std::endl; return true; }
+#define IS_TRUE(a) (a=='t' || a=='T' || a=='1')
 
-	// data
-	std::map<std::string, SDATA *> hostmap;
-	void ClearMap();
-};
+typedef struct data_tag {
+	std::string address;
+	unsigned short port;
+} SDATA;
+
+typedef struct sd_tag {
+	std::string MyCall, MyName, StationCall, Message;
+	bool UseMyCall, XRF, DCS, REFref, REFrep, MyHost, DPlusEnable, DPlusRef, DPlusRep;
+	int BaudRate;
+} SSETTINGSDATA;

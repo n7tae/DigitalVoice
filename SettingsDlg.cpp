@@ -16,9 +16,17 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <pwd.h>
 
+#include <iostream>
+#include <fstream>
+
+#include "Defines.h"
 #include "DV3000U.h"
+#include "WaitCursor.h"
 #include "DPlusAuthenticator.h"
 #include "SettingsDlg.h"
 
@@ -40,21 +48,146 @@ CSettingsDlg::~CSettingsDlg()
 
 void CSettingsDlg::Show()
 {
-	switch(pDlg->run()) {
-		case Gtk::RESPONSE_CANCEL:
-			std::cout << "Clicked Cancel!" << std::endl;
-			break;
-		case Gtk::RESPONSE_OK:
-			std::cout << "Clicked OK!" << std::endl;
-			break;
-		default:
-			std::cout << "Unexpected return from dlg->run()!" << std::endl;
-			break;
-	}
+	if (Gtk::RESPONSE_OK == pDlg->run())
+		WriteCfgFile();
 	pDlg->hide();
 }
 
-#define GET_WIDGET(a,b) builder->get_widget(a, b); if (nullptr == b) { std::cerr << "Failed to initialize " << a << std::endl; return true; }
+SSETTINGSDATA *CSettingsDlg::ReadCfgFile()
+{
+	const char *homedir = getenv("HOME");
+
+	if (NULL == homedir)
+		homedir = getpwuid(getuid())->pw_dir;
+
+	if (NULL == homedir) {
+		std::cerr << "ERROR: could not find a home directory!" << std::endl;
+		return NULL;
+	}
+
+	std::string filename(homedir);
+	filename.append("/.config/qndv/qndv.cfg");
+
+	struct stat sb;
+	if (stat(filename.c_str(), &sb))
+		return NULL;
+
+	if ((sb.st_mode & S_IFMT) != S_IFREG)
+		return NULL;	// needs to be a regular file
+
+	if (sb.st_size < 50)
+		return NULL; // there has to be something in it
+
+	SSETTINGSDATA *pData = new SSETTINGSDATA;
+	if (NULL == pData)
+		return pData;	// ouch!
+
+	std::ifstream cfg(filename.c_str(), std::ifstream::in);
+	if (! cfg.is_open()) {	// this should not happen!
+		std::cerr << "Error opening " << filename << "!" << std::endl;
+		delete pData;
+		return NULL;
+	}
+
+	while (! cfg.eof()) {
+		char line[128];
+		cfg.getline(line, 128);
+		char *key = strtok(line, " =\t\r\"");
+		if (!key) continue;	// skip empty lines
+		if (0==strlen(key) || '#'==*key) continue;	// skip comments
+		char *val = strtok(NULL, "' #");
+		//if (0==strlen(val)) continue;	// skip lines with no values
+
+		if (0 == strcmp(key, "MyCall")) {
+			pData->MyCall.assign(val);
+		} else if (0 == strcmp(key, "MyName")) {
+			pData->MyName.assign(val);
+		} else if (0 == strcmp(key, "StationCall")) {
+			pData->StationCall.assign(val);
+		} else if (0 == strcmp(key, "UseMyCall")) {
+			pData->UseMyCall = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "Message")) {
+			pData->Message.assign(val);
+		} else if (0 == strcmp(key, "XRF")) {
+			pData->XRF = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "DCS")) {
+			pData->DCS = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "REFref")) {
+			pData->REFref = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "REFrep")) {
+			pData->REFrep = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "MyHosts")) {
+			pData->MyHost = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "DPlusEnable")) {
+			pData->DPlusEnable = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "DPlusRef")) {
+			pData->DPlusRef = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "DPlusRep")) {
+			pData->DPlusRep = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "BaudRate")) {
+			pData->BaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
+		}
+	}
+	cfg.close();
+	return pData;
+}
+
+void CSettingsDlg::WriteCfgFile()
+{
+	const char *homedir = getenv("HOME");
+
+	if (NULL == homedir)
+		homedir = getpwuid(getuid())->pw_dir;
+
+	if (NULL == homedir) {
+		std::cerr << "ERROR: could not find a home directory!" << std::endl;
+		return;
+	}
+
+	std::string path(homedir);
+	path.append("/.config");
+	for (int i=0; i<2; i++) { // walk through two sub-directories
+		struct stat sb;
+		if (stat(path.c_str(), &sb)) {
+			// stat failed, make the directory
+			if (mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+				std::cerr << "ERROR: can't create " << path << '!' << std::endl;
+				return;
+			}
+		} else {	// make sure it's a directory
+			if ((sb.st_mode & S_IFMT) != S_IFDIR) {
+				std::cerr << "ERROR: " << path << " is not a directory!" << std::endl;
+				return;
+			}
+		}
+		if (0 == i)
+			path.append("/qndv");
+		else
+			path.append("/qndv.cfg");
+	}
+
+	// directory exists, now make the file
+	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
+	if (! file.is_open()) {
+		std::cerr << "ERROR: could not open " << path << '!' << std::endl;
+		return;
+	}
+	file << "MyCall=" << pMyCallsign->get_text() << std::endl;
+	file << "MyCall=" << pMyName->get_text() << std::endl;
+	file << "StationCall=" << pStationCallsign->get_text() << std::endl;
+	file << "UseMyCall=" << (pUseMyCall->get_active() ? "true" : "false") << std::endl;
+	file << "Message=\"" << pMessage->get_text() << '"' << std::endl;
+	file << "XRF=" << (pXRFCheck->get_active() ? "true" : "false") << std::endl;
+	file << "DCS=" << (pDCSCheck->get_active() ? "true" : "false") << std::endl;
+	file << "REFref=" << (pREFRefCheck->get_active() ? "true" : "false") << std::endl;
+	file << "REFrep=" << (pREFRepCheck->get_active() ? "true" : "false") << std::endl;
+	file << "MyHosts=" << (pCustomCheck->get_active() ? "true" : "false") << std::endl;
+	file << "DPlusEnable=" << (pDPlusEnableCheck->get_active() ? "true" : "false") << std::endl;
+	file << "DPlusRef=" << (pDPlusRefCheck->get_active() ? "true" : "false") << std::endl;
+	file << "DPlusRep=" << (pDPlusRepCheck->get_active() ? "true" : "false") << std::endl;
+	file << "BaudRate=" << baudrate << std::endl;
+	file.close();
+}
 
 bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
 {
@@ -68,35 +201,46 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pOkayButton = pDlg->add_button("Okay", Gtk::RESPONSE_OK);
 	pOkayButton->set_sensitive(false);
 
-	GET_WIDGET("UseMyCallsignCheckButton", pUseMyCall);
-	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
-
-	GET_WIDGET("StationCallsignEntry", pStationCallsign);
+	SSETTINGSDATA *pData = ReadCfgFile();
 
 	GET_WIDGET("ValidCallCheckButton", pValidCall);
 	GET_WIDGET("MyCallsignEntry", pMyCallsign);
 	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
+	if (pData) pMyCallsign->set_text(pData->MyCall.c_str());
 
 	GET_WIDGET("MyNameEntry", pMyName);
 	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
+	if (pData) pMyName->set_text(pData->MyName.c_str());
 
 	GET_WIDGET("StationCallsignEntry", pStationCallsign);
 	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
+	if (pData) pStationCallsign->set_text(pData->StationCall.c_str());
+
+	GET_WIDGET("UseMyCallsignCheckButton", pUseMyCall);
+	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
+	if (pData) pUseMyCall->set_active(pData->UseMyCall);
 
 	GET_WIDGET("MessageEntry", pMessage);
 	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
+	if (pData) pMessage->set_text(pData->Message.c_str());
 
 	GET_WIDGET("DeviceLabel", pDevicePath);
 	GET_WIDGET("ProductIDLabel", pProductID);
 	GET_WIDGET("VersionLabel", pVersion);
 
-	baudrate = 0;
 	GET_WIDGET("Baud230kRadioButton", p230k);
+	GET_WIDGET("Baud460kRadioButton", p460k);
+	if (pData) {
+		if (230400 == pData->BaudRate)
+			p230k->clicked();
+		else
+			p460k->clicked();
+	}
+	baudrate = 0;
 	p230k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
 	if (p230k->get_active())
 		baudrate = 230400;
 
-	GET_WIDGET("Baud460kRadioButton", p460k);
 	p460k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
 	if (p460k->get_active())
 		baudrate = 460800;
@@ -111,18 +255,22 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 
 	xrfFile.Open("DExtra_Hosts.txt", 30001);
 	GET_WIDGET("XRFCheckButton", pXRFCheck);
+	if (pData) pXRFCheck->set_active(pData->XRF);
 	GET_WIDGET("XRFCountLabel", pXRFLabel);
 	pXRFLabel->set_text(std::to_string(xrfFile.hostmap.size()));
 
 	dcsFile.Open("DCS_Hosts.txt", 30051);
 	GET_WIDGET("DCSCheckButton", pDCSCheck);
+	if (pData) pDCSCheck->set_active(pData->DCS);
 	GET_WIDGET("DCSCountLabel", pDCSLabel);
 	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
 
 	refFile.Open("DPlus_Hosts.txt", 20001);
 	GET_WIDGET("REFRefCheckButton", pREFRepCheck);
+	if (pData) pREFRefCheck->set_active(pData->REFref);
 	GET_WIDGET("REFRefCountLabel", pREFRepLabel);
 	GET_WIDGET("REFRepCheckButton", pREFRefCheck);
+	if (pData) pREFRefCheck->set_active(pData->REFrep);
 	GET_WIDGET("REFRepCountLabel", pREFRefLabel);
 	int ref = 0, rep = 0;
 	for (auto it=refFile.hostmap.begin(); it!=refFile.hostmap.end(); it++) {
@@ -136,19 +284,26 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 
 	customFile.Open("Custom_Hosts.txt", 20001);
 	GET_WIDGET("CustomCheckButton", pCustomCheck);
+	if (pData) pCustomCheck->set_active(pData->MyHost);
 	GET_WIDGET("CustomCountLabel", pCustomLabel);
 	pCustomLabel->set_text(std::to_string(customFile.hostmap.size()));
 
 	GET_WIDGET("DPlusEnableCheckButton", pDPlusEnableCheck);
+	if (pData) pDPlusEnableCheck->set_active(pData->DPlusEnable);
 	pDPlusEnableCheck->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_DPlusEnableCheck_toggled));
 	GET_WIDGET("DPlusRefCheckButton", pDPlusRefCheck);
+	if (pData) pDPlusRefCheck->set_active(pData->DPlusRef);
 	GET_WIDGET("DPlusRepCheckButton", pDPlusRepCheck);
+	if (pData) pDPlusRepCheck->set_active(pData->DPlusRep);
 	GET_WIDGET("DPlusRefCountLabel", pDPlusRefLabel);
 	GET_WIDGET("DPlusRepCountLabel", pDPlusRepLabel);
 
 	// initialize complex components
 	on_DPlusEnableCheck_toggled();
 	on_RescanButton_clicked();
+
+	if (pData)
+		delete pData;
 
 	return false;
 }
@@ -159,11 +314,6 @@ void CSettingsDlg::on_DPlusEnableCheck_toggled()
 	dplusFile.ClearMap();
 	if (pDPlusEnableCheck->get_active()) {
 		CWaitCursor wait;
-		//GdkDisplay *disp = gdk_display_get_default();
-		//GdkCursor *cursor = gdk_cursor_new_for_display(disp, GDK_WATCH);
-		//GdkWindow *win = gdk_get_default_root_window();
-		//GdkCursor *old = gdk_window_get_cursor(win);
-		//gdk_window_set_cursor(win, cursor);
 		pDPlusRefCheck->show();
 		pDPlusRefLabel->show();
 		pDPlusRepCheck->show();
@@ -182,7 +332,6 @@ void CSettingsDlg::on_DPlusEnableCheck_toggled()
 		}
 		pDPlusRefLabel->set_text(std::to_string(ref));
 		pDPlusRepLabel->set_text(std::to_string(rep));
-		//gdk_window_set_cursor(win, old);
 	} else {
 		pDPlusRefCheck->hide();
 		pDPlusRefLabel->hide();

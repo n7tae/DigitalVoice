@@ -18,6 +18,7 @@
 
 #include <iostream>
 
+#include "Defines.h"
 #include "SettingsDlg.h"
 #include "MainWindow.h"
 
@@ -49,18 +50,10 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	if (SettingsDlg.Init(builder, "SettingsDialog", pWin))
 		return true;
 
-	builder->get_widget("QuitButton", pQuit);
-	if(nullptr == pQuit) {
-		std::cerr << "Failed to get QuitButton!" << std::endl;
-		return true;
-	}
+	GET_WIDGET("QuitButton", pQuit);
 	pQuit->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuitButton_clicked));
 
-	builder->get_widget("SettingsButton", pSettings);
-	if (nullptr == pSettings) {
-		std::cerr << "Failed to get SettingsButton!" << std::endl;
-		return true;
-	}
+	GET_WIDGET("SettingsButton", pSettings);
 	pSettings->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
 
 	return false;
