@@ -194,6 +194,7 @@ void CSettingsDlg::WriteCfgFile()
 
 bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
 {
+	bCallsign = bStation = false;
 	builder->get_widget(name, pDlg);
 	if (nullptr == pDlg) {
 		std::cerr << "Failed to initialize SettingsDialog!" << std::endl;
@@ -207,7 +208,6 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	SSETTINGSDATA *pData = ReadCfgFile();
 
 	// station
-	builder->get_widget("ValidCallCheckButton", pValidCall);
 	builder->get_widget("MyCallsignEntry", pMyCallsign);
 	builder->get_widget("MyNameEntry", pMyName);
 	builder->get_widget("DPlusEnableCheckButton", pDPlusEnableCheck);
@@ -380,10 +380,10 @@ void CSettingsDlg::on_MyCallsignEntry_changed()
 	 Glib::ustring s = pMyCallsign->get_text().uppercase();
 	 pMyCallsign->set_text(s);
 	 pMyCallsign->set_position(pos);
-	 bool ok = std::regex_match(s.c_str(), CallRegEx);
-	 pValidCall->set_active(ok);
-	 pDPlusEnableCheck->set_sensitive(ok);
-	 pOkayButton->set_sensitive(ok);
+	 bCallsign = std::regex_match(s.c_str(), CallRegEx);
+	 pMyCallsign->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
+	 pDPlusEnableCheck->set_sensitive(bCallsign);
+	 pOkayButton->set_sensitive(bCallsign && bStation);
 	 if (pUseMyCall->get_active())
 	 	pStationCallsign->set_text(s);
  }
@@ -402,6 +402,9 @@ void CSettingsDlg::on_StationCallsignEntry_changed()
 	 Glib::ustring s = pStationCallsign->get_text();
 	 pStationCallsign->set_text(s.uppercase());
 	 pStationCallsign->set_position(pos);
+	 bStation = std::regex_match(s.c_str(), CallRegEx);
+	 pStationCallsign->set_icon_from_icon_name(bStation ? "gtk-ok" : "gtk-cancel");
+	 pOkayButton->set_sensitive(bCallsign && bStation);
  }
 
 void CSettingsDlg::on_MessageEntry_changed()

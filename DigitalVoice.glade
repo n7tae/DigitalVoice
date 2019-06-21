@@ -53,7 +53,7 @@ Log message area...</property>
         <property name="spacing">5</property>
         <child>
           <object class="GtkTextView" id="LogTextView">
-            <property name="height_request">98</property>
+            <property name="height_request">256</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="editable">False</property>
@@ -196,6 +196,7 @@ Log message area...</property>
                           <object class="GtkButton" id="LinkButton">
                             <property name="label" translatable="yes">Link</property>
                             <property name="visible">True</property>
+                            <property name="sensitive">False</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">True</property>
                           </object>
@@ -401,11 +402,10 @@ Log message area...</property>
                             <property name="can_focus">True</property>
                             <property name="halign">start</property>
                             <property name="max_length">6</property>
-                            <property name="width_chars">10</property>
                             <property name="max_width_chars">6</property>
-                            <property name="xalign">0.5</property>
                             <property name="truncate_multiline">True</property>
-                            <property name="placeholder_text" translatable="yes">ChngMe</property>
+                            <property name="primary_icon_stock">gtk-cancel</property>
+                            <property name="placeholder_text" translatable="yes">Change Me</property>
                             <signal name="changed" handler="on_MyCallsignEntry_changed" swapped="no"/>
                           </object>
                           <packing>
@@ -469,35 +469,6 @@ Log message area...</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkAccelLabel">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">Text:</property>
-                            <property name="xalign">1</property>
-                          </object>
-                          <packing>
-                            <property name="left_attach">0</property>
-                            <property name="top_attach">3</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkEntry" id="MessageEntry">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="halign">start</property>
-                            <property name="max_length">20</property>
-                            <property name="width_chars">29</property>
-                            <property name="truncate_multiline">True</property>
-                            <property name="placeholder_text" translatable="yes">20 chars max</property>
-                            <signal name="changed" handler="on_MessageEntry_changed" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="left_attach">1</property>
-                            <property name="top_attach">3</property>
-                            <property name="width">2</property>
-                          </packing>
-                        </child>
-                        <child>
                           <object class="GtkLabel">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -508,7 +479,7 @@ Log message area...</property>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>
-                            <property name="top_attach">2</property>
+                            <property name="top_attach">1</property>
                           </packing>
                         </child>
                         <child>
@@ -517,16 +488,15 @@ Log message area...</property>
                             <property name="can_focus">True</property>
                             <property name="halign">start</property>
                             <property name="max_length">6</property>
-                            <property name="width_chars">10</property>
                             <property name="max_width_chars">6</property>
-                            <property name="xalign">0.5</property>
                             <property name="truncate_multiline">True</property>
-                            <property name="placeholder_text" translatable="yes">ChngMe</property>
+                            <property name="primary_icon_stock">gtk-cancel</property>
+                            <property name="placeholder_text" translatable="yes">Change Me</property>
                             <signal name="changed" handler="on_StationCallsignEntry_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
-                            <property name="top_attach">2</property>
+                            <property name="top_attach">1</property>
                           </packing>
                         </child>
                         <child>
@@ -540,28 +510,37 @@ Log message area...</property>
                           </object>
                           <packing>
                             <property name="left_attach">2</property>
-                            <property name="top_attach">2</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkCheckButton" id="ValidCallCheckButton">
-                            <property name="label" translatable="yes">Is Valid</property>
-                            <property name="visible">True</property>
-                            <property name="sensitive">False</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="draw_indicator">True</property>
-                          </object>
-                          <packing>
-                            <property name="left_attach">1</property>
                             <property name="top_attach">1</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
+                          <object class="GtkAccelLabel">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">Text:</property>
+                            <property name="xalign">1</property>
+                          </object>
+                          <packing>
+                            <property name="left_attach">0</property>
+                            <property name="top_attach">2</property>
+                          </packing>
                         </child>
                         <child>
-                          <placeholder/>
+                          <object class="GtkEntry" id="MessageEntry">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="halign">start</property>
+                            <property name="max_length">20</property>
+                            <property name="width_chars">29</property>
+                            <property name="truncate_multiline">True</property>
+                            <property name="placeholder_text" translatable="yes">20 character maximum</property>
+                            <signal name="changed" handler="on_MessageEntry_changed" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left_attach">1</property>
+                            <property name="top_attach">2</property>
+                            <property name="width">2</property>
+                          </packing>
                         </child>
                       </object>
                       <packing>

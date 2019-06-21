@@ -38,6 +38,7 @@ private:
 	CHostFile xrfFile, dcsFile, refFile, dplusFile, customFile;
 	// other data
 	int baudrate;
+	bool bCallsign, bStation;
 	// regular expression for testing callsign
 	std::regex CallRegEx;
 	// persistance
@@ -45,7 +46,7 @@ private:
 	// widgets
     Gtk::Dialog *pDlg;
 	Gtk::Button *pRescanButton, *pOkayButton;
-	Gtk::CheckButton *pUseMyCall, *pValidCall;
+	Gtk::CheckButton *pUseMyCall;
 	Gtk::CheckButton *pXRFCheck, *pDCSCheck, *pREFRefCheck, *pREFRepCheck, *pCustomCheck, *pDPlusRefCheck, *pDPlusRepCheck, *pDPlusEnableCheck;
 	Gtk::Label       *pXRFLabel, *pDCSLabel, *pREFRefLabel, *pREFRepLabel, *pCustomLabel, *pDPlusRefLabel, *pDPlusRepLabel;
 	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage;
