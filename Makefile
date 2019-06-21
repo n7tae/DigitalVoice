@@ -15,10 +15,10 @@ qndv :  $(OBJS)
 %.o : %.cpp DigitalVoice.glade
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
 
-.PHONY: clean
+.PHONY : clean
 
-clean:
-	$(RM) $(OBJS) $(DEPS) QnetDV
+clean :
+	$(RM) $(OBJS) $(DEPS) qndv
 
 -include $(DEPS)
 
@@ -26,3 +26,6 @@ hostfiles :
 	/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
 	/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
 	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt
+
+interactive :
+	GTK_DEBUG=interactive ./qndv

@@ -43,11 +43,12 @@ protected:
 	Gtk::ComboBoxText *pRouteComboBox;
 	Gtk::RadioButton *pRouteRadioButton, *pLinkRadioButton;
 	Gtk::Entry *pLinkEntry, *pRouteEntry;
-	Gtk::ToggleButton *pEchoTestToggleButton, *pPTTToggleButton;
+	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
 	Gtk::TextBuffer *pLogTextBuffer;
 	Gtk::TextView *pLogTextView;
 	// events
 	void on_RouteActionButton_clicked();
 	void on_RouteComboBox_changed();
 	void on_RouteEntry_changed();
+	void on_EchoTestButton_toggled();
 };

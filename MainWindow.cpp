@@ -47,10 +47,19 @@ CMainWindow::~CMainWindow()
 
 bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name)
 {
-	builder->get_widget(name, pWin);
+ 	builder->get_widget(name, pWin);
 	if (nullptr == pWin) {
 		std::cerr << "Failed to Initialize MainWindow!" << std::endl;
 		return true;
+	}
+
+	//setup our css context and provider
+	Glib::RefPtr<Gtk::CssProvider> css = Gtk::CssProvider::create();
+	Glib::RefPtr<Gtk::StyleContext> style = Gtk::StyleContext::create();
+
+	//load our red clicked style (applies to Gtk::ToggleButton)
+	if (css->load_from_data("button:checked { background: red; }")) {
+		style->add_provider_for_screen(pWin->get_screen(), css, GTK_STYLE_PROVIDER_PRIORITY_USER);
 	}
 
 	if (SettingsDlg.Init(builder, "SettingsDialog", pWin))
@@ -71,8 +80,8 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("RouteRadioButton", pRouteRadioButton);
 	builder->get_widget("LinkRadioButton", pLinkRadioButton);
 	builder->get_widget("LinkEntry", pLinkEntry);
-	builder->get_widget("EchoTestToggleButton", pEchoTestToggleButton);
-	builder->get_widget("PTTToggleButton", pPTTToggleButton);
+	builder->get_widget("EchoTestButton", pEchoTestButton);
+	builder->get_widget("PTTButton", pPTTButton);
 	//builder->get_widget("LogTextBuffer", pLogTextBuffer);
 	builder->get_widget("LogTextView", pLogTextView);
 	// events
@@ -174,4 +183,9 @@ void CMainWindow::on_RouteActionButton_clicked()
 			pRouteComboBox->append(*it);
 		pRouteComboBox->set_active_text(toadd);
 	}
+}
+
+void CMainWindow::on_EchoTestButton_toggled()
+{
+
 }
