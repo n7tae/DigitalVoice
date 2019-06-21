@@ -172,6 +172,7 @@ void CSettingsDlg::WriteCfgFile()
 		std::cerr << "ERROR: could not open " << path << '!' << std::endl;
 		return;
 	}
+	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
 	file << "MyCall=" << pMyCallsign->get_text() << std::endl;
 	file << "MyName=" << pMyName->get_text() << std::endl;
 	file << "StationCall=" << pStationCallsign->get_text() << std::endl;

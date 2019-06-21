@@ -29,7 +29,7 @@ Glib::RefPtr<Gtk::Application> theApp;
 
 int main (int argc, char **argv)
 {
-	theApp = Gtk::Application::create(argc, argv, "org.gtkmm.example");
+	theApp = Gtk::Application::create(argc, argv, "net.openquad.QnetDV");
 
 	//Load the GtkBuilder file and instantiate its widgets:
 	Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();

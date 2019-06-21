@@ -18,21 +18,36 @@
 
 #pragma once
 
+#include <set>
 #include <gtkmm.h>
 
 class CMainWindow
 {
 public:
-    CMainWindow();
-    ~CMainWindow();
+	CMainWindow();
+	~CMainWindow();
 
-    bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &);
+	bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &);
 	void Run();
 protected:
-    // events
-    void on_QuitButton_clicked();
-    void on_SettingsButton_clicked();
-    // objects
-    Gtk::Window *pWin;
-    Gtk::Button *pQuit, *pSettings;
+	// state data
+	std::set<Glib::ustring> routeset;
+	// helpers
+	void ReadRoutes();
+	// events
+	void on_QuitButton_clicked();
+	void on_SettingsButton_clicked();
+	// widgets
+	Gtk::Window *pWin;
+	Gtk::Button *pQuitButton, *pSettingsButton, *pQuickKeyButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton;
+	Gtk::ComboBoxText *pRouteComboBox;
+	Gtk::RadioButton *pRouteRadioButton, *pLinkRadioButton;
+	Gtk::Entry *pLinkEntry, *pRouteEntry;
+	Gtk::ToggleButton *pEchoTestToggleButton, *pPTTToggleButton;
+	Gtk::TextBuffer *pLogTextBuffer;
+	Gtk::TextView *pLogTextView;
+	// events
+	void on_RouteActionButton_clicked();
+	void on_RouteComboBox_changed();
+	void on_RouteEntry_changed();
 };
