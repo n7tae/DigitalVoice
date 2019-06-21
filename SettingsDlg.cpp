@@ -92,10 +92,12 @@ SSETTINGSDATA *CSettingsDlg::ReadCfgFile()
 	while (! cfg.eof()) {
 		char line[128];
 		cfg.getline(line, 128);
-		char *key = strtok(line, " =\t\r\"");
+		char *key = strtok(line, "=");
 		if (!key) continue;	// skip empty lines
 		if (0==strlen(key) || '#'==*key) continue;	// skip comments
-		char *val = strtok(NULL, "' #");
+		char *val = strtok(NULL, "\t\r");
+		if (val && '\'')	// value is a quoted string
+			val = strtok(val, "'");
 		//if (0==strlen(val)) continue;	// skip lines with no values
 
 		if (0 == strcmp(key, "MyCall")) {
