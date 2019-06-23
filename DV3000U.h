@@ -74,11 +74,7 @@ public:
 	void FindandOpen(int baudrate, Eencoding type);
 	bool SetBaudRate(int baudrate);
 	bool EncodeAudio(const short *audio, unsigned char *data);
-	bool SendAudio(const short *audio);
-	bool GetData(unsigned char *data);
 	bool DecodeData(const unsigned char *data, short *audio);
-	bool SendData(const unsigned char *data);
-	bool GetAudio(short *audio);
 	void CloseDevice();
 	bool IsOpen();
 	std::string GetDevicePath();
@@ -92,4 +88,8 @@ private:
 	bool getresponse(PDV3K_PACKET packet);
 	bool initDV3K(Eencoding dvtype);
 	bool checkResponse(PDV3K_PACKET responsePacket, unsigned char response);
+	bool SendAudio(const short *audio);
+	bool GetData(unsigned char *data);
+	bool SendData(const unsigned char *data);
+	bool GetAudio(short *audio);
 };

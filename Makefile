@@ -10,7 +10,7 @@ OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
 qndv :  $(OBJS)
-	g++ $(CPPFLAGS) -o $@ $(OBJS) `pkg-config --libs gtkmm-3.0` -pthread
+	g++ $(CPPFLAGS) -o $@ $(OBJS) `pkg-config --libs gtkmm-3.0` -lasound -pthread
 
 %.o : %.cpp DigitalVoice.glade
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@

@@ -25,14 +25,14 @@
 #include <fstream>
 
 #include "Defines.h"
-#include "DV3000U.h"
+#include "AudioManager.h"
 #include "WaitCursor.h"
 #include "DPlusAuthenticator.h"
 #include "SettingsDlg.h"
 
 // globals
 extern Glib::RefPtr<Gtk::Application> theApp;
-extern CDV3000U AMBEDevice;
+extern CAudioManager AudioManager;
 
 CSettingsDlg::CSettingsDlg() :
 	pDlg(nullptr)
@@ -346,16 +346,16 @@ void CSettingsDlg::on_DPlusEnableCheck_toggled()
 void CSettingsDlg::on_RescanButton_clicked()
 {
 	CWaitCursor wait;
-	if (AMBEDevice.IsOpen())
-		AMBEDevice.CloseDevice();
+	if (AudioManager.AMBEDevice.IsOpen())
+		AudioManager.AMBEDevice.CloseDevice();
 
-	AMBEDevice.FindandOpen(baudrate, DSTAR_TYPE);
-	if (AMBEDevice.IsOpen()) {
-		const Glib::ustring path(AMBEDevice.GetDevicePath());
+	AudioManager.AMBEDevice.FindandOpen(baudrate, DSTAR_TYPE);
+	if (AudioManager.AMBEDevice.IsOpen()) {
+		const Glib::ustring path(AudioManager.AMBEDevice.GetDevicePath());
 		pDevicePath->set_text(path);
-		const Glib::ustring prodid(AMBEDevice.GetProductID());
+		const Glib::ustring prodid(AudioManager.AMBEDevice.GetProductID());
 		pProductID->set_text(prodid);
-		const Glib::ustring version(AMBEDevice.GetVersion());
+		const Glib::ustring version(AudioManager.AMBEDevice.GetVersion());
 		pVersion->set_text(version);
 	} else {
 		pDevicePath->set_text("Not found!");
@@ -430,9 +430,9 @@ void CSettingsDlg::on_BaudrateRadioButton_toggled()
 	else if (p460k->get_active())
 		baudrate = 460800;
 
-	if (AMBEDevice.IsOpen() && baudrate) {
-		if (AMBEDevice.SetBaudRate(baudrate)) {
-			AMBEDevice.CloseDevice();
+	if (AudioManager.AMBEDevice.IsOpen() && baudrate) {
+		if (AudioManager.AMBEDevice.SetBaudRate(baudrate)) {
+			AudioManager.AMBEDevice.CloseDevice();
 			pDevicePath->set_text("Error");
 			pProductID->set_text("Setting the baudrate failed");
 			pVersion->set_text("Pleae Rescan.");

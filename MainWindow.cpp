@@ -23,14 +23,18 @@
 
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <chrono>
 
 #include "Defines.h"
 #include "SettingsDlg.h"
 #include "MainWindow.h"
+#include "AudioManager.h"
 
 // globals
 CSettingsDlg SettingsDlg;
 extern Glib::RefPtr<Gtk::Application> theApp;
+extern CAudioManager AudioManager;
 
 CMainWindow::CMainWindow() :
 	pWin(nullptr),
@@ -88,6 +92,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pRouteActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteActionButton_clicked));
 	pRouteComboBox->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteComboBox_changed));
 	pRouteEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteEntry_changed));
+	pEchoTestButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_EchoTestButton_toggled));
 	ReadRoutes();
 
 	return false;
@@ -187,5 +192,14 @@ void CMainWindow::on_RouteActionButton_clicked()
 
 void CMainWindow::on_EchoTestButton_toggled()
 {
-
+	std::cout << "Echo Test Button toggled!\n";
+	if (pEchoTestButton->get_active()) {
+		// record the mic to a queue
+		AudioManager.RecordMicThread();
+		std::cout << "AM.RecordMicThread() returned\n";
+	} else {
+		// play back the queue
+		AudioManager.PlayAMBEDataThread();
+		std::cout << "AM.PlayAMBEDataThread() returned\n";
+	}
 }

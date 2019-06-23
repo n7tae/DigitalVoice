@@ -20,11 +20,11 @@
 #include <iostream>
 
 #include "MainWindow.h"
-#include "DV3000U.h"
+#include "AudioManager.h"
 
 // Globals
 CMainWindow MainWindow;
-CDV3000U AMBEDevice;
+
 Glib::RefPtr<Gtk::Application> theApp;
 
 int main (int argc, char **argv)
@@ -37,17 +37,17 @@ int main (int argc, char **argv)
 	{
 		builder->add_from_file("DigitalVoice.glade");
 	}
-	catch(const Glib::FileError& ex)
+	catch (const Glib::FileError& ex)
 	{
 		std::cerr << "FileError: " << ex.what() << std::endl;
 		return 1;
 	}
-	catch(const Glib::MarkupError& ex)
+	catch (const Glib::MarkupError& ex)
 	{
 		std::cerr << "MarkupError: " << ex.what() << std::endl;
 		return 1;
 	}
-	catch(const Gtk::BuilderError& ex)
+	catch (const Gtk::BuilderError& ex)
 	{
 		std::cerr << "BuilderError: " << ex.what() << std::endl;
 		return 1;

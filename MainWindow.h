@@ -29,14 +29,7 @@ public:
 
 	bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &);
 	void Run();
-protected:
-	// state data
-	std::set<Glib::ustring> routeset;
-	// helpers
-	void ReadRoutes();
-	// events
-	void on_QuitButton_clicked();
-	void on_SettingsButton_clicked();
+private:
 	// widgets
 	Gtk::Window *pWin;
 	Gtk::Button *pQuitButton, *pSettingsButton, *pQuickKeyButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton;
@@ -46,7 +39,13 @@ protected:
 	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
 	Gtk::TextBuffer *pLogTextBuffer;
 	Gtk::TextView *pLogTextView;
+	// state data
+	std::set<Glib::ustring> routeset;
+	// helpers
+	void ReadRoutes();
 	// events
+	void on_QuitButton_clicked();
+	void on_SettingsButton_clicked();
 	void on_RouteActionButton_clicked();
 	void on_RouteComboBox_changed();
 	void on_RouteEntry_changed();
