@@ -26,22 +26,25 @@ public:
 	CTFrame()
 	{
 		memset(data, 0, N * sizeof(T));
+		sequence = 0U;
 	}
 
 	CTFrame(const T *from)
 	{
 		memcpy(data, from, N * sizeof(T));
+		sequence = 0U;
 	}
 
 	CTFrame(const CTFrame<T, N> &from)
 	{
 		memcpy(data, from.GetData(), N *sizeof(T));
-
+		sequence = from.GetSequence();
 	}
 
 	CTFrame<T, N> &operator=(const CTFrame<T, N> &from)
 	{
 		memcpy(data, from.GetData(), N * sizeof(T));
+		sequence = from.GetSequence();
 		return *this;
 	}
 
@@ -50,9 +53,20 @@ public:
 		return data;
 	}
 
+	unsigned char GetSequence() const
+	{
+		return sequence;
+	}
+
+	void SetSequence(unsigned char s)
+	{
+		sequence = s;
+	}
+
 	~CTFrame() {}
 private:
 	T data[N];
+	unsigned char sequence;
 };
 
 template <class T> class CTQueue
@@ -61,8 +75,7 @@ public:
 	CTQueue() {}
 	~CTQueue()
 	{
-		while (queue.size())
-			queue.pop();
+		Clear();
 	}
 
 
@@ -83,11 +96,18 @@ public:
 		return queue.empty();
 	}
 
+	void Clear()
+	{
+		while (queue.size())
+			queue.pop();
+	}
+
 private:
 	std::queue<T> queue;
 };
 
 typedef CTFrame<unsigned char, 9> CAMBEFrame;
 typedef CTQueue<CAMBEFrame> CAMBEQueue;
-typedef CTFrame<short, 160> CAudioFrame;
+typedef CTFrame<short int, 160> CAudioFrame;
 typedef CTQueue<CAudioFrame> CAudioQueue;
+typedef CTQueue<unsigned char> CSequenceQueue;

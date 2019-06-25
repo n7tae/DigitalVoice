@@ -28,19 +28,28 @@ CAudioManager AudioManager;
 void CAudioManager::RecordMicThread()
 {
 	hot_mic = true;
-	record_mic_thread = std::async(std::launch::async, &CAudioManager::record_mic, this);
+	stream_size = 0U;
+	audio_queue.Clear();
+	ambe_queue.Clear();
+	a2d_queue.Clear();
+
+
+	r1 = std::async(std::launch::async, &CAudioManager::microphone2audioqueue, this);
+
+	r2 = std::async(std::launch::async, &CAudioManager::audioqueue2ambedevice, this);
+
+	r3 = std::async(std::launch::async, &CAudioManager::ambedevice2ambequeue, this);
 }
 
-bool CAudioManager::record_mic()
+void CAudioManager::microphone2audioqueue()
 {
 	// Open PCM device for recording (capture).
 	snd_pcm_t *handle;
 	int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_CAPTURE, 0);
 	if (rc < 0) {
 		std::cerr << "unable to open pcm device: " << snd_strerror(rc) << std::endl;
-		return true;
+		return;
 	}
-
 	// Allocate a hardware parameters object.
 	snd_pcm_hw_params_t *params;
 	snd_pcm_hw_params_alloca(&params);
@@ -70,12 +79,15 @@ bool CAudioManager::record_mic()
 	rc = snd_pcm_hw_params(handle, params);
 	if (rc < 0) {
 		std::cerr << "unable to set hw parameters: " << snd_strerror(rc) << std::endl;
-		return true;
+		return;
 	}
 
-	while (hot_mic) {
-		short audio_buffer[frames];
+	unsigned count = 0U;
+	bool keep_running;
+	do {
+		short int audio_buffer[frames];
 		rc = snd_pcm_readi(handle, audio_buffer, frames);
+		//std::cout << "audio:" << count << " hot_mic:" << hot_mic << std::endl;
 		if (rc == -EPIPE) {
 			// EPIPE means overrun
 			std::cerr << "overrun occurred" << std::endl;
@@ -85,40 +97,132 @@ bool CAudioManager::record_mic()
 		} else if (rc != int(frames)) {
 			std::cerr << "short readi, read " << rc << " frames" << std::endl;
 		}
-		unsigned char ambe_buffer[9];
-		if (AMBEDevice.EncodeAudio(audio_buffer, ambe_buffer))
-			continue;
-		ambe_mutex.lock();
-		ambe_queue.Push(CAMBEFrame(ambe_buffer));
-		ambe_mutex.unlock();
-	}
-	//std::cerr << "snd_pcm_drain\n";
-	//snd_pcm_drain(handle);
+		keep_running = hot_mic;
+		unsigned char seq = count % 21;
+		if (! keep_running)
+			seq |= 0x40U;
+		CAudioFrame frame(audio_buffer);
+		frame.SetSequence(seq);
+		audio_mutex.lock();
+		audio_queue.Push(frame);
+		audio_mutex.unlock();
+		count++;
+	} while (keep_running);
+//	std::cout << count << " frames by microphone2audioqueue\n";
+	snd_pcm_drop(handle);
 	snd_pcm_close(handle);
-	return false;
+	stream_size = count;
+}
+
+void CAudioManager::audioqueue2ambedevice()
+{
+	unsigned char seq = 0U;
+	do {
+		while (audio_is_empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+		audio_mutex.lock();
+		CAudioFrame frame(audio_queue.Pop());
+		audio_mutex.unlock();
+		if (! AMBEDevice.IsOpen())
+			return;
+		if(AMBEDevice.SendAudio(frame.GetData()))
+			break;
+		seq = frame.GetSequence();
+		a2d_mutex.lock();
+		a2d_queue.Push(frame.GetSequence());
+		a2d_mutex.unlock();
+		//std::cout << "audio2ambedev seq:" << std::hex << unsigned(seq) << std::dec << std::endl;
+	} while (0U == (seq & 0x40U));
+//	std::cout << "audioqueue2ambedevice is finished\n";
+}
+
+void CAudioManager::ambedevice2ambequeue()
+{
+	unsigned char seq = 0U;
+	do {
+		unsigned char ambe[9];
+		if (! AMBEDevice.IsOpen())
+			return;
+		if (AMBEDevice.GetData(ambe))
+			break;
+		CAMBEFrame frame(ambe);
+		a2d_mutex.lock();
+		seq = a2d_queue.Pop();
+		a2d_mutex.unlock();
+		frame.SetSequence(seq);
+		ambe_mutex.lock();
+		ambe_queue.Push(frame);
+		ambe_mutex.unlock();
+		//std::cout << "ambedev2ambeque seq:" << std::hex << unsigned(seq) << std::dec << std::endl;
+	} while (0U == (seq & 0x40U));
+//	std::cout << "amebedevice2ambequeue is finished\n";
+	return;
 }
 
 void CAudioManager::PlayAMBEDataThread()
 {
 	hot_mic = false;
-	if (record_mic_thread.get())
-		return;	// there was trouble with the recording
+	r3.get();
 
-	std::async(std::launch::async, &CAudioManager::decode_ambe, this);
-	std::cout << "CAudioManager::decode_ambe launched\n";
-	std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
-	std::cout << "CAudioManager::play_audio_queue launched\n";
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+	p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
+
+	p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
+
+	p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+}
+
+void CAudioManager::ambequeue2ambedevice()
+{
+	unsigned char seq = 0U;
+	do {
+		while (ambe_is_empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+		ambe_mutex.lock();
+		CAMBEFrame frame(ambe_queue.Pop());
+		ambe_mutex.unlock();
+		seq = frame.GetSequence();
+		d2a_mutex.lock();
+		d2a_queue.Push(seq);
+		d2a_mutex.unlock();
+		if (! AMBEDevice.IsOpen())
+			return;
+		if (AMBEDevice.SendData(frame.GetData()))
+			return;
+	} while (0U == (seq & 0x40U));
+//	std::cout << "ambequeue2ambedevice is complete\n";
+}
+
+void CAudioManager::ambedevice2audioqueue()
+{
+	unsigned char seq = 0U;
+	do {
+		if (! AMBEDevice.IsOpen())
+			return;
+		short audio[160];
+		if (AMBEDevice.GetAudio(audio))
+			return;
+		CAudioFrame frame(audio);
+		d2a_mutex.lock();
+		seq = d2a_queue.Pop();
+		d2a_mutex.unlock();
+		frame.SetSequence(seq);
+		audio_mutex.lock();
+		audio_queue.Push(frame);
+		audio_mutex.unlock();
+	} while ( 0U == (seq & 0x40U));
+//	std::cout << "ambedevice2audioqueue is complete\n";
 }
 
 void CAudioManager::play_audio_queue()
 {
-	std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	// Open PCM device for playback.
 	snd_pcm_t *handle;
 	int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	if (rc < 0) {
 		std::cerr << "unable to open pcm device: " << snd_strerror(rc) << std::endl;
-		exit(1);
+		return;
 	}
 
 	// Allocate a hardware parameters object.
@@ -151,21 +255,20 @@ void CAudioManager::play_audio_queue()
 	rc = snd_pcm_hw_params(handle, params);
 	if (rc < 0) {
 		std::cerr << "unable to set hw parameters: " << snd_strerror(rc) << std::endl;
-		exit(1);
+		return;
 	}
 
 	// Use a buffer large enough to hold one period
 	snd_pcm_hw_params_get_period_size(params, &frames, 0);
 
-	while (! is_audio_empty()) {
-		//short audio_buffer[frames];
-		//CAMBEFrame frame = mic_ambe_data.Pop();
-		//if (AMBEDevice.DecodeData(frame.GetData(), audio_buffer))
-		//	continue;
-
+	unsigned char seq = 0U;
+	do {
+		while (audio_is_empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		audio_mutex.lock();
-		CAudioFrame frame = audio_queue.Pop();
+		CAudioFrame frame(audio_queue.Pop());
 		audio_mutex.unlock();
+		seq = frame.GetSequence();
 		rc = snd_pcm_writei(handle, frame.GetData(), frames);
 		if (rc == -EPIPE) {
 			// EPIPE means underrun
@@ -176,27 +279,13 @@ void CAudioManager::play_audio_queue()
 		}  else if (rc != int(frames)) {
 			std::cerr << "short write, write " << rc << " frames" << std::endl;
 		}
-	}
+	} while (0U == (seq & 0x40U));
 
 	snd_pcm_drain(handle);
 	snd_pcm_close(handle);
 }
 
-void CAudioManager::decode_ambe()
-{
-	while (! is_ambe_empty()) {
-		short audio_buffer[160];
-		ambe_mutex.lock();
-		CAMBEFrame frame = ambe_queue.Pop();
-		ambe_mutex.unlock();
-		AMBEDevice.DecodeData(frame.GetData(), audio_buffer);
-		audio_mutex.lock();
-		audio_queue.Push(CAudioFrame(audio_buffer));
-		audio_mutex.unlock();
-	}
-}
-
-bool CAudioManager::is_audio_empty()
+bool CAudioManager::audio_is_empty()
 {
 	audio_mutex.lock();
 	bool ret = audio_queue.Empty();
@@ -204,7 +293,7 @@ bool CAudioManager::is_audio_empty()
 	return ret;
 }
 
-bool CAudioManager::is_ambe_empty()
+bool CAudioManager::ambe_is_empty()
 {
 	ambe_mutex.lock();
 	bool ret = ambe_queue.Empty();

@@ -192,14 +192,13 @@ void CMainWindow::on_RouteActionButton_clicked()
 
 void CMainWindow::on_EchoTestButton_toggled()
 {
-	std::cout << "Echo Test Button toggled!\n";
 	if (pEchoTestButton->get_active()) {
 		// record the mic to a queue
 		AudioManager.RecordMicThread();
-		std::cout << "AM.RecordMicThread() returned\n";
+		//std::cout << "AM.RecordMicThread() returned\n";
 	} else {
 		// play back the queue
 		AudioManager.PlayAMBEDataThread();
-		std::cout << "AM.PlayAMBEDataThread() returned\n";
+		//std::cout << "AM.PlayAMBEDataThread() returned\n";
 	}
 }

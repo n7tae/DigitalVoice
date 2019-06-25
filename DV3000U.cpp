@@ -389,6 +389,7 @@ bool CDV3000U::GetData(unsigned char *data)
 			p.header.packet_type!=DV3K_TYPE_AMBE || p.field_id!=1U ||
 			p.payload.ambe.num_bits!=72U) {
 		std::cerr << "Error receiving audio packet response" << std::endl;
+		dump("Received AMBE", &p, dv3k_packet_size(p));
 		return true;
 	}
 
@@ -423,7 +424,8 @@ bool CDV3000U::SendData(const unsigned char *data)
 	// send data packet to DV3000
 	int size = dv3k_packet_size(p);
 	if (write(fd, &p, size) != size) {
-		std::cerr << "DecodeData: error sending data packet" << std::endl;
+		std::cerr << "SendData: error sending data packet" << std::endl;
+		dump("Received Data", &p, size);
 		return true;
 	}
 	return false;
@@ -439,7 +441,9 @@ bool CDV3000U::GetAudio(short *audio)
 	if (p.start_byte!=DV3K_START_BYTE || htons(p.header.payload_length)!=322 ||
 			p.header.packet_type!=DV3K_TYPE_AUDIO || p.field_id!=0U ||
 			p.payload.audio.num_samples!=160U) {
-		std::cerr << "EncodeAudio: unexpected audio packet response" << std::endl;
+		std::cerr << "GetAudio: unexpected audio packet response" << std::endl;
+		int size = dv3k_packet_size(p);
+		dump("Received Audio", &p, size);
 		return true;
 	}
 

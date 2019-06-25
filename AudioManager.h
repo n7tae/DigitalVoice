@@ -41,14 +41,19 @@ public:
 private:
 	// data
 	std::atomic<bool> hot_mic;
-	std::future<bool> record_mic_thread;
+	std::atomic<unsigned> stream_size;
 	CAudioQueue audio_queue;
 	CAMBEQueue ambe_queue;
-	std::mutex audio_mutex, ambe_mutex;
+	CSequenceQueue a2d_queue, d2a_queue;
+	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex;
+	std::future<void> r1, r2, r3, p1, p2, p3;
 	// methods
-	bool record_mic();
+	bool audio_is_empty();
+	bool ambe_is_empty();
+	void microphone2audioqueue();
+	void audioqueue2ambedevice();
+	void ambedevice2ambequeue();
+	void ambequeue2ambedevice();
+	void ambedevice2audioqueue();
 	void play_audio_queue();
-	void decode_ambe();
-	bool is_audio_empty();
-	bool is_ambe_empty();
 };
