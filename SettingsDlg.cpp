@@ -50,6 +50,7 @@ void CSettingsDlg::Show()
 {
 	if (Gtk::RESPONSE_OK == pDlg->run())
 		WriteCfgFile();
+
 	pDlg->hide();
 }
 
@@ -128,6 +129,16 @@ SSETTINGSDATA *CSettingsDlg::ReadCfgFile()
 			pData->DPlusRep = IS_TRUE(*val);
 		} else if (0 == strcmp(key, "BaudRate")) {
 			pData->BaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
+		} else if (0 == strcmp(key, "IPType")) {
+			if (0 == strcmp(val, "None"))
+				pData->eNetType = norouting;
+			else if (0 == strcmp(val, "IPv6"))
+				pData->eNetType = ipv6only;
+			else if (0 == strcmp(val, "Dual"))
+				pData->eNetType = dualstack;
+			else
+				pData->eNetType = ipv4only;
+
 		}
 	}
 	cfg.close();
@@ -180,6 +191,16 @@ void CSettingsDlg::WriteCfgFile()
 	file << "StationCall=" << pStationCallsign->get_text() << std::endl;
 	file << "UseMyCall=" << (pUseMyCall->get_active() ? "true" : "false") << std::endl;
 	file << "Message=\"" << pMessage->get_text() << '"' << std::endl;
+	file << "IPType=";
+	if (pIPv6Only->get_active())
+		file << "IPv6";
+	else if (pDualStack->get_active())
+		file << "Dual";
+	else if (pNoRouting->get_active())
+		file << "None";
+	else
+		file << "IPv4";
+	file << std::endl;
 	file << "XRF=" << (pXRFCheck->get_active() ? "true" : "false") << std::endl;
 	file << "DCS=" << (pDCSCheck->get_active() ? "true" : "false") << std::endl;
 	file << "REFref=" << (pREFRefCheck->get_active() ? "true" : "false") << std::endl;
@@ -236,6 +257,11 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("DPlusRepCheckButton", pDPlusRepCheck);
 	builder->get_widget("DPlusRefCountLabel", pDPlusRefLabel);
 	builder->get_widget("DPlusRepCountLabel", pDPlusRepLabel);
+	// QuadNet
+	builder->get_widget("IPV4_RadioButton", pIPv4Only);
+	builder->get_widget("IPV6_RadioButton", pIPv6Only);
+	builder->get_widget("Dual_Stack_RadioButton", pDualStack);
+	builder->get_widget("No_Routing_RadioButton", pNoRouting);
 
 	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
 	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
@@ -248,7 +274,25 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 		pStationCallsign->set_text(pData->StationCall.c_str());
 		pUseMyCall->set_active(pData->UseMyCall);
 		pMessage->set_text(pData->Message.c_str());
+		switch (pData->eNetType) {
+			case ipv6only:
+				pIPv6Only->set_active();
+				break;
+			case dualstack:
+				pDualStack->set_active();
+				break;
+			case norouting:
+				pNoRouting->set_active();
+				break;
+			default:
+				pIPv4Only->set_active();
+				break;
+		}
 	}
+	pIPv4Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pIPv6Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pDualStack->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pNoRouting->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 
 	if (pData) {
 		if (230400 == pData->BaudRate)
@@ -438,4 +482,16 @@ void CSettingsDlg::on_BaudrateRadioButton_toggled()
 			pVersion->set_text("Pleae Rescan.");
 		}
 	}
+}
+
+void CSettingsDlg::on_QuadNet_Group_clicked()
+{
+	if (pIPv6Only->get_active())
+		newNetType = ipv6only;
+	else if (pDualStack->get_active())
+		newNetType = dualstack;
+	else if (pNoRouting->get_active())
+		newNetType = norouting;
+	else
+		newNetType = ipv4only;
 }

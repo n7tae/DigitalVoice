@@ -22,6 +22,8 @@
 
 #define IS_TRUE(a) (a=='t' || a=='T' || a=='1')
 
+enum EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
+
 typedef struct data_tag {
 	std::string address;
 	unsigned short port;
@@ -31,4 +33,5 @@ typedef struct sd_tag {
 	std::string MyCall, MyName, StationCall, Message;
 	bool UseMyCall, XRF, DCS, REFref, REFrep, MyHost, DPlusEnable, DPlusRef, DPlusRep;
 	int BaudRate;
+	EQuadNetType eNetType;
 } SSETTINGSDATA;

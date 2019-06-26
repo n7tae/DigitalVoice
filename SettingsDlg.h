@@ -39,6 +39,7 @@ private:
 	// other data
 	int baudrate;
 	bool bCallsign, bStation;
+	EQuadNetType newNetType;
 	// regular expression for testing callsign
 	std::regex CallRegEx;
 	// persistance
@@ -50,7 +51,7 @@ private:
 	Gtk::CheckButton *pXRFCheck, *pDCSCheck, *pREFRefCheck, *pREFRepCheck, *pCustomCheck, *pDPlusRefCheck, *pDPlusRepCheck, *pDPlusEnableCheck;
 	Gtk::Label       *pXRFLabel, *pDCSLabel, *pREFRefLabel, *pREFRepLabel, *pCustomLabel, *pDPlusRefLabel, *pDPlusRepLabel;
 	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage;
-	Gtk::RadioButton *p230k, *p460k;
+	Gtk::RadioButton *p230k, *p460k, *pIPv4Only, *pIPv6Only, *pDualStack, *pNoRouting;
 	Gtk::Label *pDevicePath, *pProductID, *pVersion;
 	// events
 	void on_UseMyCallsignCheckButton_clicked();
@@ -61,4 +62,5 @@ private:
 	void on_RescanButton_clicked();
 	void on_BaudrateRadioButton_toggled();
 	void on_DPlusEnableCheck_toggled();
+	void on_QuadNet_Group_clicked();
 };
