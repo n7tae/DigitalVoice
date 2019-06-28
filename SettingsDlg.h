@@ -21,7 +21,6 @@
 #include <gtkmm.h>
 #include <regex>
 
-#include "Defines.h"
 #include "HostFile.h"
 
 class CSettingsDlg
@@ -31,26 +30,22 @@ public:
     ~CSettingsDlg();
     bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
     void Show();
-	static SSETTINGSDATA *ReadCfgFile();
 
 private:
+	// persistance
+	void SaveState();
 	// data classes
 	CHostFile xrfFile, dcsFile, refFile, dplusFile, customFile;
+	CFGData data;
 	// other data
-	int baudrate;
 	bool bCallsign, bStation;
-	EQuadNetType newNetType;
 	// regular expression for testing callsign
 	std::regex CallRegEx;
-	// persistance
-	void WriteCfgFile();
 	// widgets
     Gtk::Dialog *pDlg;
 	Gtk::Button *pRescanButton, *pOkayButton;
-	Gtk::CheckButton *pUseMyCall;
-	Gtk::CheckButton *pXRFCheck, *pDCSCheck, *pREFRefCheck, *pREFRepCheck, *pCustomCheck, *pDPlusRefCheck, *pDPlusRepCheck, *pDPlusEnableCheck;
-	Gtk::Label       *pXRFLabel, *pDCSLabel, *pREFRefLabel, *pREFRepLabel, *pCustomLabel, *pDPlusRefLabel, *pDPlusRepLabel;
-	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage;
+	Gtk::CheckButton *pUseMyCall, *pMaintainLink, *pDPlusEnableCheck;
+	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pLocation1, *pLocation2, *pURL, *pLatitude, *pLongitude, *pLinkAtStart;
 	Gtk::RadioButton *p230k, *p460k, *pIPv4Only, *pIPv6Only, *pDualStack, *pNoRouting;
 	Gtk::Label *pDevicePath, *pProductID, *pVersion;
 	// events
@@ -58,9 +53,17 @@ private:
 	void on_MyCallsignEntry_changed();
 	void on_MyNameEntry_changed();
 	void on_StationCallsignEntry_changed();
+	void On20CharMsgChanged(Gtk::Entry *pEntry);
 	void on_MessageEntry_changed();
+	void on_Location1Entry_changed();
+	void on_Location2Entry_changed();
+	void OnLatLongChanged(Gtk::Entry *pEntry);
+	void on_LatitudeEntry_changed();
+	void on_LongitudeEntry_changed();
+	void on_URLEntry_changed();
 	void on_RescanButton_clicked();
 	void on_BaudrateRadioButton_toggled();
-	void on_DPlusEnableCheck_toggled();
+	void AuthorizeLegacyDPlus();
 	void on_QuadNet_Group_clicked();
+	void on_LinkAtStartEntry_changed();
 };

@@ -1,5 +1,6 @@
+#pragma once
 /*
- *   Copyright (c) 2019 by Thomas A. Early N7TAE
+ *   Copyright 2018-2019 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,25 +17,12 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#pragma once
-
-#include <string>
-#include <map>
-
-// value for the gateway table, the key is the callsign/reflector name
-typedef struct data_tag {
-	std::string address;
-	unsigned short port;
-} SDATA;
-
-class CHostFile
-{
-public:
-	CHostFile() {}
-	~CHostFile();
-	void Open(const char *filename, unsigned short defaultport);
-
-	// data
-	std::map<std::string, SDATA *> hostmap;
-	void ClearMap();
-};
+typedef struct echo_tag {
+	bool is_linked;
+	time_t last_time;
+	unsigned short streamid;
+	int fd;
+	char message[24];
+    SDSVT header;   // only used in qnlink (qngateway writes the header to the file)
+	char file[FILENAME_MAX + 1];
+} SECHO;

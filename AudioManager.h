@@ -25,6 +25,7 @@
 
 #include "DV3000U.h"
 #include "TemplateClasses.h"
+#include "QnetTypeDefs.h"
 
 class CAudioManager
 {
@@ -34,6 +35,8 @@ public:
 
 	void RecordMicThread();
 	void PlayAMBEDataThread();
+	void DSVTPacket2Audio(const SDSVT &dvst);
+	const SDSVT *Audio2Network();
 
 	// the ambe device is protected so it can be public
 	CDV3000U AMBEDevice;

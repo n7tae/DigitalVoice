@@ -22,16 +22,29 @@
 
 #define IS_TRUE(a) (a=='t' || a=='T' || a=='1')
 
-enum EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
+enum class EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
 
-typedef struct data_tag {
-	std::string address;
-	unsigned short port;
-} SDATA;
-
-typedef struct sd_tag {
-	std::string MyCall, MyName, StationCall, Message;
-	bool UseMyCall, XRF, DCS, REFref, REFrep, MyHost, DPlusEnable, DPlusRef, DPlusRep;
-	int BaudRate;
+using CFGDATA = struct CFGData {
+	std::string sCallsign, sName, sStation, sMessage, sLocation[2], sURL, sLinkAtStart;
+	bool bUseMyCall, bDPlusEnable, bMaintainLink;
+	int iBaudRate;
 	EQuadNetType eNetType;
-} SSETTINGSDATA;
+	double fLatitude, fLongitude;
+};
+
+class CConfigure {
+public:
+	CConfigure() {}
+	~CConfigure() {}
+
+	void ReadData();
+	void WriteData();
+	void CopyFrom(const CFGDATA &);
+	void CopyTo(CFGDATA &);
+
+private:
+	// data
+	CFGDATA data;
+	// methods
+	void SetDefaultValues();
+};

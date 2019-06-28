@@ -16,23 +16,18 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <pwd.h>
-
 #include <iostream>
-#include <fstream>
 
-#include "Defines.h"
 #include "AudioManager.h"
 #include "WaitCursor.h"
 #include "DPlusAuthenticator.h"
+#include "Configure.h"
 #include "SettingsDlg.h"
 
 // globals
 extern Glib::RefPtr<Gtk::Application> theApp;
 extern CAudioManager AudioManager;
+extern CConfigure cfg;
 
 CSettingsDlg::CSettingsDlg() :
 	pDlg(nullptr)
@@ -48,169 +43,13 @@ CSettingsDlg::~CSettingsDlg()
 
 void CSettingsDlg::Show()
 {
-	if (Gtk::RESPONSE_OK == pDlg->run())
-		WriteCfgFile();
+	cfg.CopyTo(data);
+	if (Gtk::RESPONSE_OK == pDlg->run()) {
+		cfg.CopyFrom(data);
+		cfg.WriteData();
+	}
 
 	pDlg->hide();
-}
-
-SSETTINGSDATA *CSettingsDlg::ReadCfgFile()
-{
-	const char *homedir = getenv("HOME");
-
-	if (NULL == homedir)
-		homedir = getpwuid(getuid())->pw_dir;
-
-	if (NULL == homedir) {
-		std::cerr << "ERROR: could not find a home directory!" << std::endl;
-		return NULL;
-	}
-
-	std::string filename(homedir);
-	filename.append("/.config/qndv/qndv.cfg");
-
-	struct stat sb;
-	if (stat(filename.c_str(), &sb))
-		return NULL;
-
-	if ((sb.st_mode & S_IFMT) != S_IFREG)
-		return NULL;	// needs to be a regular file
-
-	if (sb.st_size < 50)
-		return NULL; // there has to be something in it
-
-	SSETTINGSDATA *pData = new SSETTINGSDATA;
-	if (NULL == pData)
-		return pData;	// ouch!
-
-	std::ifstream cfg(filename.c_str(), std::ifstream::in);
-	if (! cfg.is_open()) {	// this should not happen!
-		std::cerr << "Error opening " << filename << "!" << std::endl;
-		delete pData;
-		return NULL;
-	}
-
-	while (! cfg.eof()) {
-		char line[128];
-		cfg.getline(line, 128);
-		char *key = strtok(line, "=");
-		if (!key) continue;	// skip empty lines
-		if (0==strlen(key) || '#'==*key) continue;	// skip comments
-		char *val = strtok(NULL, "\t\r");
-		if (val && '\'')	// value is a quoted string
-			val = strtok(val, "'");
-		//if (0==strlen(val)) continue;	// skip lines with no values
-
-		if (0 == strcmp(key, "MyCall")) {
-			pData->MyCall.assign(val);
-		} else if (0 == strcmp(key, "MyName")) {
-			pData->MyName.assign(val);
-		} else if (0 == strcmp(key, "StationCall")) {
-			pData->StationCall.assign(val);
-		} else if (0 == strcmp(key, "UseMyCall")) {
-			pData->UseMyCall = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "Message")) {
-			pData->Message.assign(val);
-		} else if (0 == strcmp(key, "XRF")) {
-			pData->XRF = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "DCS")) {
-			pData->DCS = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "REFref")) {
-			pData->REFref = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "REFrep")) {
-			pData->REFrep = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "MyHosts")) {
-			pData->MyHost = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "DPlusEnable")) {
-			pData->DPlusEnable = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "DPlusRef")) {
-			pData->DPlusRef = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "DPlusRep")) {
-			pData->DPlusRep = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "BaudRate")) {
-			pData->BaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
-		} else if (0 == strcmp(key, "IPType")) {
-			if (0 == strcmp(val, "None"))
-				pData->eNetType = norouting;
-			else if (0 == strcmp(val, "IPv6"))
-				pData->eNetType = ipv6only;
-			else if (0 == strcmp(val, "Dual"))
-				pData->eNetType = dualstack;
-			else
-				pData->eNetType = ipv4only;
-
-		}
-	}
-	cfg.close();
-	return pData;
-}
-
-void CSettingsDlg::WriteCfgFile()
-{
-	const char *homedir = getenv("HOME");
-
-	if (NULL == homedir)
-		homedir = getpwuid(getuid())->pw_dir;
-
-	if (NULL == homedir) {
-		std::cerr << "ERROR: could not find a home directory!" << std::endl;
-		return;
-	}
-
-	std::string path(homedir);
-	path.append("/.config");
-	for (int i=0; i<2; i++) { // walk through two sub-directories
-		struct stat sb;
-		if (stat(path.c_str(), &sb)) {
-			// stat failed, make the directory
-			if (mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
-				std::cerr << "ERROR: can't create " << path << '!' << std::endl;
-				return;
-			}
-		} else {	// make sure it's a directory
-			if ((sb.st_mode & S_IFMT) != S_IFDIR) {
-				std::cerr << "ERROR: " << path << " is not a directory!" << std::endl;
-				return;
-			}
-		}
-		if (0 == i)
-			path.append("/qndv");
-		else
-			path.append("/qndv.cfg");
-	}
-
-	// directory exists, now make the file
-	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
-	if (! file.is_open()) {
-		std::cerr << "ERROR: could not open " << path << '!' << std::endl;
-		return;
-	}
-	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
-	file << "MyCall=" << pMyCallsign->get_text() << std::endl;
-	file << "MyName=" << pMyName->get_text() << std::endl;
-	file << "StationCall=" << pStationCallsign->get_text() << std::endl;
-	file << "UseMyCall=" << (pUseMyCall->get_active() ? "true" : "false") << std::endl;
-	file << "Message=\"" << pMessage->get_text() << '"' << std::endl;
-	file << "IPType=";
-	if (pIPv6Only->get_active())
-		file << "IPv6";
-	else if (pDualStack->get_active())
-		file << "Dual";
-	else if (pNoRouting->get_active())
-		file << "None";
-	else
-		file << "IPv4";
-	file << std::endl;
-	file << "XRF=" << (pXRFCheck->get_active() ? "true" : "false") << std::endl;
-	file << "DCS=" << (pDCSCheck->get_active() ? "true" : "false") << std::endl;
-	file << "REFref=" << (pREFRefCheck->get_active() ? "true" : "false") << std::endl;
-	file << "REFrep=" << (pREFRepCheck->get_active() ? "true" : "false") << std::endl;
-	file << "MyHosts=" << (pCustomCheck->get_active() ? "true" : "false") << std::endl;
-	file << "DPlusEnable=" << (pDPlusEnableCheck->get_active() ? "true" : "false") << std::endl;
-	file << "DPlusRef=" << (pDPlusRefCheck->get_active() ? "true" : "false") << std::endl;
-	file << "DPlusRep=" << (pDPlusRepCheck->get_active() ? "true" : "false") << std::endl;
-	file << "BaudRate=" << baudrate << std::endl;
-	file.close();
 }
 
 bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
@@ -226,8 +65,6 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pOkayButton = pDlg->add_button("Okay", Gtk::RESPONSE_OK);
 	pOkayButton->set_sensitive(false);
 
-	SSETTINGSDATA *pData = ReadCfgFile();
-
 	// station
 	builder->get_widget("MyCallsignEntry", pMyCallsign);
 	builder->get_widget("MyNameEntry", pMyName);
@@ -235,6 +72,10 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("UseMyCallsignCheckButton", pUseMyCall);
 	builder->get_widget("StationCallsignEntry", pStationCallsign);
 	builder->get_widget("MessageEntry", pMessage);
+	builder->get_widget("Location1Entry", pLocation1);
+	builder->get_widget("Location2Entry", pLocation2);
+	builder->get_widget("LatitudeEntry", pLatitude);
+	builder->get_widget("LongitudeEntry", pLongitude);
 	// device
 	builder->get_widget("DeviceLabel", pDevicePath);
 	builder->get_widget("ProductIDLabel", pProductID);
@@ -243,20 +84,9 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("Baud460kRadioButton", p460k);
 	builder->get_widget("RescanButton", pRescanButton);
 	// linking
-	builder->get_widget("XRFCheckButton", pXRFCheck);
-	builder->get_widget("XRFCountLabel", pXRFLabel);
-	builder->get_widget("DCSCheckButton", pDCSCheck);
-	builder->get_widget("DCSCountLabel", pDCSLabel);
-	builder->get_widget("REFRefCheckButton", pREFRepCheck);
-	builder->get_widget("REFRefCountLabel", pREFRepLabel);
-	builder->get_widget("REFRepCheckButton", pREFRefCheck);
-	builder->get_widget("REFRepCountLabel", pREFRefLabel);
-	builder->get_widget("CustomCheckButton", pCustomCheck);
-	builder->get_widget("CustomCountLabel", pCustomLabel);
-	builder->get_widget("DPlusRefCheckButton", pDPlusRefCheck);
-	builder->get_widget("DPlusRepCheckButton", pDPlusRepCheck);
-	builder->get_widget("DPlusRefCountLabel", pDPlusRefLabel);
-	builder->get_widget("DPlusRepCountLabel", pDPlusRepLabel);
+	builder->get_widget("LinkAtStartEntry", pLinkAtStart);
+	builder->get_widget("MaintainLinkCheckButton", pMaintainLink);
+	builder->get_widget("LegacyCheckButton", pDPlusEnableCheck);
 	// QuadNet
 	builder->get_widget("IPV4_RadioButton", pIPv4Only);
 	builder->get_widget("IPV6_RadioButton", pIPv6Only);
@@ -268,122 +98,71 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
 	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
 	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
-	if (pData) {
-		pMyCallsign->set_text(pData->MyCall.c_str());
-		pMyName->set_text(pData->MyName.c_str());
-		pStationCallsign->set_text(pData->StationCall.c_str());
-		pUseMyCall->set_active(pData->UseMyCall);
-		pMessage->set_text(pData->Message.c_str());
-		switch (pData->eNetType) {
-			case ipv6only:
-				pIPv6Only->set_active();
-				break;
-			case dualstack:
-				pDualStack->set_active();
-				break;
-			case norouting:
-				pNoRouting->set_active();
-				break;
-			default:
-				pIPv4Only->set_active();
-				break;
-		}
-	}
+	pLocation1->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Location1Entry_changed));
+	pLocation2->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Location1Entry_changed));
+	pLatitude->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LatitudeEntry_changed));
+	pLongitude->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LongitudeEntry_changed));
+	pURL->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_URLEntry_changed));
 	pIPv4Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pIPv6Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pDualStack->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pNoRouting->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-
-	if (pData) {
-		if (230400 == pData->BaudRate)
-			p230k->clicked();
-		else
-			p460k->clicked();
-	}
-	baudrate = 0;
 	p230k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
-	if (p230k->get_active())
-		baudrate = 230400;
-
 	p460k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
-	if (p460k->get_active())
-		baudrate = 460800;
-
-	if (0 == baudrate) {
-		std::cerr << "Baudrate not set" << std::endl;
-		return true;
-	}
-
 	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
+	// load it up
+	cfg.ReadData();		// first, get the persistence data from qndv.cfg
+	cfg.CopyTo(data); 	// and copy it to here
+	pMyCallsign->set_text(data.sCallsign);
+	pMyName->set_text(data.sName);
+	pStationCallsign->set_text(data.sStation);
+	pUseMyCall->set_active(data.bUseMyCall);
+	pMessage->set_text(data.sMessage);
+	pLocation1->set_text(data.sLocation[0]);
+	pLocation2->set_text(data.sLocation[1]);
+	pLatitude->set_text(std::to_string(data.fLatitude));
+	pLongitude->set_text(std::to_string(data.fLongitude));
+	pURL->set_text(data.sURL);
+	pLinkAtStart->set_text(data.sLinkAtStart);
+	pMaintainLink->set_active(data.bMaintainLink);
+	pDPlusEnableCheck->set_active(data.bDPlusEnable);
 
-	xrfFile.Open("DExtra_Hosts.txt", 30001);
-	dcsFile.Open("DCS_Hosts.txt", 30051);
-	refFile.Open("DPlus_Hosts.txt", 20001);
-	customFile.Open("My_Hosts.txt", 20001);
+	switch (data.eNetType) {
+		case EQuadNetType::ipv6only:
+			pIPv6Only->set_active();
+			break;
+		case EQuadNetType::dualstack:
+			pDualStack->set_active();
+			break;
+		case EQuadNetType::norouting:
+			pNoRouting->set_active();
+			break;
+		default:
+			pIPv4Only->set_active();
+			break;
+	}
 
-	pXRFLabel->set_text(std::to_string(xrfFile.hostmap.size()));
-	pDCSLabel->set_text(std::to_string(dcsFile.hostmap.size()));
-	int ref = 0, rep = 0;
-	for (auto it=refFile.hostmap.begin(); it!=refFile.hostmap.end(); it++) {
-		if (it->first.compare(0, 3, "REF"))
-			rep++;
-		else
-			ref++;
-	}
-	pREFRefLabel->set_text(std::to_string(ref));
-	pREFRepLabel->set_text(std::to_string(rep));
-	pCustomLabel->set_text(std::to_string(customFile.hostmap.size()));
-	if (pData) {
-		pXRFCheck->set_active(pData->XRF);
-		pDCSCheck->set_active(pData->DCS);
-		pREFRefCheck->set_active(pData->REFref);
-		pREFRepCheck->set_active(pData->REFrep);
-		pCustomCheck->set_active(pData->MyHost);
-		pDPlusEnableCheck->set_active(pData->DPlusEnable);
-		pDPlusRefCheck->set_active(pData->DPlusRef);
-		pDPlusRepCheck->set_active(pData->DPlusRep);
-	}
-	pDPlusEnableCheck->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_DPlusEnableCheck_toggled));
+	if (230400 == data.iBaudRate)
+		p230k->clicked();
+	else
+		p460k->clicked();
 
 	// initialize complex components
-	on_DPlusEnableCheck_toggled();
 	on_RescanButton_clicked();
-
-	if (pData)
-		delete pData;
 
 	return false;
 }
 
-void CSettingsDlg::on_DPlusEnableCheck_toggled()
+void CSettingsDlg::AuthorizeLegacyDPlus()
 {
-	int ref = 0, rep = 0;
 	dplusFile.ClearMap();
-	if (pDPlusEnableCheck->get_active()) {
+	if (data.bDPlusEnable) {
 		CWaitCursor wait;
-		pDPlusRefCheck->show();
-		pDPlusRefLabel->show();
-		pDPlusRepCheck->show();
-		pDPlusRepLabel->show();
 		const std::string call(pMyCallsign->get_text().c_str());
 		CDPlusAuthenticator auth(call, "auth.dstargateway.org");
-		if (auth.Process(dplusFile.hostmap, true, true)) {
+		if (auth.Process(dplusFile.hostmap, true, false)) {
 			std::cerr << "Error processing D-Plus authorization" << std::endl;
-		} else {
-			for (auto it=dplusFile.hostmap.begin(); it!=dplusFile.hostmap.end(); it++) {
-				if (it->first.compare(0, 3, "REF"))
-					rep++;
-				else
-					ref++;
-			}
 		}
-		pDPlusRefLabel->set_text(std::to_string(ref));
-		pDPlusRepLabel->set_text(std::to_string(rep));
-	} else {
-		pDPlusRefCheck->hide();
-		pDPlusRefLabel->hide();
-		pDPlusRepCheck->hide();
-		pDPlusRepLabel->hide();
 	}
 }
 
@@ -393,7 +172,7 @@ void CSettingsDlg::on_RescanButton_clicked()
 	if (AudioManager.AMBEDevice.IsOpen())
 		AudioManager.AMBEDevice.CloseDevice();
 
-	AudioManager.AMBEDevice.FindandOpen(baudrate, DSTAR_TYPE);
+	AudioManager.AMBEDevice.FindandOpen(data.iBaudRate, DSTAR_TYPE);
 	if (AudioManager.AMBEDevice.IsOpen()) {
 		const Glib::ustring path(AudioManager.AMBEDevice.GetDevicePath());
 		pDevicePath->set_text(path);
@@ -440,6 +219,21 @@ void CSettingsDlg::on_MyNameEntry_changed()
 	 pMyName->set_position(pos);
  }
 
+ void CSettingsDlg::on_LinkAtStartEntry_changed()
+ {
+	 int pos = pLinkAtStart->get_position();
+	 Glib::ustring s = pLinkAtStart->get_text().uppercase();
+	 const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
+	 Glib::ustring n;
+	 for (auto it=s.begin(); it!=s.end(); it++) {
+		 if (Glib::ustring::npos != good.find(*it)) {
+			 n.append(1, *it);
+		 }
+	 }
+	 pLinkAtStart->set_text(n);
+	 pLinkAtStart->set_position(pos);
+ }
+
 void CSettingsDlg::on_StationCallsignEntry_changed()
  {
 	 int pos = pStationCallsign->get_position();
@@ -451,31 +245,85 @@ void CSettingsDlg::on_StationCallsignEntry_changed()
 	 pOkayButton->set_sensitive(bCallsign && bStation);
  }
 
-void CSettingsDlg::on_MessageEntry_changed()
+void CSettingsDlg::On20CharMsgChanged(Gtk::Entry *pEntry)
 {
-	int pos = pMessage->get_position();
+	int pos = pEntry->get_position();
 	const Glib::ustring good(" ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/().,:_");
-	Glib::ustring s = pMessage->get_text();
+	Glib::ustring s = pEntry->get_text();
 	Glib::ustring n;
 	for (auto it=s.begin(); it!=s.end(); it++) {
 		if (Glib::ustring::npos != good.find(*it)) {
 			n.append(1, *it);
 		}
 	}
-	pMessage->set_text(n);
-	pMessage->set_position(pos);
+	pEntry->set_text(n);
+	pEntry->set_position(pos);
+}
+
+void CSettingsDlg::on_URLEntry_changed()
+{
+	int pos = pURL->get_position();
+	const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/.:_%");
+	Glib::ustring s = pURL->get_text();
+	Glib::ustring n;
+	for (auto it=s.begin(); it!=s.end(); it++) {
+		if (Glib::ustring::npos != good.find(*it)) {
+			n.append(1, *it);
+		}
+	}
+	pURL->set_text(n);
+	pURL->set_position(pos);
+}
+
+void CSettingsDlg::on_MessageEntry_changed()
+{
+	On20CharMsgChanged(pMessage);
+}
+
+void CSettingsDlg::on_Location1Entry_changed()
+{
+	On20CharMsgChanged(pLocation1);
+}
+
+void CSettingsDlg::on_Location2Entry_changed()
+{
+	On20CharMsgChanged(pLocation2);
+}
+
+void CSettingsDlg::OnLatLongChanged(Gtk::Entry *pEntry)
+{
+	int pos = pEntry->get_position();
+	const Glib::ustring good("+-.0123456789");
+	Glib::ustring s = pEntry->get_text();
+	Glib::ustring n;
+	for (auto it=s.begin(); it!=s.end(); it++) {
+		if (Glib::ustring::npos != good.find(*it)) {
+			n.append(1, *it);
+		}
+	}
+	pEntry->set_text(n);
+	pEntry->set_position(pos);
+}
+
+void CSettingsDlg::on_LatitudeEntry_changed()
+{
+	OnLatLongChanged(pLatitude);
+}
+
+void CSettingsDlg::on_LongitudeEntry_changed()
+{
+	OnLatLongChanged(pLongitude);
 }
 
 void CSettingsDlg::on_BaudrateRadioButton_toggled()
 {
-	baudrate = 0;
 	if (p230k->get_active())
-		baudrate = 230400;
+		data.iBaudRate = 230400;
 	else if (p460k->get_active())
-		baudrate = 460800;
+		data.iBaudRate = 460800;
 
-	if (AudioManager.AMBEDevice.IsOpen() && baudrate) {
-		if (AudioManager.AMBEDevice.SetBaudRate(baudrate)) {
+	if (AudioManager.AMBEDevice.IsOpen()) {
+		if (AudioManager.AMBEDevice.SetBaudRate(data.iBaudRate)) {
 			AudioManager.AMBEDevice.CloseDevice();
 			pDevicePath->set_text("Error");
 			pProductID->set_text("Setting the baudrate failed");
@@ -487,11 +335,11 @@ void CSettingsDlg::on_BaudrateRadioButton_toggled()
 void CSettingsDlg::on_QuadNet_Group_clicked()
 {
 	if (pIPv6Only->get_active())
-		newNetType = ipv6only;
+		data.eNetType = EQuadNetType::ipv6only;
 	else if (pDualStack->get_active())
-		newNetType = dualstack;
+		data.eNetType = EQuadNetType::dualstack;
 	else if (pNoRouting->get_active())
-		newNetType = norouting;
+		data.eNetType = EQuadNetType::norouting;
 	else
-		newNetType = ipv4only;
+		data.eNetType = EQuadNetType::ipv4only;
 }

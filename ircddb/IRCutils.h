@@ -1,5 +1,6 @@
 /*
- *   Copyright (c) 2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2010 by Scott Lawson KI4LKF
+ *   Copyright (C) 2017-2018 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,22 +20,19 @@
 #pragma once
 
 #include <string>
-#include <map>
+#include <vector>
+#include <ctime>
 
-// value for the gateway table, the key is the callsign/reflector name
-typedef struct data_tag {
-	std::string address;
-	unsigned short port;
-} SDATA;
+time_t parseTime(const std::string str);
 
-class CHostFile
-{
-public:
-	CHostFile() {}
-	~CHostFile();
-	void Open(const char *filename, unsigned short defaultport);
+std::vector<std::string> stringTokenizer(const std::string &str);
 
-	// data
-	std::map<std::string, SDATA *> hostmap;
-	void ClearMap();
-};
+void safeStringCopy(char * dest, const char * src, unsigned int buf_size);
+
+char *getCurrentTime(void);
+
+void ToUpper(std::string &str);
+
+void ToLower(std::string &str);
+
+void ReplaceChar(std::string &str, char from, char to);

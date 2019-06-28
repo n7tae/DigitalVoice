@@ -1,16 +1,19 @@
 # Copyright (c) 2019 by Thomas A. Early N7TAE
 
 # choose this if you want debugging help
-CPPFLAGS=-g -ggdb -W -Wall -std=c++11 `pkg-config --cflags gtkmm-3.0`
+CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb `pkg-config --cflags gtkmm-3.0`
 # or, you can choose this for a much smaller executable without debugging help
-#CPPFLAGS=-W -Wall -std=c++11 `pkg-config --cflags gtkmm-3.0`
+#CPPFLAGS=-W -Wall -std=c++11 -Iircddb `pkg-config --cflags gtkmm-3.0`
+IRC=ircddb
 
-SRCS = $(wildcard *.cpp)
+DSTROBJS = $(IRC)/dstar_dv.o $(IRC)/golay23.o
+IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMessageQueue.o $(IRC)/IRCProtocol.o $(IRC)/IRCMessage.o $(IRC)/IRCDDBApp.o $(IRC)/IRCutils.o $(DSTROBJS)
+SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-qndv :  $(OBJS)
-	g++ $(CPPFLAGS) -o $@ $(OBJS) `pkg-config --libs gtkmm-3.0` -lasound -pthread
+qndv :  $(OBJS) $(IRCOBJS)
+	g++ $(CPPFLAGS) -o $@ $^ `pkg-config --libs gtkmm-3.0` -lasound -pthread
 
 %.o : %.cpp DigitalVoice.glade
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
