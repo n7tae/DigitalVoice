@@ -85,7 +85,7 @@ private:
 	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, status_file, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
-    int delay_between, delay_before;
+    int delay_before;
 	std::string link_at_startup;
 	int rf_inactivity_timer;
 	const unsigned char REF_ACK[3] = { 3, 96, 0 };

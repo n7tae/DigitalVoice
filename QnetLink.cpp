@@ -260,8 +260,6 @@ bool CQnetLink::Configure()
 	announce_dir.assign(homedir + "announce");
 	qnvoice_file.assign(homedir + "qnvoicefile.txt");
 
-	delay_before = 1;
-	delay_between = 19;
 	return false;
 }
 
@@ -1569,7 +1567,6 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 			if (count+1 == ambeblocks && ! edata.is_linked)
 				edata.header.ctrl |= 0x40U;
 			AudioManager.Link2AudioMgr(edata.header);
-			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 		}
 	}
 	fclose(fp);
@@ -1622,7 +1619,6 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 				if (i+1==size && lastch)
 					edata.header.ctrl |= 0x40U;	// signal the last voiceframe (of the last character)
 				AudioManager.Link2AudioMgr(edata.header);
-				std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 			}
 		}
 	}

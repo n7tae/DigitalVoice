@@ -252,24 +252,21 @@ void CAudioManager::PlayAMBEDataThread()
 
 void CAudioManager::Link2AudioMgr(const CDSVT &dvst)
 {
-	if (dvst.config == 0x10U) {
-		if (link_sid_in == 0U) {
-			link_sid_in = dvst.streamid;
-
-			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
-			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
-			p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
-		} else
-			link_sid_in = dvst.streamid;
-		std::cout << "header streamid=" << std::hex << ntohs(dvst.streamid) << std::dec << std::endl;
-		return;
-	}
 	if (AMBEDevice.IsOpen()) {
-		std::cout << "packet streamid=" << std::hex << ntohs(dvst.streamid) << " config=" << unsigned(dvst.config) << " ctrl=" << unsigned(dvst.ctrl) << std::dec << std::endl;
-		if (dvst.streamid != link_sid_in) {
-			std::cout << "Ignoring because streamid=" << std::hex << ntohs(dvst.streamid) << " and link_sid_in=" << ntohs(link_sid_in) << std::endl;
+		if (dvst.config == 0x10U) {
+			if (link_sid_in == 0U) {
+				link_sid_in = dvst.streamid;
+
+				p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
+				p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
+				p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+			} else
+				link_sid_in = dvst.streamid;
+			std::cout << "header streamid=" << std::hex << ntohs(dvst.streamid) << std::dec << std::endl;
 			return;
 		}
+		if (dvst.streamid != link_sid_in)
+			return;
 		CAMBEFrame frame(dvst.vasd.voice);
 		frame.SetSequence(dvst.ctrl);
 		ambe_mutex.lock();
@@ -281,7 +278,6 @@ void CAudioManager::Link2AudioMgr(const CDSVT &dvst)
 			p3.get();
 			link_sid_in = 0U;
 		}
-		std::cout << "ctrl=" << std::hex  << unsigned(dvst.ctrl) << std::dec << std::endl;
 	}
 }
 
@@ -359,6 +355,7 @@ void CAudioManager::ambedevice2audioqueue()
 
 void CAudioManager::play_audio_queue()
 {
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	// Open PCM device for playback.
 	snd_pcm_t *handle;
 	int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
@@ -406,7 +403,7 @@ void CAudioManager::play_audio_queue()
 	unsigned char seq = 0U;
 	do {
 		while (audio_is_empty())
-			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		audio_mutex.lock();
 		CAudioFrame frame(audio_queue.Pop());
 		audio_mutex.unlock();

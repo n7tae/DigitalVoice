@@ -49,6 +49,9 @@ CMainWindow::CMainWindow() :
 {
 	cfg.CopyTo(cfgdata);
 	gwys.Init();
+	if (! AudioManager.AMBEDevice.IsOpen()) {
+		AudioManager.AMBEDevice.FindandOpen(cfgdata.iBaudRate, DSTAR_TYPE);
+	}
 }
 
 CMainWindow::~CMainWindow()
