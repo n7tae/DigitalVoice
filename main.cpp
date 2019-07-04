@@ -25,8 +25,8 @@
 #include "Configure.h"
 
 // Globals
-CMainWindow MainWindow;
-Glib::RefPtr<Gtk::Application> theApp;
+extern CMainWindow MainWindow;
+extern Glib::RefPtr<Gtk::Application> theApp;
 extern CConfigure cfg;
 extern bool GetCfgDirectory(std::string &);
 
@@ -38,8 +38,6 @@ int main (int argc, char **argv)
 		std::cerr << "Make sure you have installed the application: \"make install\"" << std::endl;
 		return 1;
 	}
-	std::string cfgfile = path + "qndv.cfg";
-	cfg.ReadData();
 
 	theApp = Gtk::Application::create(argc, argv, "net.openquad.QnetDV");
 

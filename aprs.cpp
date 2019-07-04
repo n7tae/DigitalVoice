@@ -45,7 +45,7 @@ void CAPRS::SelectBand(unsigned short streamID)
 //              12 bytes(packet from repeater was 29 bytes) or
 //              15 bytes(packet from repeater was 32 bytes)
 // Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
-void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf)
+void CAPRS::ProcessText(unsigned char seq, unsigned char *buf)
 {
 	unsigned char aprs_data[200];
 	char aprs_buf[1024];

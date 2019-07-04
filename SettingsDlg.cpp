@@ -17,22 +17,25 @@
  */
 
 #include <iostream>
+#include <sstream>
 
 #include "AudioManager.h"
 #include "WaitCursor.h"
 #include "DPlusAuthenticator.h"
-#include "Configure.h"
 #include "SettingsDlg.h"
 
 // globals
 extern Glib::RefPtr<Gtk::Application> theApp;
 extern CAudioManager AudioManager;
 extern CConfigure cfg;
+extern bool GetCfgDirectory(std::string &path);
+extern CHostFile gwys;
 
 CSettingsDlg::CSettingsDlg() :
 	pDlg(nullptr)
 {
 	CallRegEx = std::regex("^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
+	std::string path;
 }
 
 CSettingsDlg::~CSettingsDlg()
@@ -41,15 +44,98 @@ CSettingsDlg::~CSettingsDlg()
 		delete pDlg;
 }
 
-void CSettingsDlg::Show()
+CFGDATA *CSettingsDlg::Show()
 {
-	cfg.CopyTo(data);
-	if (Gtk::RESPONSE_OK == pDlg->run()) {
-		cfg.CopyFrom(data);
-		cfg.WriteData();
-	}
+	cfg.CopyTo(data);	// get the saved config data (MainWindow has alread read it)
+	SetWidgetStates(data);
+	on_RescanButton_clicked();	// reset the ambe device
 
+	if (Gtk::RESPONSE_OK == pDlg->run()) {
+		CFGDATA newstate;			// the user clicked okay, time to look at what's changed
+		SaveWidgetStates(newstate); // newstate is now the current contents of the Settings Dialog
+		cfg.CopyFrom(newstate);		// and it is now in the cfg object
+		cfg.WriteData();			// and it's saved in ~/.config/qndv/qndv.cfg
+
+		// reconfigure current environment if anything changed
+		if (data.bDPlusEnable != newstate.bDPlusEnable)
+			RebuildGateways(newstate.bDPlusEnable);
+		if (data.iBaudRate != newstate.iBaudRate)
+			BaudrateChanged(newstate.iBaudRate);
+		cfg.CopyTo(data);	// we need to return to the MainWindow a pointer to the new state
+		pDlg->hide();
+		return &data;		// changes to the irc client will be done in the MainWindow
+	}
 	pDlg->hide();
+	return nullptr;
+}
+
+void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
+{
+	// station
+	d.sCallsign.assign(pMyCallsign->get_text());
+	d.sName.assign(pMyName->get_text());
+	d.bUseMyCall = pUseMyCall->get_active();
+	d.sStation = pStationCallsign->get_text();
+	d.sMessage.assign(pMessage->get_text());
+	d.sLocation.assign(pLocation->get_text());
+	d.cModule = data.cModule;
+	d.dLatitude = std::stod(pLatitude->get_text());
+	d.dLongitude = std::stod(pLongitude->get_text());
+	d.sURL.assign(pURL->get_text());
+	//link
+	d.sLinkAtStart.assign(pLinkAtStart->get_text());
+	d.bMaintainLink = pMaintainLink->get_active();
+	d.bDPlusEnable = pDPlusEnableCheck->get_active();
+	// quadnet
+	if (pIPv6Only->get_active())
+		d.eNetType = EQuadNetType::ipv6only;
+	else if (pDualStack->get_active())
+		d.eNetType = EQuadNetType::dualstack;
+	else if (pNoRouting->get_active())
+		d.eNetType = EQuadNetType::norouting;
+	else
+		d.eNetType = EQuadNetType::ipv4only;
+	// device
+	d.iBaudRate = (p230k->get_active()) ? 230400 : 460800;
+}
+
+void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
+{
+	// station
+	pMyCallsign->set_text(d.sCallsign);
+	pMyName->set_text(d.sName);
+	pStationCallsign->set_text(d.sStation);
+	pUseMyCall->set_active(d.bUseMyCall);
+	pMessage->set_text(d.sMessage);
+	pLocation->set_text(d.sLocation);
+	pLatitude->set_text(std::to_string(d.dLatitude));
+	pLongitude->set_text(std::to_string(d.dLongitude));
+	pURL->set_text(d.sURL);
+	//link
+	pLinkAtStart->set_text(d.sLinkAtStart);
+	pMaintainLink->set_active(d.bMaintainLink);
+	if (d.bDPlusEnable != pDPlusEnableCheck->get_active())
+		pDPlusEnableCheck->set_active(d.bDPlusEnable);	// only do this if we need to
+	//quadnet
+	switch (d.eNetType) {
+		case EQuadNetType::ipv6only:
+			pIPv6Only->set_active();
+			break;
+		case EQuadNetType::dualstack:
+			pDualStack->set_active();
+			break;
+		case EQuadNetType::norouting:
+			pNoRouting->set_active();
+			break;
+		default:
+			pIPv4Only->set_active();
+			break;
+	}
+	//device
+	if (230400 == d.iBaudRate)
+		p230k->clicked();
+	else
+		p460k->clicked();
 }
 
 bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
@@ -68,14 +154,13 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	// station
 	builder->get_widget("MyCallsignEntry", pMyCallsign);
 	builder->get_widget("MyNameEntry", pMyName);
-	builder->get_widget("DPlusEnableCheckButton", pDPlusEnableCheck);
 	builder->get_widget("UseMyCallsignCheckButton", pUseMyCall);
 	builder->get_widget("StationCallsignEntry", pStationCallsign);
 	builder->get_widget("MessageEntry", pMessage);
-	builder->get_widget("Location1Entry", pLocation1);
-	builder->get_widget("Location2Entry", pLocation2);
+	builder->get_widget("LocationEntry", pLocation);
 	builder->get_widget("LatitudeEntry", pLatitude);
 	builder->get_widget("LongitudeEntry", pLongitude);
+	builder->get_widget("URLEntry", pURL);
 	// device
 	builder->get_widget("DeviceLabel", pDevicePath);
 	builder->get_widget("ProductIDLabel", pProductID);
@@ -98,8 +183,7 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
 	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
 	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
-	pLocation1->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Location1Entry_changed));
-	pLocation2->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Location1Entry_changed));
+	pLocation->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LocationEntry_changed));
 	pLatitude->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LatitudeEntry_changed));
 	pLongitude->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LongitudeEntry_changed));
 	pURL->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_URLEntry_changed));
@@ -107,60 +191,21 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pIPv6Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pDualStack->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pNoRouting->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	p230k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
-	p460k->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_BaudrateRadioButton_toggled));
 	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
-	// load it up
-	cfg.ReadData();		// first, get the persistence data from qndv.cfg
-	cfg.CopyTo(data); 	// and copy it to here
-	pMyCallsign->set_text(data.sCallsign);
-	pMyName->set_text(data.sName);
-	pStationCallsign->set_text(data.sStation);
-	pUseMyCall->set_active(data.bUseMyCall);
-	pMessage->set_text(data.sMessage);
-	pLocation1->set_text(data.sLocation[0]);
-	pLocation2->set_text(data.sLocation[1]);
-	pLatitude->set_text(std::to_string(data.fLatitude));
-	pLongitude->set_text(std::to_string(data.fLongitude));
-	pURL->set_text(data.sURL);
-	pLinkAtStart->set_text(data.sLinkAtStart);
-	pMaintainLink->set_active(data.bMaintainLink);
-	pDPlusEnableCheck->set_active(data.bDPlusEnable);
-
-	switch (data.eNetType) {
-		case EQuadNetType::ipv6only:
-			pIPv6Only->set_active();
-			break;
-		case EQuadNetType::dualstack:
-			pDualStack->set_active();
-			break;
-		case EQuadNetType::norouting:
-			pNoRouting->set_active();
-			break;
-		default:
-			pIPv4Only->set_active();
-			break;
-	}
-
-	if (230400 == data.iBaudRate)
-		p230k->clicked();
-	else
-		p460k->clicked();
-
-	// initialize complex components
-	on_RescanButton_clicked();
+	pLinkAtStart->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LinkAtStartEntry_changed));
 
 	return false;
 }
 
-void CSettingsDlg::AuthorizeLegacyDPlus()
+void CSettingsDlg::RebuildGateways(bool includelegacy)
 {
-	dplusFile.ClearMap();
-	if (data.bDPlusEnable) {
+	gwys.Init();
+
+	if (includelegacy) {
 		CWaitCursor wait;
 		const std::string call(pMyCallsign->get_text().c_str());
 		CDPlusAuthenticator auth(call, "auth.dstargateway.org");
-		if (auth.Process(dplusFile.hostmap, true, false)) {
+		if (auth.Process(gwys.hostmap, true, false)) {
 			std::cerr << "Error processing D-Plus authorization" << std::endl;
 		}
 	}
@@ -280,14 +325,9 @@ void CSettingsDlg::on_MessageEntry_changed()
 	On20CharMsgChanged(pMessage);
 }
 
-void CSettingsDlg::on_Location1Entry_changed()
+void CSettingsDlg::on_LocationEntry_changed()
 {
-	On20CharMsgChanged(pLocation1);
-}
-
-void CSettingsDlg::on_Location2Entry_changed()
-{
-	On20CharMsgChanged(pLocation2);
+	On20CharMsgChanged(pLocation);
 }
 
 void CSettingsDlg::OnLatLongChanged(Gtk::Entry *pEntry)
@@ -315,19 +355,14 @@ void CSettingsDlg::on_LongitudeEntry_changed()
 	OnLatLongChanged(pLongitude);
 }
 
-void CSettingsDlg::on_BaudrateRadioButton_toggled()
+void CSettingsDlg::BaudrateChanged(int baudrate)
 {
-	if (p230k->get_active())
-		data.iBaudRate = 230400;
-	else if (p460k->get_active())
-		data.iBaudRate = 460800;
-
 	if (AudioManager.AMBEDevice.IsOpen()) {
-		if (AudioManager.AMBEDevice.SetBaudRate(data.iBaudRate)) {
+		if (AudioManager.AMBEDevice.SetBaudRate(baudrate)) {
 			AudioManager.AMBEDevice.CloseDevice();
 			pDevicePath->set_text("Error");
 			pProductID->set_text("Setting the baudrate failed");
-			pVersion->set_text("Pleae Rescan.");
+			pVersion->set_text("Please Rescan.");
 		}
 	}
 }

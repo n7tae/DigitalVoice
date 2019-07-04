@@ -38,7 +38,7 @@ CDPlusAuthenticator::~CDPlusAuthenticator()
 {
 }
 
-bool CDPlusAuthenticator::Process(std::map<std::string, SDATA *> &gwy_map, const bool reflectors, const bool repeaters)
+bool CDPlusAuthenticator::Process(HOST_MAP &gwy_map, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
 	int result = client.Open(m_address, AF_UNSPEC, "20001");
@@ -49,7 +49,7 @@ bool CDPlusAuthenticator::Process(std::map<std::string, SDATA *> &gwy_map, const
 	return authenticate(gwy_map, reflectors, repeaters);
 }
 
-bool CDPlusAuthenticator::authenticate(std::map<std::string, SDATA *> &gwy_map, const bool reflectors, const bool repeaters)
+bool CDPlusAuthenticator::authenticate(HOST_MAP &gwy_map, const bool reflectors, const bool repeaters)
 {
 	unsigned char* buffer = new unsigned char[4096U];
 	::memset(buffer, ' ', 56U);
@@ -102,14 +102,14 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, SDATA *> &gwy_map, 
 			if (address.size()>0U && name.size()>0U && active) {
 				//std::cout << "name:" << name << " address:" << address << std::endl;
 				if (reflectors && 0==name.compare(0, 3, "REF")) {
-					SDATA *pData = new SDATA;
+					HOST_DATA *pData = new HOST_DATA;
 					if (pData) {
 						pData->address = address;
 						pData->port = 20001U;
 						gwy_map[name] = pData;
 					}
 				} else if (repeaters && name.compare(0, 3, "REF")) {
-					SDATA *pData = new SDATA;
+					HOST_DATA *pData = new HOST_DATA;
 					if (pData) {
 						pData->address = address;
 						pData->port = 20001U;

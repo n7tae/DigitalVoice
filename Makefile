@@ -26,6 +26,7 @@ clean :
 -include $(DEPS)
 
 hostfiles :
+	/usr/bin/curl -o XLX_Hosts.txt https://ar-dns.net/xlx
 	/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
 	/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
 	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt

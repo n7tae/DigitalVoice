@@ -22,19 +22,22 @@
 #include <map>
 
 // value for the gateway table, the key is the callsign/reflector name
-typedef struct data_tag {
+using HOST_DATA = struct host_data_tag {
 	std::string address;
 	unsigned short port;
-} SDATA;
+};
+
+using HOST_MAP = std::map<std::string, HOST_DATA *>;
 
 class CHostFile
 {
 public:
-	CHostFile() {}
+	CHostFile();
 	~CHostFile();
-	void Open(const char *filename, unsigned short defaultport);
-
+	int Open(const char *filename, unsigned short defaultport);
+	int Transfer(HOST_MAP &tomap, const char *type);
+	void Init();
 	// data
-	std::map<std::string, SDATA *> hostmap;
+	HOST_MAP hostmap;
 	void ClearMap();
 };

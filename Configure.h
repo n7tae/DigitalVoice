@@ -24,17 +24,18 @@
 
 enum class EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
 
-using CFGDATA = struct CFGData {
-	std::string sCallsign, sName, sStation, sMessage, sLocation[2], sURL, sLinkAtStart;
+using CFGDATA = struct CFGData_struct {
+	std::string sCallsign, sName, sStation, sMessage, sLocation, sURL, sLinkAtStart;
 	bool bUseMyCall, bDPlusEnable, bMaintainLink;
 	int iBaudRate;
 	EQuadNetType eNetType;
-	double fLatitude, fLongitude;
+	double dLatitude, dLongitude;
+	char cModule;
 };
 
 class CConfigure {
 public:
-	CConfigure() {}
+	CConfigure() { ReadData(); }
 	~CConfigure() {}
 
 	void ReadData();

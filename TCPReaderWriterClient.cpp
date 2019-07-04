@@ -57,7 +57,7 @@ bool CTCPReaderWriterClient::Open()
 	}
 
 	if (0 == m_address.size() || 0 == m_port.size() || 0 == std::stoul(m_port)) {
-		std::cerr << "ERROR: [" << m_address << "]:" << m_port << "is malformed!" << std::endl;
+		std::cerr << "ERROR: [" << m_address << "]:" << m_port << " is malformed!" << std::endl;
 		return true;
 	}
 

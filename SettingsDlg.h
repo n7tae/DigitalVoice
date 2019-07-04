@@ -22,6 +22,7 @@
 #include <regex>
 
 #include "HostFile.h"
+#include "Configure.h"
 
 class CSettingsDlg
 {
@@ -29,14 +30,14 @@ public:
     CSettingsDlg();
     ~CSettingsDlg();
     bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
-    void Show();
+    CFGDATA *Show();	// returns a pointer to the private CFGDATA if okay is pressed, otherwise a nullptr
 
 private:
 	// persistance
-	void SaveState();
+	void SaveWidgetStates(CFGDATA &d);
+	void SetWidgetStates(const CFGDATA &d);
 	// data classes
-	CHostFile xrfFile, dcsFile, refFile, dplusFile, customFile;
-	CFGData data;
+	CFGDATA data;
 	// other data
 	bool bCallsign, bStation;
 	// regular expression for testing callsign
@@ -45,7 +46,7 @@ private:
     Gtk::Dialog *pDlg;
 	Gtk::Button *pRescanButton, *pOkayButton;
 	Gtk::CheckButton *pUseMyCall, *pMaintainLink, *pDPlusEnableCheck;
-	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pLocation1, *pLocation2, *pURL, *pLatitude, *pLongitude, *pLinkAtStart;
+	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pLocation, *pURL, *pLatitude, *pLongitude, *pLinkAtStart;
 	Gtk::RadioButton *p230k, *p460k, *pIPv4Only, *pIPv6Only, *pDualStack, *pNoRouting;
 	Gtk::Label *pDevicePath, *pProductID, *pVersion;
 	// events
@@ -55,15 +56,15 @@ private:
 	void on_StationCallsignEntry_changed();
 	void On20CharMsgChanged(Gtk::Entry *pEntry);
 	void on_MessageEntry_changed();
-	void on_Location1Entry_changed();
-	void on_Location2Entry_changed();
+	void on_LocationEntry_changed();
 	void OnLatLongChanged(Gtk::Entry *pEntry);
 	void on_LatitudeEntry_changed();
 	void on_LongitudeEntry_changed();
 	void on_URLEntry_changed();
 	void on_RescanButton_clicked();
-	void on_BaudrateRadioButton_toggled();
-	void AuthorizeLegacyDPlus();
 	void on_QuadNet_Group_clicked();
 	void on_LinkAtStartEntry_changed();
+	// state changed
+	void BaudrateChanged(int newBaudrate);
+	void RebuildGateways(bool includelegacy);
 };

@@ -1,6 +1,4 @@
-#pragma once
 /*
- *   Copyright (C) 2010-2013 by Jonathan Naylor G4KLX
  *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -16,26 +14,25 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-**/
+ */
 
-#include <netinet/in.h>
-#include <map>
-#include <string>
-#include "TCPReaderWriterClient.h"
-#include "HostFile.h"
+#pragma once
 
-class CDPlusAuthenticator {
+#include <unistd.h>
+#include <cstdlib>
+
+class CRandom
+{
 public:
-	CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address);
-	~CDPlusAuthenticator();
+	CRandom() { srandom(getpid()); }
 
-	bool Process(HOST_MAP &gwy_map, const bool reflectors, const bool repeaters);
+	~CRandom() {}
 
-private:
-	std::string m_loginCallsign;
-	std::string m_address;
-	CTCPReaderWriterClient client;
-
-	void Trim(std::string &s);
-	bool authenticate(HOST_MAP &gwy_map, const bool reflectors, const bool repeaters);
+	unsigned short NewStreamID()
+	{
+		unsigned short r = 0;
+		while (0 == r)
+			r = 0xffffU & random();
+		return r;
+	}
 };

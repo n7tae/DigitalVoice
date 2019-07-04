@@ -26,27 +26,83 @@
 #include <thread>
 #include <chrono>
 
-#include "Defines.h"
 #include "SettingsDlg.h"
 #include "MainWindow.h"
 #include "AudioManager.h"
+#include "HostFile.h"
+#include "WaitCursor.h"
 
 // globals
-CSettingsDlg SettingsDlg;
+extern CSettingsDlg SettingsDlg;
+extern CHostFile gwys;
 extern Glib::RefPtr<Gtk::Application> theApp;
 extern CAudioManager AudioManager;
+extern CConfigure cfg;
+
 
 CMainWindow::CMainWindow() :
 	pWin(nullptr),
 	pQuitButton(nullptr),
-	pSettingsButton(nullptr)
+	pSettingsButton(nullptr),
+	pGate(nullptr),
+	pLink(nullptr)
 {
+	cfg.CopyTo(cfgdata);
+	gwys.Init();
 }
 
 CMainWindow::~CMainWindow()
 {
 	if (pWin)
 		delete pWin;
+	if (pLink) {
+		pLink->keep_running = false;
+		futLink.get();
+	}
+	if (pGate) {
+		pGate->keep_running = false;
+		futGate.get();
+	}
+}
+
+void CMainWindow::RunLink()
+{
+	pLink = new CQnetLink;
+	if (! pLink->Init())
+		pLink->Process();
+	pLink->Shutdown();
+	delete pLink;
+	pLink = nullptr;
+}
+
+void CMainWindow::RunGate()
+{
+	pGate = new CQnetGateway;
+	if (! pGate->Init())
+		pGate->Process();
+	delete pGate;
+	pGate = nullptr;
+}
+
+void CMainWindow::SetState(const CFGDATA &data)
+{
+	if (data.eNetType == EQuadNetType::norouting) {
+		pLinkRadioButton->set_active(true);
+		pRouteRadioButton->set_sensitive(false);
+		if (pGate) {
+			pGate->keep_running = false;
+			futGate.get();
+		}
+		if (nullptr == pLink) {
+			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+		}
+	} else {
+		pRouteRadioButton->set_sensitive(true);
+		if (nullptr == pLink)
+			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+		if (nullptr == pGate)
+			futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
+	}
 }
 
 bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name)
@@ -94,6 +150,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pRouteEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteEntry_changed));
 	pEchoTestButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_EchoTestButton_toggled));
 	ReadRoutes();
+	SetState(cfgdata);
 
 	return false;
 }
@@ -194,7 +251,7 @@ void CMainWindow::on_EchoTestButton_toggled()
 {
 	if (pEchoTestButton->get_active()) {
 		// record the mic to a queue
-		AudioManager.RecordMicThread();
+		AudioManager.RecordMicThread(E_PTT_Type::echo, "CQCQCQ  ");
 		//std::cout << "AM.RecordMicThread() returned\n";
 	} else {
 		// play back the queue

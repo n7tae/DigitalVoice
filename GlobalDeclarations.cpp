@@ -1,7 +1,5 @@
-#pragma once
 /*
- *   Copyright (C) 2010-2013 by Jonathan Naylor G4KLX
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (c) 2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,26 +14,41 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-**/
+ */
 
-#include <netinet/in.h>
-#include <map>
-#include <string>
-#include "TCPReaderWriterClient.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <pwd.h>
+
+#include <iostream>
+
+#include "AudioManager.h"
+#include "Configure.h"
 #include "HostFile.h"
+#include "MainWindow.h"
+#include "SettingsDlg.h"
 
-class CDPlusAuthenticator {
-public:
-	CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address);
-	~CDPlusAuthenticator();
+CAudioManager AudioManager;
+CConfigure cfg;
+CHostFile gwys;
+CMainWindow MainWindow;
+Glib::RefPtr<Gtk::Application> theApp;
+CSettingsDlg SettingsDlg;
 
-	bool Process(HOST_MAP &gwy_map, const bool reflectors, const bool repeaters);
 
-private:
-	std::string m_loginCallsign;
-	std::string m_address;
-	CTCPReaderWriterClient client;
+bool GetCfgDirectory(std::string &dir)
+{
+	const char *homedir = getenv("HOME");
 
-	void Trim(std::string &s);
-	bool authenticate(HOST_MAP &gwy_map, const bool reflectors, const bool repeaters);
-};
+	if (NULL == homedir)
+		homedir = getpwuid(getuid())->pw_dir;
+
+	if (NULL == homedir) {
+		std::cerr << "ERROR: could not find a home directory!" << std::endl;
+		return true;
+	}
+	dir.assign(homedir);
+	dir.append("/.config/qndv/");
+	return false;
+}

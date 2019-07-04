@@ -106,8 +106,8 @@ private:
 	std::queue<T> queue;
 };
 
-typedef CTFrame<unsigned char, 9> CAMBEFrame;
-typedef CTQueue<CAMBEFrame> CAMBEQueue;
-typedef CTFrame<short int, 160> CAudioFrame;
-typedef CTQueue<CAudioFrame> CAudioQueue;
-typedef CTQueue<unsigned char> CSequenceQueue;
+using CAMBEFrame = CTFrame<unsigned char, 9>;
+using CAMBEQueue = CTQueue<CAMBEFrame>;
+using CAudioFrame = CTFrame<short int, 160>;
+using CAudioQueue = CTQueue<CAudioFrame>;
+using CSequenceQueue = CTQueue<unsigned char>;

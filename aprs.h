@@ -47,7 +47,7 @@ typedef struct rptr_tag{
 		//bool defined;
 		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
-		std::string desc1, desc2, desc, url, package_version;
+		std::string desc, url, package_version;
 	} mod;
 } SRPTR;
 
@@ -58,7 +58,7 @@ public:
 	~CAPRS();
 	SRPTR *m_rptr;
 	void SelectBand(unsigned short streamID);
-	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf);
+	void ProcessText(unsigned char seq, unsigned char *buf);
 	void Open(const std::string OWNER);
 	void Init();
 	void CloseSock();

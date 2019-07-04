@@ -16,10 +16,6 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <pwd.h>
 
 #include <iostream>
 #include <fstream>
@@ -27,23 +23,7 @@
 
 #include "Configure.h"
 
-CConfigure cfg;
-
-bool GetCfgDirectory(std::string &dir)
-{
-	const char *homedir = getenv("HOME");
-
-	if (NULL == homedir)
-		homedir = getpwuid(getuid())->pw_dir;
-
-	if (NULL == homedir) {
-		std::cerr << "ERROR: could not find a home directory!" << std::endl;
-		return true;
-	}
-	dir.assign(homedir);
-	dir.append("/.config/qndv/");
-	return false;
-}
+extern bool GetCfgDirectory(std::string &dir);
 
 void CConfigure::SetDefaultValues()
 {
@@ -51,29 +31,30 @@ void CConfigure::SetDefaultValues()
 	data.sName.clear();
 	data.sStation.clear();
 	data.sMessage.clear();
-	data.sLocation[0].clear();
-	data.sLocation[1].clear();
+	data.sLocation.clear();
 	data.sLinkAtStart.clear();
 	data.sURL.assign("https://github.com/n7tae/DigitalVoice");
 	data.bUseMyCall = false;
 	data.bMaintainLink = false;
 	data.bDPlusEnable  = false;
 	data.iBaudRate = 460800;
-	data.fLatitude = data.fLongitude = 0.0;
+	data.dLatitude = data.dLongitude = 0.0;
+	data.cModule = 'A';
 }
 
 void CConfigure::ReadData()
 {
-	SetDefaultValues();
 	std::string path;
-	if (GetCfgDirectory(path))
+	if (GetCfgDirectory(path)) {
+		SetDefaultValues();
 		return;
+	}
 
 	path.append("qndv.cfg");
 
 	std::ifstream cfg(path.c_str(), std::ifstream::in);
-	if (! cfg.is_open()) {	// this should not happen!
-		std::cerr << "Error opening " << path << '!' << std::endl;
+	if (! cfg.is_open()) {
+		SetDefaultValues();
 		return;
 	}
 
@@ -85,9 +66,10 @@ void CConfigure::ReadData()
 		if (0==strlen(key) || '#'==*key)
 			continue;	// skip comments
 		char *val = strtok(NULL, "\t\r");
-		if (*val && '\'')	// value is a quoted string
+		if (!val)
+			continue;
+		if (*val == '\'')	// value is a quoted string
 			val = strtok(val, "'");
-		//if (0==strlen(val)) continue;	// skip lines with no values
 
 		if (0 == strcmp(key, "MyCall")) {
 			data.sCallsign.assign(val);
@@ -101,7 +83,7 @@ void CConfigure::ReadData()
 			data.sMessage.assign(val);
 		} else if (0 == strcmp(key, "DPlusEnable")) {
 			data.bDPlusEnable = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "ReportStation")) {
+		} else if (0 == strcmp(key, "MaintainLink")) {
 			data.bMaintainLink = IS_TRUE(*val);
 		} else if (0 == strcmp(key, "BaudRate")) {
 			data.iBaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
@@ -115,17 +97,17 @@ void CConfigure::ReadData()
 			else
 				data.eNetType = EQuadNetType::ipv4only;
 		} else if (0 == strcmp(key, "Latitide")) {
-			data.fLatitude = std::stod(val);
+			data.dLatitude = std::stod(val);
 		} else if (0 == strcmp(key, "Longitude")) {
-			data.fLongitude = std::stod(val);
-		} else if (0 == strcmp(key, "Location1")) {
-			data.sLocation[0].assign(val);
-		} else if (0 == strcmp(key, "Location2")) {
-			data.sLocation[1].assign(val);
+			data.dLongitude = std::stod(val);
+		} else if (0 == strcmp(key, "Location")) {
+			data.sLocation.assign(val);
 		} else if (0 == strcmp(key, "URL")) {
 			data.sURL.assign(val);
 		} else if (0 == strcmp(key, "LinkAtStart")) {
 			data.sLinkAtStart.assign(val);
+		} else if (0 == strcmp(key, "Module")) {
+			data.cModule = *val;
 		}
 	}
 	cfg.close();
@@ -149,6 +131,7 @@ void CConfigure::WriteData()
 	file << "MyCall=" << data.sCallsign << std::endl;
 	file << "MyName=" << data.sName << std::endl;
 	file << "StationCall=" << data.sStation << std::endl;
+	file << "Module=" << data.cModule << std::endl;
 	file << "UseMyCall=" << (data.bUseMyCall ? "true" : "false") << std::endl;
 	file << "Message='" << data.sMessage << "'" << std::endl;
 	file << "QuadNetType=";
@@ -164,11 +147,10 @@ void CConfigure::WriteData()
 	file << "DPlusEnable=" << (data.bDPlusEnable ? "true" : "false") << std::endl;
 	file << "LinkAtStart='" << data.sLinkAtStart << "'" << std::endl;
 	file << "BaudRate=" << data.iBaudRate << std::endl;
-	file << "Latitude=" << data.fLatitude << std::endl;
-	file << "Longitude=" << data.fLongitude << std::endl;
-	file << "Location1='" << data.sLocation[0] << "'" << std::endl;
-	file << "Location2='" << data.sLocation[1] << "'" << std::endl;
-	file << "ReportStation=" << (data.bMaintainLink ? "true" : "false") << std::endl;
+	file << "Latitude=" << data.dLatitude << std::endl;
+	file << "Longitude=" << data.dLongitude << std::endl;
+	file << "Location='" << data.sLocation << "'" << std::endl;
+	file << "MaintainLink=" << (data.bMaintainLink ? "true" : "false") << std::endl;
 
 	file.close();
 }
@@ -176,35 +158,37 @@ void CConfigure::WriteData()
 void CConfigure::CopyFrom(const CFGDATA &from)
 {
 	data.sCallsign.assign(from.sCallsign);
-	data.sLocation[0].assign(from.sLocation[0]);
-	data.sLocation[1].assign(from.sLocation[1]);
+	data.sLocation.assign(from.sLocation);
 	data.sMessage.assign(from.sMessage);
 	data.sName.assign(from.sName);
 	data.sStation.assign(from.sStation);
+	data.cModule = from.cModule;
 	data.sURL.assign(from.sURL);
 	data.bDPlusEnable = from.bDPlusEnable;
+	data.sLinkAtStart.assign(from.sLinkAtStart);
 	data.bMaintainLink = from.bMaintainLink;
 	data.bUseMyCall = from.bUseMyCall;
 	data.iBaudRate = from.iBaudRate;
 	data.eNetType = from.eNetType;
-	data.fLatitude = from.fLatitude;
-	data.fLongitude = from.fLongitude;
+	data.dLatitude = from.dLatitude;
+	data.dLongitude = from.dLongitude;
 }
 
 void CConfigure::CopyTo(CFGDATA &to)
 {
 	to.sCallsign.assign(data.sCallsign);
-	to.sLocation[0].assign(data.sLocation[0]);
-	to.sLocation[1].assign(data.sLocation[1]);
+	to.sLocation.assign(data.sLocation);
 	to.sMessage.assign(data.sMessage);
 	to.sName.assign(data.sName);
 	to.sStation.assign(data.sStation);
+	to.cModule = data.cModule;
 	to.sURL.assign(data.sURL);
 	to.bDPlusEnable = data.bDPlusEnable;
+	to.sLinkAtStart.assign(data.sLinkAtStart);
 	to.bMaintainLink = data.bMaintainLink;
 	to.bUseMyCall = data.bUseMyCall;
 	to.iBaudRate = data.iBaudRate;
 	to.eNetType = data.eNetType;
-	to.fLatitude = data.fLatitude;
-	to.fLongitude = data.fLongitude;
+	to.dLatitude = data.dLatitude;
+	to.dLongitude = data.dLongitude;
 }

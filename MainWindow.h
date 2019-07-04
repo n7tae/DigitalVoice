@@ -19,7 +19,12 @@
 #pragma once
 
 #include <set>
+#include <future>
 #include <gtkmm.h>
+
+#include "Configure.h"
+#include "QnetGateway.h"
+#include "QnetLink.h"
 
 class CMainWindow
 {
@@ -41,8 +46,15 @@ private:
 	Gtk::TextView *pLogTextView;
 	// state data
 	std::set<Glib::ustring> routeset;
+	CFGDATA cfgdata;
 	// helpers
 	void ReadRoutes();
+	CQnetGateway *pGate;
+	CQnetLink *pLink;
+	std::future<void> futLink, futGate;
+	void SetState(const CFGDATA &data);
+	void RunLink();
+	void RunGate();
 	// events
 	void on_QuitButton_clicked();
 	void on_SettingsButton_clicked();
