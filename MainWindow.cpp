@@ -153,6 +153,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pRouteComboBox->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteComboBox_changed));
 	pRouteEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteEntry_changed));
 	pEchoTestButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_EchoTestButton_toggled));
+	pPTTButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_PTTButton_toggled));
 	ReadRoutes();
 	SetState(cfgdata);
 
@@ -259,4 +260,23 @@ void CMainWindow::on_EchoTestButton_toggled()
 		AudioManager.PlayAMBEDataThread();
 		//std::cout << "AM.PlayAMBEDataThread() returned\n";
 	}
+}
+
+void CMainWindow::Receive(bool is_rx)
+{
+	pPTTButton->set_sensitive(!is_rx);
+	pEchoTestButton->set_sensitive(!is_rx);
+	pQuickKeyButton->set_sensitive(!is_rx);
+}
+
+void CMainWindow::on_PTTButton_toggled()
+{
+	bool is_link = pLinkRadioButton->get_active();
+	if (pPTTButton->get_active()) {
+		if (is_link)
+			AudioManager.RecordMicThread(E_PTT_Type::link, "CQCQCQ  ");
+		else
+			AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
+	} else
+		AudioManager.KeyOff();
 }

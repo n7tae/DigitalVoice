@@ -24,9 +24,11 @@
 
 #include "Configure.h"
 #include "AudioManager.h"
+#include "MainWindow.h"
 
 // globals
 extern CConfigure cfg;
+extern CMainWindow MainWindow;
 
 void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcall)
 {
@@ -71,7 +73,40 @@ void CAudioManager::makeheader(CDVST &c, const std::string &urcall)
 	c.hdr.rpt2[7] = 'G';
 	memcpy(c.hdr.urcall, urcall.c_str(), urcall.size());
 	memcpy(c.hdr.mycall, data.sCallsign.c_str(), data.sCallsign.size());
+	memcpy(c.hdr.sfx, data.sName.c_str(), data.sName.size());
 	calcPFCS(c.hdr.flag, c.hdr.pfcs);
+}
+
+void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall)
+{
+	// add a header;
+	CDVST h;
+	makeheader(h, urcall);
+	CDVST v(h);
+	v.config = 0x20U;
+	bool header_not_sent = true;
+	do {
+		if (! AMBEDevice.IsOpen())
+			return;
+		if (AMBEDevice.GetData(v.vasd.voice))
+			break;
+		a2d_mutex.lock();
+		v.ctrl = a2d_queue.Pop();
+		a2d_mutex.unlock();
+		// CHANGE THIS!!!!!!!!!!!!!!!!!!!!!!
+		v.vasd.text[0] = 0x70U;
+		v.vasd.text[1] = 0x4FU;
+		v.vasd.text[2] = 0x93U;
+		////////////////////////////////////
+		mtx.lock();
+		if (header_not_sent) {
+			queue.Push(h);
+			header_not_sent = false;
+		}
+		queue.Push(v);
+		mtx.unlock();
+		//std::cout << "ctrl=" << std::hex << unsigned(v.ctrl) << std::dec << std::endl;
+	} while (0U == (v.ctrl & 0x40U));
 }
 
 void CAudioManager::GetPacket4Gateway(CDVST &packet)
@@ -205,37 +240,6 @@ void CAudioManager::ambedevice2ambequeue()
 	return;
 }
 
-void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall)
-{
-	// add a header;
-	CDVST h;
-	makeheader(h, urcall);
-	CDVST v(h);
-	v.config = 0x20U;
-	bool header_not_sent = true;
-	do {
-		if (! AMBEDevice.IsOpen())
-			return;
-		if (AMBEDevice.GetData(v.vasd.voice))
-			break;
-		a2d_mutex.lock();
-		v.ctrl = a2d_queue.Pop();
-		a2d_mutex.unlock();
-		// CHANGE THIS!!!!!!!!!!!!!!!!!!!!!!
-		v.vasd.text[0] = 0x70U;
-		v.vasd.text[1] = 0x4FU;
-		v.vasd.text[2] = 0x93U;
-		////////////////////////////////////
-		mtx.lock();
-		if (header_not_sent) {
-			queue.Push(h);
-			header_not_sent = false;
-		}
-		queue.Push(v);
-		mtx.unlock();
-	} while (0U == (v.ctrl & 0x40U));
-}
-
 void CAudioManager::PlayAMBEDataThread()
 {
 	hot_mic = false;
@@ -259,6 +263,7 @@ void CAudioManager::Link2AudioMgr(const CDVST &dvst)
 		if (0U==link_sid_in && 0U==(dvst.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
 			link_sid_in = dvst.streamid;
+			MainWindow.Receive(true);
 			// launch the audio processing threads
 			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
@@ -278,6 +283,7 @@ void CAudioManager::Link2AudioMgr(const CDVST &dvst)
 			p2.get();
 			p3.get();
 			link_sid_in = 0U;
+			MainWindow.Receive(false);
 		}
 	}
 }
@@ -289,6 +295,7 @@ void CAudioManager::Gateway2AudioMgr(const CDVST &dvst)
 		if (0U==gate_sid_in && 0U==(dvst.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
 			gate_sid_in = dvst.streamid;
+			MainWindow.Receive(true);
 			// launch the audio processing threads
 			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
@@ -308,6 +315,7 @@ void CAudioManager::Gateway2AudioMgr(const CDVST &dvst)
 			p2.get();
 			p3.get();
 			gate_sid_in = 0U;
+			MainWindow.Receive(false);
 		}
 	}
 }
@@ -493,4 +501,12 @@ void CAudioManager::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 	pfcs[1] = (unsigned char)((tmp >> 8) & 0xff);
 
 	return;
+}
+
+void CAudioManager::KeyOff()
+{
+	hot_mic = false;
+	r1.get();
+	r2.get();
+	r3.get();
 }

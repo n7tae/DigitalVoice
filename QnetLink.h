@@ -76,14 +76,13 @@ private:
 	void srv_close();
 	void print_status_file();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
-	void rptr_ack();
 	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
 
 	/* configuration data */
 	CFGDATA cfgdata;
 	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, status_file, qnvoice_file, announce_dir;
-	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
+	bool only_admin_login, only_link_unlink, qso_details, log_debug, announce;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
     int delay_before;
 	std::string link_at_startup;

@@ -120,29 +120,6 @@ bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAd
 	return found;
 }
 
-void CQnetLink::rptr_ack()
-{
-	static char mod_and_radio_id[22];
-
-	memset(mod_and_radio_id, ' ', 21);
-	mod_and_radio_id[21] = '\0';
-
-	mod_and_radio_id[0] = cfgdata.cModule;
-
-	if (to_remote_g2.is_connected) {
-		memcpy(mod_and_radio_id + 1, "LINKED TO ", 10);
-		memcpy(mod_and_radio_id + 11, to_remote_g2.to_call, CALL_SIZE);
-		mod_and_radio_id[11 + CALL_SIZE] = to_remote_g2.to_mod;
-	} else if (to_remote_g2.to_call[0] != '\0') {
-		memcpy(mod_and_radio_id + 1, "TRYING    ", 10);
-		memcpy(mod_and_radio_id + 11, to_remote_g2.to_call, CALL_SIZE);
-		mod_and_radio_id[11 + CALL_SIZE] = to_remote_g2.to_mod;
-	} else {
-		memcpy(mod_and_radio_id + 1, "NOT LINKED", 10);
-	}
-	std::cout << mod_and_radio_id << std::endl;
-}
-
 void CQnetLink::print_status_file()
 {
 	FILE *statusfp = fopen(status_file.c_str(), "w");
@@ -246,7 +223,6 @@ bool CQnetLink::Configure()
 	rmt_ref_port = 20001U;
 	rmt_xrf_port = 30001U;
 	rmt_dcs_port = 30051U;
-	bool_rptr_ack = true;
 	announce = true;
 	qso_details = false;
 	log_debug = false;
@@ -511,8 +487,6 @@ void CQnetLink::Process()
 	char call[CALL_SIZE + 1];
 	char ip[INET6_ADDRSTRLEN + 1];
 	bool found = false;
-
-	unsigned char your = 'C';
 
 	char cmd_2_dcs[23];
 	unsigned char dcs_seq = 0U;
@@ -1278,9 +1252,6 @@ void CQnetLink::Process()
 					call[8] = '\0';
 
 					if (dsvt.hdr.rpt1[7] == cfgdata.cModule) {
-						// save the first char of urcall
-						your = dsvt.hdr.urcall[0];	// used by rptr_ack
-
 						tracing.streamid = dsvt.streamid;
 						tracing.last_time = time(NULL);
 					}
@@ -1405,12 +1376,6 @@ void CQnetLink::Process()
 						if (dsvt.ctrl & 0x40U) {
 							if (qso_details)
 								printf("END from local g2: streamID=%04x\n", ntohs(dsvt.streamid));
-
-							if ('\0' == notify_msg[0]) {
-								if (bool_rptr_ack && ' ' != your)
-									rptr_ack();
-							}
-
 							tracing.streamid = 0x0;
 						}
 					}

@@ -34,6 +34,7 @@ public:
 
 	bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &);
 	void Run();
+	void Receive(bool is_rx);
 private:
 	// widgets
 	Gtk::Window *pWin;
@@ -62,4 +63,5 @@ private:
 	void on_RouteComboBox_changed();
 	void on_RouteEntry_changed();
 	void on_EchoTestButton_toggled();
+	void on_PTTButton_toggled();
 };

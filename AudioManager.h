@@ -46,6 +46,7 @@ public:
 	bool LinkQueueIsReady();
 	void GetPacket4Gateway(CDVST &packet);
 	void GetPacket4Link(CDVST &packet);
+	void KeyOff();
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;

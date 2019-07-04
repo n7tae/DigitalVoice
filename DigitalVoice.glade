@@ -282,6 +282,7 @@ Log message area...</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="toggled" handler="on_PTTButton_toggled" swapped="no"/>
               </object>
               <packing>
                 <property name="left_attach">1</property>
