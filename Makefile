@@ -12,7 +12,7 @@ SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-qndv :  $(OBJS) $(IRCOBJS)
+qdv :  $(OBJS) $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ `pkg-config --libs gtkmm-3.0` -lasound -pthread
 
 %.o : %.cpp DigitalVoice.glade
@@ -21,7 +21,7 @@ qndv :  $(OBJS) $(IRCOBJS)
 .PHONY : clean
 
 clean :
-	$(RM) $(OBJS) $(DEPS) qndv
+	$(RM) $(OBJS) $(DEPS) qdv
 
 -include $(DEPS)
 
@@ -32,4 +32,4 @@ hostfiles :
 	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt
 
 interactive :
-	GTK_DEBUG=interactive ./qndv
+	GTK_DEBUG=interactive ./qdv

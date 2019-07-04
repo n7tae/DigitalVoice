@@ -49,6 +49,6 @@ bool GetCfgDirectory(std::string &dir)
 		return true;
 	}
 	dir.assign(homedir);
-	dir.append("/.config/qndv/");
+	dir.append("/.config/qdv/");
 	return false;
 }

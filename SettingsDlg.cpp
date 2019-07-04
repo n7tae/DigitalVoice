@@ -54,7 +54,7 @@ CFGDATA *CSettingsDlg::Show()
 		CFGDATA newstate;			// the user clicked okay, time to look at what's changed
 		SaveWidgetStates(newstate); // newstate is now the current contents of the Settings Dialog
 		cfg.CopyFrom(newstate);		// and it is now in the cfg object
-		cfg.WriteData();			// and it's saved in ~/.config/qndv/qndv.cfg
+		cfg.WriteData();			// and it's saved in ~/.config/qdv/qdv.cfg
 
 		// reconfigure current environment if anything changed
 		if (data.bDPlusEnable != newstate.bDPlusEnable)

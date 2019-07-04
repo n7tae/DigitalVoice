@@ -50,7 +50,7 @@ void CConfigure::ReadData()
 		return;
 	}
 
-	path.append("qndv.cfg");
+	path.append("qdv.cfg");
 
 	std::ifstream cfg(path.c_str(), std::ifstream::in);
 	if (! cfg.is_open()) {
@@ -119,7 +119,7 @@ void CConfigure::WriteData()
 	std::string path;
 	if (GetCfgDirectory(path))
 		return;
-	path.append("/qndv.cfg");
+	path.append("qdv.cfg");
 
 	// directory exists, now make the file
 	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);

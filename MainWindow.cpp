@@ -38,6 +38,7 @@ extern CHostFile gwys;
 extern Glib::RefPtr<Gtk::Application> theApp;
 extern CAudioManager AudioManager;
 extern CConfigure cfg;
+extern bool GetCfgDirectory(std::string &path);
 
 
 CMainWindow::CMainWindow() :
@@ -176,14 +177,11 @@ void CMainWindow::on_SettingsButton_clicked()
 
 void CMainWindow::ReadRoutes()
 {
-	const char *homedir = getenv("HOME");
-	if (NULL == homedir)
-		homedir = getpwuid(getuid())->pw_dir;
+	std::string path;
 
-	if (homedir) {
-		std::string filename(homedir);
-		filename.append("/.config/qndv/routes.cfg");
-		std::ifstream file(filename.c_str(), std::ifstream::in);
+	if ( !GetCfgDirectory(path)) {
+		path.append("routes.cfg");
+		std::ifstream file(path.c_str(), std::ifstream::in);
 		if (file.is_open()) {
 			char line[128];
 			while (!file.eof()) {

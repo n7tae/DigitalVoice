@@ -975,7 +975,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 	}
 }
 
-void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
+void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 {
 	static unsigned char lastctrl = 20U;
 	static std::string superframe;
@@ -1032,7 +1032,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 				if (diff > 1 && diff < 6) {	// fill up to 5 missing voice frames
 					if (LOG_DEBUG)
 						fprintf(stderr, "Warning: inserting %d missing voice frame(s)\n", diff - 1);
-					CDSVT dsvt;
+					CDVST dsvt;
 					memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
 					while (--diff > 0) {
 						lastctrl = (lastctrl + 1U) % 21U;
@@ -1114,14 +1114,14 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 	}
 }
 
-void CQnetGateway::ProcessAudio(const CDSVT *packet)
+void CQnetGateway::ProcessAudio(const CDVST *packet)
 {
 	char temp_mod;
 	char temp_radio_user[9];
 	//char tempfile[FILENAME_MAX];
 	std::string arearp_cs, ip, zonerp_cs;
 
-	CDSVT dsvt;
+	CDVST dsvt;
 	memcpy(dsvt.title, packet, (packet->config==0x10U) ? 56 : 27);
 
 	if (0 == memcmp(dsvt.title, "DSVT", 4)) {
@@ -1481,7 +1481,7 @@ void CQnetGateway::Process()
 			if (g2_sock[i] < 0)
 				continue;
 			if (keep_running && FD_ISSET(g2_sock[i], &fdset)) {
-				CDSVT dsvt;
+				CDVST dsvt;
 				socklen_t fromlen = sizeof(struct sockaddr_storage);
 				ssize_t g2buflen = recvfrom(g2_sock[i], dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
 				if (LOG_QSO && 4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4))
@@ -1494,7 +1494,7 @@ void CQnetGateway::Process()
 
 		// process packets coming from the audio module
 		while (keep_running && AudioManager.GatewayQueueIsReady()) {
-			CDSVT packet;
+			CDVST packet;
 			AudioManager.GetPacket4Gateway(packet);
 			ProcessAudio(&packet);
 		}
@@ -1724,7 +1724,7 @@ void CQnetGateway::APRSBeaconThread()
 
 void CQnetGateway::PlayFileThread(SECHO &edata)
 {
-	CDSVT dsvt;
+	CDVST dsvt;
 	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
 	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 

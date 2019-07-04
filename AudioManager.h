@@ -28,24 +28,24 @@
 #include "QnetTypeDefs.h"
 #include "Random.h"
 
-using PacketQueue = CTQueue<CDSVT>;
+using PacketQueue = CTQueue<CDVST>;
 
 enum class E_PTT_Type { echo, gateway, link };
 
 class CAudioManager
 {
 public:
-	CAudioManager() : hot_mic(false), gwy_sid_in(0U), link_sid_in(0U) {}
+	CAudioManager() : hot_mic(false), gate_sid_in(0U), link_sid_in(0U) {}
 	~CAudioManager() {}
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);
 	void PlayAMBEDataThread();	// for Echo
-	void Gateway2AudioMgr(const CDSVT &dvst);
-	void Link2AudioMgr(const CDSVT &dvst);
+	void Gateway2AudioMgr(const CDVST &dvst);
+	void Link2AudioMgr(const CDVST &dvst);
 	bool GatewayQueueIsReady();
 	bool LinkQueueIsReady();
-	void GetPacket4Gateway(CDSVT &packet);
-	void GetPacket4Link(CDSVT &packet);
+	void GetPacket4Gateway(CDVST &packet);
+	void GetPacket4Link(CDVST &packet);
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;
@@ -53,7 +53,7 @@ public:
 private:
 	// data
 	std::atomic<bool> hot_mic;
-	unsigned short gwy_sid_in, link_sid_in;
+	std::atomic<unsigned short> gate_sid_in, link_sid_in;
 	CAudioQueue audio_queue;
 	CAMBEQueue ambe_queue;
 	PacketQueue gateway_queue, link_queue;
@@ -73,5 +73,5 @@ private:
 	void ambedevice2audioqueue();
 	void ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall);
 	void play_audio_queue();
-	void makeheader(CDSVT &c, const std::string &urcall);
+	void makeheader(CDVST &c, const std::string &urcall);
 };

@@ -42,7 +42,7 @@
 
 typedef struct refdsvt_tag {
 	unsigned char head[2];
-	CDSVT dsvt;
+	CDVST dsvt;
 } SREFDSVT;
 
 typedef struct link_to_remote_g2_tag {
@@ -99,7 +99,7 @@ private:
 		unsigned short xrf_streamid;		// streamid from xrf
 		unsigned short rptr_streamid[2];	// generated streamid to rptr(s)
 	} brd_from_xrf;
-	CDSVT from_xrf_torptr_brd;
+	CDVST from_xrf_torptr_brd;
 	short brd_from_xrf_idx;
 
 	// broadcast for data arriving from local rptr to xrf
@@ -107,7 +107,7 @@ private:
 		unsigned short from_rptr_streamid;
 		unsigned short to_rptr_streamid[2];
 	} brd_from_rptr;
-	CDSVT fromrptr_torptr_brd;
+	CDVST fromrptr_torptr_brd;
 	short brd_from_rptr_idx;
 
 	struct tracing_tag {

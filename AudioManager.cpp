@@ -53,11 +53,11 @@ void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcal
 	}
 }
 
-void CAudioManager::makeheader(CDSVT &c, const std::string &urcall)
+void CAudioManager::makeheader(CDVST &c, const std::string &urcall)
 {
 	CFGDATA data;
 	cfg.CopyTo(data);
-	memset(c.title, 0, sizeof(CDSVT));
+	memset(c.title, 0, sizeof(CDVST));
 	memcpy(c.title, "DSVT", 4);
 	c.config = 0x10U;
 	c.id = 0x20U;
@@ -74,14 +74,14 @@ void CAudioManager::makeheader(CDSVT &c, const std::string &urcall)
 	calcPFCS(c.hdr.flag, c.hdr.pfcs);
 }
 
-void CAudioManager::GetPacket4Gateway(CDSVT &packet)
+void CAudioManager::GetPacket4Gateway(CDVST &packet)
 {
 	gateway_mutex.lock();
 	packet = gateway_queue.Pop();
 	gateway_mutex.unlock();
 }
 
-void CAudioManager::GetPacket4Link(CDSVT &packet)
+void CAudioManager::GetPacket4Link(CDVST &packet)
 {
 	link_mutex.lock();
 	packet = link_queue.Pop();
@@ -208,9 +208,9 @@ void CAudioManager::ambedevice2ambequeue()
 void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall)
 {
 	// add a header;
-	CDSVT h;
+	CDVST h;
 	makeheader(h, urcall);
-	CDSVT v(h);
+	CDVST v(h);
 	v.config = 0x20U;
 	bool header_not_sent = true;
 	do {
@@ -239,6 +239,8 @@ void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, 
 void CAudioManager::PlayAMBEDataThread()
 {
 	hot_mic = false;
+	r1.get();
+	r2.get();
 	r3.get();
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -250,30 +252,29 @@ void CAudioManager::PlayAMBEDataThread()
 	p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
 }
 
-void CAudioManager::Link2AudioMgr(const CDSVT &dvst)
+void CAudioManager::Link2AudioMgr(const CDVST &dvst)
 {
-	if (AMBEDevice.IsOpen()) {
-		if (dvst.config == 0x10U) {
-			if (link_sid_in == 0U) {
-				link_sid_in = dvst.streamid;
+	if (AMBEDevice.IsOpen() && 0U==gate_sid_in) {	// don't do anythings if the gateway is currently providing audio
 
-				p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
-				p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
-				p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
-			} else
-				link_sid_in = dvst.streamid;
-			std::cout << "header streamid=" << std::hex << ntohs(dvst.streamid) << std::dec << std::endl;
-			return;
+		if (0U==link_sid_in && 0U==(dvst.ctrl & 0x40U)) {	// don't start if it's the last audio frame
+			// here comes a new stream
+			link_sid_in = dvst.streamid;
+			// launch the audio processing threads
+			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
+			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
+			p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
 		}
 		if (dvst.streamid != link_sid_in)
 			return;
+		if (0x20U != dvst.config)
+			return;	// we only need audio frames at this point
 		CAMBEFrame frame(dvst.vasd.voice);
 		frame.SetSequence(dvst.ctrl);
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
 		if (dvst.ctrl & 0x40U) {
-			p1.get();
+			p1.get();	// we're done, get the finished threads and reset the current stream id
 			p2.get();
 			p3.get();
 			link_sid_in = 0U;
@@ -281,32 +282,32 @@ void CAudioManager::Link2AudioMgr(const CDSVT &dvst)
 	}
 }
 
-void CAudioManager::Gateway2AudioMgr(const CDSVT &dvst)
+void CAudioManager::Gateway2AudioMgr(const CDVST &dvst)
 {
-	if (dvst.config == 0x10U) {
-		if (gwy_sid_in == 0U) {
-			gwy_sid_in = dvst.streamid;
+	if (AMBEDevice.IsOpen() && 0U==link_sid_in) {	// don't do anythings if the link is currently providing audio
 
+		if (0U==gate_sid_in && 0U==(dvst.ctrl & 0x40U)) {	// don't start if it's the last audio frame
+			// here comes a new stream
+			gate_sid_in = dvst.streamid;
+			// launch the audio processing threads
 			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
 			p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
-		} else
-			gwy_sid_in = dvst.streamid;
-		return;
-	}
-	if (AMBEDevice.IsOpen()) {
-		if (dvst.streamid != gwy_sid_in)
+		}
+		if (dvst.streamid != gate_sid_in)
 			return;
+		if (0x20U != dvst.config)
+			return;	// we only need audio frames at this point
 		CAMBEFrame frame(dvst.vasd.voice);
 		frame.SetSequence(dvst.ctrl);
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
 		if (dvst.ctrl & 0x40U) {
-			p1.get();
+			p1.get();	// we're done, get the finished threads and reset the current stream id
 			p2.get();
 			p3.get();
-			gwy_sid_in = 0U;
+			gate_sid_in = 0U;
 		}
 	}
 }

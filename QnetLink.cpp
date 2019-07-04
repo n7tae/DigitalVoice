@@ -756,7 +756,7 @@ void CQnetLink::Process()
 					}
 				}
 
-				CDSVT dsvt;
+				CDVST dsvt;
 				memcpy(dsvt.title, buf, length);	// copy to struct
 
 				/* process header */
@@ -1264,7 +1264,7 @@ void CQnetLink::Process()
 		}
 
 		while (keep_running && AudioManager.LinkQueueIsReady()) {
-			CDSVT dsvt;
+			CDVST dsvt;
 			AudioManager.GetPacket4Link(dsvt);
 
 			if (0==memcmp(dsvt.title,"DSVT", 4U) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U)) {

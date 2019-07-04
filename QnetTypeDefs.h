@@ -19,7 +19,7 @@
 
 // for the g2 external port and between QnetGateway programs
 #pragma pack(push, 1)
-class CDSVT
+class CDVST
 {
 public:
 	unsigned char title[4];	//  0   "DSVT"

@@ -38,7 +38,7 @@ typedef struct gate_to_remote_g2_tag {
 
 typedef struct torepeater_tag {
 	// help with header re-generation
-	CDSVT saved_hdr; // repeater format
+	CDVST saved_hdr; // repeater format
 	CSockAddress saved_addr;
 
 	unsigned short streamid;
@@ -113,7 +113,7 @@ private:
 	// RPTR defined in aprs.h
 	SRPTR rptr;
 
-	CDSVT recbuf; // 56 or 27, max is 56
+	CDVST recbuf; // 56 or 27, max is 56
 
 	// the streamids going to remote Gateways from each local module
 	STOREMOTEG2 to_remote_g2;
@@ -126,7 +126,7 @@ private:
 	// must be fed into our local repeater modules.
 	STOREPEATER toRptr;
 
-	CDSVT end_of_audio;
+	CDVST end_of_audio;
 
 	// send packets to g2_link
 	struct sockaddr_in plug;
@@ -161,8 +161,8 @@ private:
 	void APRSBeaconThread();
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, unsigned short sid);
-	void ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf);
-	void ProcessAudio(const CDSVT *packet);
+	void ProcessG2(const ssize_t g2buflen, const CDVST &g2buf);
+	void ProcessAudio(const CDVST *packet);
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
