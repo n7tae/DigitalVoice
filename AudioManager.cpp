@@ -22,9 +22,9 @@
 
 #include <iostream>
 
-#include "Configure.h"
 #include "AudioManager.h"
 #include "MainWindow.h"
+#include "Configure.h"
 
 // globals
 extern CConfigure cfg;
@@ -55,10 +55,17 @@ void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcal
 	}
 }
 
-void CAudioManager::makeheader(CDVST &c, const std::string &urcall)
+void CAudioManager::makeheader(CDVST &c, const std::string &urcall, unsigned char *ut, unsigned char *uh)
 {
-	CFGDATA data;
-	cfg.CopyTo(data);
+	// this also makes the scrambled text message and header for streaming into the slow data
+	// only the 1-byte header need to be interleaved before and between each 5 byte set
+	const unsigned char scramble[5] = { 0x4FU, 0x93U, 0x70U, 0x4FU, 0x93U };
+	CFGDATA cfgdata;
+	cfg.CopyTo(cfgdata);
+	cfgdata.sMessage.resize(20, ' ');
+	for (int i=0; i<20; i++) {
+		ut[i] = scramble[i%5] ^ cfgdata.sMessage.at(i);
+	}
 	memset(c.title, 0, sizeof(CDVST));
 	memcpy(c.title, "DSVT", 4);
 	c.config = 0x10U;
@@ -67,21 +74,27 @@ void CAudioManager::makeheader(CDVST &c, const std::string &urcall)
 	c.streamid = htons(random.NewStreamID());
 	c.ctrl = 0x80U;
 	memset(c.hdr.flag+3, ' ', 36);
-	memcpy(c.hdr.rpt1, data.sStation.c_str(), data.sStation.size());
+	memcpy(c.hdr.rpt1, cfgdata.sStation.c_str(), cfgdata.sStation.size());
 	memcpy(c.hdr.rpt2, c.hdr.rpt1, 8);
-	c.hdr.rpt1[7] = data.cModule;
+	c.hdr.rpt1[7] = cfgdata.cModule;
 	c.hdr.rpt2[7] = 'G';
 	memcpy(c.hdr.urcall, urcall.c_str(), urcall.size());
-	memcpy(c.hdr.mycall, data.sCallsign.c_str(), data.sCallsign.size());
-	memcpy(c.hdr.sfx, data.sName.c_str(), data.sName.size());
+	memcpy(c.hdr.mycall, cfgdata.sCallsign.c_str(), cfgdata.sCallsign.size());
+	memcpy(c.hdr.sfx, cfgdata.sName.c_str(), cfgdata.sName.size());
 	calcPFCS(c.hdr.flag, c.hdr.pfcs);
+	for (int i=0; i<41; i++) {
+		uh[i] = scramble[i%5] ^ *(c.hdr.flag + i);
+	}
 }
 
 void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall)
 {
+	unsigned count = 0;
 	// add a header;
+	unsigned char ut[20];
+	unsigned char uh[41];
 	CDVST h;
-	makeheader(h, urcall);
+	makeheader(h, urcall, ut, uh);
 	CDVST v(h);
 	v.config = 0x20U;
 	bool header_not_sent = true;
@@ -93,11 +106,7 @@ void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, 
 		a2d_mutex.lock();
 		v.ctrl = a2d_queue.Pop();
 		a2d_mutex.unlock();
-		// CHANGE THIS!!!!!!!!!!!!!!!!!!!!!!
-		v.vasd.text[0] = 0x70U;
-		v.vasd.text[1] = 0x4FU;
-		v.vasd.text[2] = 0x93U;
-		////////////////////////////////////
+		SlowData(count++, ut, uh, v);
 		mtx.lock();
 		if (header_not_sent) {
 			queue.Push(h);
@@ -107,6 +116,79 @@ void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, 
 		mtx.unlock();
 		//std::cout << "ctrl=" << std::hex << unsigned(v.ctrl) << std::dec << std::endl;
 	} while (0U == (v.ctrl & 0x40U));
+}
+
+void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDVST &d)
+{
+	const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+	const unsigned char empty[3] = { 0x16U, 0x29U, 0xF5U };
+	unsigned ctrl = d.ctrl & 0x1FU;
+	if (ctrl) {
+		const unsigned sf = count / 21;
+		const unsigned cd2 = ctrl / 2;
+		if (sf % 70) {
+			// header
+			switch (ctrl) {
+				case 1:
+				case 3:
+				case 5:
+				case 7:
+				case 9:
+				case 11:
+				case 13:
+				case 15:
+					d.vasd.text[0] = 0x70U ^ 0x55U;
+					d.vasd.text[1] = uh[5*cd2];
+					d.vasd.text[2] = uh[5*cd2+1];
+					break;
+				case 2:
+				case 4:
+				case 6:
+				case 8:
+				case 10:
+				case 12:
+				case 14:
+				case 16:
+					d.vasd.text[0] = uh[5*cd2-3];
+					d.vasd.text[1] = uh[5*cd2-2];
+					d.vasd.text[2] = uh[5*cd2-1];
+					break;
+				case 17:
+					d.vasd.text[0] = 0x70U ^ 0x51U;
+					d.vasd.text[1] = uh[40];
+					d.vasd.text[2] = empty[2];
+					break;
+				default:
+					memcpy(d.vasd.text, empty, 3);
+					break;
+			}
+		} else {
+			// text message
+			switch (ctrl) {
+				case 1:
+				case 3:
+				case 5:
+				case 7:
+					d.vasd.text[0] = 0x70U ^ ('@'+cd2);
+					d.vasd.text[1] = ut[5*cd2];
+					d.vasd.text[2] = ut[5*cd2+1];
+					break;
+				case 2:
+				case 4:
+				case 6:
+				case 8:
+					d.vasd.text[0] = ut[5*cd2-3];
+					d.vasd.text[1] = ut[5*cd2-2];
+					d.vasd.text[2] = ut[5*cd2-1];
+					break;
+				default:
+					memcpy(d.vasd.text, empty, 3);
+					break;
+			}
+		}
+	} else {
+		memcpy(d.vasd.text, sync, 3);
+	}
 }
 
 void CAudioManager::GetPacket4Gateway(CDVST &packet)

@@ -74,5 +74,6 @@ private:
 	void ambedevice2audioqueue();
 	void ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall);
 	void play_audio_queue();
-	void makeheader(CDVST &c, const std::string &urcall);
+	void makeheader(CDVST &c, const std::string &urcall, unsigned char *ut, unsigned char *uh);
+	void SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDVST &v);
 };
