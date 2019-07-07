@@ -102,8 +102,10 @@ void CMainWindow::SetState(const CFGDATA &data)
 		}
 	} else {
 		pRouteRadioButton->set_sensitive(true);
-		if (nullptr == pLink)
-			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+		if (pLink) {
+			pLink->keep_running = false;
+			futLink.get();
+		}
 		if (nullptr == pGate)
 			futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
 	}

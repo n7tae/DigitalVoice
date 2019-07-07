@@ -27,9 +27,9 @@
 #include <netinet/in.h>
 
 #include "QnetTypeDefs.h"
-#include "SEcho.h"
 #include "Random.h"
 #include "SockAddress.h"
+#include "UnixDgramSocket.h"
 #include "Configure.h"
 
 /*** version number must be x.xx ***/
@@ -40,10 +40,10 @@
 #define TIMEOUT 50
 #define LH_MAX_SIZE 39
 
-typedef struct refdsvt_tag {
+typedef struct refdvst_tag {
 	unsigned char head[2];
-	CDVST dsvt;
-} SREFDSVT;
+	CDVST dvst;
+} SREFDVST;
 
 typedef struct link_to_remote_g2_tag {
     char to_call[CALL_SIZE + 1];
@@ -64,8 +64,6 @@ public:
 	bool Init();
 	void Process();
 	void Shutdown();
-	void Link(const char *call, const char to_mod);
-	void Unlink();
 	std::atomic<bool> keep_running;
 private:
 	// functions
@@ -77,7 +75,8 @@ private:
 	void print_status_file();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
 	void PlayAudioNotifyThread(char *msg);
-	void AudioNotifyThread(SECHO &edata);
+	void Link(const char *call, const char to_mod);
+	void Unlink();
 
 	/* configuration data */
 	CFGDATA cfgdata;
@@ -93,22 +92,6 @@ private:
 
 	STOREMOTE to_remote_g2;
 
-	// broadcast for data arriving from xrf to local rptr
-	struct brd_from_xrf_tag {
-		unsigned short xrf_streamid;		// streamid from xrf
-		unsigned short rptr_streamid[2];	// generated streamid to rptr(s)
-	} brd_from_xrf;
-	CDVST from_xrf_torptr_brd;
-	short brd_from_xrf_idx;
-
-	// broadcast for data arriving from local rptr to xrf
-	struct brd_from_rptr_tag {
-		unsigned short from_rptr_streamid;
-		unsigned short to_rptr_streamid[2];
-	} brd_from_rptr;
-	CDVST fromrptr_torptr_brd;
-	short brd_from_rptr_idx;
-
 	struct tracing_tag {
 		unsigned short streamid;
 		time_t last_time;	// last time RF user talked
@@ -117,6 +100,10 @@ private:
 	// input from remote
 	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
 	CSockAddress fromDst4;
+
+	// unix socket to the audio unit
+	CUnixDgramReader AU2Link;
+	CUnixDgramWriter Link2AU;
 
 	// input from our own local repeater
 	struct sockaddr_in fromRptr;
@@ -133,6 +120,4 @@ private:
 	unsigned short old_sid;
 
 	CRandom Random;
-
-	std::vector<unsigned long> speak;
 };

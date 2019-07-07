@@ -45,12 +45,10 @@
 
 #include "IRCutils.h"
 #include "QnetGateway.h"
-#include "AudioManager.h"
 #include "Configure.h"
 
 #define MODULE 'D'
 
-extern CAudioManager AudioManager;
 extern bool GetCfgDirectory(std::string &dir);
 
 
@@ -290,7 +288,6 @@ bool CQnetGateway::Configure()
 	std::string path;
 	if (GetCfgDirectory(path)) {
 		FILE_STATUS.assign(path + "status");
-		FILE_QNVOICE_FILE.assign(path + "qnvoice.txt");
 	}
 
 	// timing
@@ -348,18 +345,11 @@ void CQnetGateway::GetIRCDataThread(const int i)
 			if (not_announced)
 				ch = MODULE;
 			if (ch) {
-				// we need to announce, but can we?
-				struct stat sbuf;
-				if (stat(FILE_QNVOICE_FILE.c_str(), &sbuf)) {
-					// yes, there is no FILE_QNVOICE_FILE, so create it
-					FILE *fp = fopen(FILE_QNVOICE_FILE.c_str(), "w");
-					if (fp) {
-						fprintf(fp, "%c_connected2network.dat_WELCOME_TO_QUADNET", ch);
-						fclose(fp);
-						not_announced = false;
-					} else
-						fprintf(stderr, "could not open %s\n", FILE_QNVOICE_FILE.c_str());
-				}
+				// we need to announce quadnet
+				char str[56];
+				memset(str, 0, 56);
+				snprintf(str, 56, "PLAY%c_connected2network.dat_WELCOME_TO_QUADNET", ch);
+				Gate2AU.Write(str, 56);
 			}
 			if (doFind) {
 				printf("Finding Routes for...\n");
@@ -613,7 +603,7 @@ void CQnetGateway::ProcessTimeouts()
 				end_of_audio.streamid = toRptr.streamid;
 				end_of_audio.ctrl = toRptr.sequence | 0x40;
 
-				AudioManager.Gateway2AudioMgr(end_of_audio);
+				Gate2AU.Write(end_of_audio.title, 27);
 
 
 				toRptr.streamid = 0;
@@ -991,7 +981,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=[%s]:%u\n", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, fromDstar.GetAddress(), fromDstar.GetPort());
 					}
 
-					AudioManager.Gateway2AudioMgr(g2buf);
+					Gate2AU.Write(g2buf.title, 56);
 					lastctrl = 20U;
 
 					memcpy(toRptr.saved_hdr.title, g2buf.title, 56);
@@ -1044,14 +1034,14 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 							const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 							memcpy(dsvt.vasd.voice, sync, 12U);
 						}
-						AudioManager.Gateway2AudioMgr(dsvt);
+						Gate2AU.Write(dsvt.title, 27);
 					}
 				}
 
 				if (((lastctrl + 1U) % 21U == (0x3FU & g2buf.ctrl)) || (0x40U & g2buf.ctrl)) {
 					// no matter what, we will send this on if it is the closing frame
 					lastctrl = (0x3FU & g2buf.ctrl);
-					AudioManager.Gateway2AudioMgr(g2buf);
+					Gate2AU.Write(g2buf.title, 27);
 				} else {
 					if (LOG_DEBUG)
 						fprintf(stderr, "Warning: Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);
@@ -1092,10 +1082,10 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 							printf("Re-generating header for streamID=%04x\n", ntohs(g2buf.streamid));
 
 							/* re-generate/send the header */
-							AudioManager.Gateway2AudioMgr(toRptr.saved_hdr);
+							Gate2AU.Write(toRptr.saved_hdr.title, 56);
 
 							/* send this audio packet to repeater */
-							AudioManager.Gateway2AudioMgr(g2buf);
+							Gate2AU.Write(g2buf.title, 27);
 
 							/* make sure that any more audio arriving will be accepted */
 							toRptr.streamid = g2buf.streamid;
@@ -1365,11 +1355,10 @@ void CQnetGateway::ProcessAudio(const CDVST *packet)
 
 							if (playNotInCache) {
 								// Not in cache, please try again!
-								FILE *fp = fopen(FILE_QNVOICE_FILE.c_str(), "w");
-								if (fp) {
-									fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt.lh_rpt1[7]);
-									fclose(fp);
-								}
+								char str[56];
+								memset(str, 0, 56);
+								snprintf(str, 56, "PLAY%c_notincache.dat_NOT_IN_CACHE", band_txt.lh_rpt1[7]);
+								Gate2AU.Write(str, 56);
 								playNotInCache = false;
 							}
 
@@ -1471,6 +1460,7 @@ void CQnetGateway::Process()
 			AddFDSet(max_nfds, g2_sock[0], &fdset);
 		if (g2_sock[1] >= 0)
 			AddFDSet(max_nfds, g2_sock[1], &fdset);
+		AddFDSet(max_nfds, AU2Gate.GetFD(), &fdset);
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; // 20 ms
@@ -1493,10 +1483,11 @@ void CQnetGateway::Process()
 		}
 
 		// process packets coming from the audio module
-		while (keep_running && AudioManager.GatewayQueueIsReady()) {
+		while (keep_running && FD_ISSET(AU2Gate.GetFD(), &fdset)) {
 			CDVST packet;
-			AudioManager.GetPacket4Gateway(packet);
+			AU2Gate.Read(packet.title, 56);
 			ProcessAudio(&packet);
+			FD_CLR(AU2Gate.GetFD(), &fdset);
 		}
 	}
 
@@ -1509,7 +1500,6 @@ void CQnetGateway::Process()
 		if (ii[i])
 			irc_data_future[i].get();
 	}
-	return;
 }
 
 void CQnetGateway::compute_aprs_hash()
@@ -1533,8 +1523,6 @@ void CQnetGateway::compute_aprs_hash()
 	}
 	printf("aprs hash code=[%d] for %s\n", hash, OWNER.c_str());
 	rptr.aprs_hash = hash;
-
-	return;
 }
 
 void CQnetGateway::APRSBeaconThread()
@@ -1719,141 +1707,6 @@ void CQnetGateway::APRSBeaconThread()
 		}
 	}
 	printf("APRS beacon thread exiting...\n");
-	return;
-}
-
-void CQnetGateway::PlayFileThread(SECHO &edata)
-{
-	CDVST dsvt;
-	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
-	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-
-	// struct sigaction act;
-	// act.sa_handler = sigCatch;
-	// sigemptyset(&act.sa_mask);
-	// act.sa_flags = SA_RESTART;
-	// if (sigaction(SIGTERM, &act, 0) != 0) {
-	// 	printf("sigaction-TERM failed, error=%d\n", errno);
-	// 	return;
-	// }
-	// if (sigaction(SIGINT, &act, 0) != 0) {
-	// 	printf("sigaction-INT failed, error=%d\n", errno);
-	// 	return;
-	// }
-	// if (sigaction(SIGPIPE, &act, 0) != 0) {
-	// 	printf("sigaction-PIPE failed, error=%d\n", errno);
-	// 	return;
-	// }
-
-	printf("File to playback:[%s]\n", edata.file);
-
-	struct stat sbuf;
-	if (stat(edata.file, &sbuf)) {
-		fprintf(stderr, "Can't stat %s\n", edata.file);
-		return;
-	}
-
-    if (sbuf.st_size < 65) {
-        fprintf(stderr, "Error %s file is too small!\n", edata.file);
-        return;
-    }
-
-	if ((sbuf.st_size - 56) % 9)
-		printf("Warning %s file size of %ld is unexpected!\n", edata.file, sbuf.st_size);
-	int ambeblocks = ((int)sbuf.st_size - 56) / 9;
-
-	FILE *fp = fopen(edata.file, "rb");
-	if (!fp) {
-		fprintf(stderr, "Failed to open file %s\n", edata.file);
-		return;
-	}
-
-    if (1 != fread(dsvt.title, 56, 1, fp)) {
-        fprintf(stderr, "PlayFile Error: Can't read header from %s\n", edata.file);
-        fclose(fp);
-        return;
-    }
-	int mod = dsvt.hdr.rpt1[7] - 'A';
-	if (mod<0 || mod>2) {
-		fprintf(stderr, "unknown module suffix '%s'\n", dsvt.hdr.rpt1);
-		return;
-	}
-
-	sleep(TIMING_PLAY_WAIT);
-
-	// reformat and send it
-	memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
-	calcPFCS(dsvt.title, 56);
-
-	AudioManager.Gateway2AudioMgr(dsvt);
-
-	dsvt.config = 0x20U;
-
-	for (int i=0; i<ambeblocks; i++) {
-
-		int nread = fread(dsvt.vasd.voice, 9, 1, fp);
-		if (nread == 1) {
-			dsvt.ctrl = (unsigned char)(i % 21);
-			if (0x0U == dsvt.ctrl) {
-				memcpy(dsvt.vasd.text, sdsync, 3);
-			} else {
-				switch (i) {
-					case 1:
-						dsvt.vasd.text[0] = '@' ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[0] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[1] ^ 0x93;
-						break;
-					case 2:
-						dsvt.vasd.text[0] = edata.message[2] ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[3] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[4] ^ 0x93;
-						break;
-					case 3:
-						dsvt.vasd.text[0] = 'A' ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[5] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[6] ^ 0x93;
-						break;
-					case 4:
-						dsvt.vasd.text[0] = edata.message[7] ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[8] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[9] ^ 0x93;
-						break;
-					case 5:
-						dsvt.vasd.text[0] = 'B' ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[10] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[11] ^ 0x93;
-						break;
-					case 6:
-						dsvt.vasd.text[0] = edata.message[12] ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[13] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[14] ^ 0x93;
-						break;
-					case 7:
-						dsvt.vasd.text[0] = 'C' ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[15] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[16] ^ 0x93;
-						break;
-					case 8:
-						dsvt.vasd.text[0] = edata.message[17] ^ 0x70;
-						dsvt.vasd.text[1] = edata.message[18] ^ 0x4f;
-						dsvt.vasd.text[2] = edata.message[19] ^ 0x93;
-						break;
-					default:
-						memcpy(dsvt.vasd.text, sdsilence, 3);
-						break;
-				}
-			}
-			if (i+1 == ambeblocks)
-				dsvt.ctrl |= 0x40U;
-
-			AudioManager.Gateway2AudioMgr(dsvt);
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
-		}
-	}
-	fclose(fp);
-	printf("Finished playing\n");
-	return;
 }
 
 void CQnetGateway::qrgs_and_maps()
@@ -1873,8 +1726,6 @@ void CQnetGateway::qrgs_and_maps()
 			}
 		}
 	}
-
-	return;
 }
 
 bool CQnetGateway::Init()
@@ -2022,6 +1873,7 @@ bool CQnetGateway::Init()
 			return true;
 		}
 	}
+
 	// the repeater modules run on these ports
 	memset(toRptr.saved_hdr.title, 0, 56);
 	toRptr.saved_addr.Initialize(AF_UNSPEC);
@@ -2032,6 +1884,11 @@ bool CQnetGateway::Init()
 	toRptr.last_time = 0;
 
 	toRptr.sequence = 0x0;
+
+	// unix sockets
+	Gate2AU.SetUp("gate2au");
+	if (AU2Gate.Open("au2gate"))
+		return true;
 
 	/*
 	   Initialize the end_of_audio that will be sent to the local repeater

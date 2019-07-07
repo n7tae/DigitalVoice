@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2018-2019 by Thomas Early, N7TAE
+ *   Copyright (C) 2019 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,12 +17,29 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-typedef struct echo_tag {
-	bool is_linked;
-	time_t last_time;
-	unsigned short streamid;
+#include <stdlib.h>
+#include <sys/un.h>
+
+class CUnixDgramReader
+{
+public:
+	CUnixDgramReader();
+	~CUnixDgramReader();
+	bool Open(const char *path);
+	ssize_t Read(void *buf, size_t size);
+	void Close();
+	int GetFD();
+private:
 	int fd;
-	char message[24];
-    CDVST header;   // only used in qnlink (qngateway writes the header to the file)
-	char file[FILENAME_MAX + 1];
-} SECHO;
+};
+
+class CUnixDgramWriter
+{
+public:
+	CUnixDgramWriter();
+	~CUnixDgramWriter();
+	void SetUp(const char *path);
+	ssize_t Write(const void *buf, size_t size);
+private:
+	struct sockaddr_un addr;
+};

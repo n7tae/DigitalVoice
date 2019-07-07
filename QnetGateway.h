@@ -22,9 +22,9 @@
 
 #include "IRCDDB.h"
 #include "QnetTypeDefs.h"
-#include "SEcho.h"
 #include "aprs.h"
 #include "SockAddress.h"
+#include "UnixDgramSocket.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -96,9 +96,12 @@ private:
 	bool C_seen = false;
     int Index = -1;
 
+	CUnixDgramReader AU2Gate;
+	CUnixDgramWriter Gate2AU;
+
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
-	std::string OWNER, owner, FILE_STATUS, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE;
+	std::string OWNER, owner, FILE_STATUS, IRCDDB_PASSWORD[2];
 
 	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
 	bool LOG_DEBUG, LOG_IRC, LOG_QSO;
@@ -156,7 +159,6 @@ private:
 	void GetIRCDataThread(const int i);
 	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
 	int get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
-	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
