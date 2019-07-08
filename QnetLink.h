@@ -102,8 +102,8 @@ private:
 	CSockAddress fromDst4;
 
 	// unix socket to the audio unit
-	CUnixDgramReader AU2Link;
-	CUnixDgramWriter Link2AU;
+	CUnixDgramReader AM2Link;
+	CUnixDgramWriter Link2AM;
 
 	// input from our own local repeater
 	struct sockaddr_in fromRptr;

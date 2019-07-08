@@ -349,7 +349,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				char str[56];
 				memset(str, 0, 56);
 				snprintf(str, 56, "PLAY%c_connected2network.dat_WELCOME_TO_QUADNET", ch);
-				Gate2AU.Write(str, 56);
+				Gate2AM.Write(str, 56);
 			}
 			if (doFind) {
 				printf("Finding Routes for...\n");
@@ -603,7 +603,7 @@ void CQnetGateway::ProcessTimeouts()
 				end_of_audio.streamid = toRptr.streamid;
 				end_of_audio.ctrl = toRptr.sequence | 0x40;
 
-				Gate2AU.Write(end_of_audio.title, 27);
+				Gate2AM.Write(end_of_audio.title, 27);
 
 
 				toRptr.streamid = 0;
@@ -981,7 +981,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=[%s]:%u\n", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, fromDstar.GetAddress(), fromDstar.GetPort());
 					}
 
-					Gate2AU.Write(g2buf.title, 56);
+					Gate2AM.Write(g2buf.title, 56);
 					lastctrl = 20U;
 
 					memcpy(toRptr.saved_hdr.title, g2buf.title, 56);
@@ -1034,14 +1034,14 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 							const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 							memcpy(dsvt.vasd.voice, sync, 12U);
 						}
-						Gate2AU.Write(dsvt.title, 27);
+						Gate2AM.Write(dsvt.title, 27);
 					}
 				}
 
 				if (((lastctrl + 1U) % 21U == (0x3FU & g2buf.ctrl)) || (0x40U & g2buf.ctrl)) {
 					// no matter what, we will send this on if it is the closing frame
 					lastctrl = (0x3FU & g2buf.ctrl);
-					Gate2AU.Write(g2buf.title, 27);
+					Gate2AM.Write(g2buf.title, 27);
 				} else {
 					if (LOG_DEBUG)
 						fprintf(stderr, "Warning: Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);
@@ -1082,10 +1082,10 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 							printf("Re-generating header for streamID=%04x\n", ntohs(g2buf.streamid));
 
 							/* re-generate/send the header */
-							Gate2AU.Write(toRptr.saved_hdr.title, 56);
+							Gate2AM.Write(toRptr.saved_hdr.title, 56);
 
 							/* send this audio packet to repeater */
-							Gate2AU.Write(g2buf.title, 27);
+							Gate2AM.Write(g2buf.title, 27);
 
 							/* make sure that any more audio arriving will be accepted */
 							toRptr.streamid = g2buf.streamid;
@@ -1358,7 +1358,7 @@ void CQnetGateway::ProcessAudio(const CDVST *packet)
 								char str[56];
 								memset(str, 0, 56);
 								snprintf(str, 56, "PLAY%c_notincache.dat_NOT_IN_CACHE", band_txt.lh_rpt1[7]);
-								Gate2AU.Write(str, 56);
+								Gate2AM.Write(str, 56);
 								playNotInCache = false;
 							}
 
@@ -1460,7 +1460,7 @@ void CQnetGateway::Process()
 			AddFDSet(max_nfds, g2_sock[0], &fdset);
 		if (g2_sock[1] >= 0)
 			AddFDSet(max_nfds, g2_sock[1], &fdset);
-		AddFDSet(max_nfds, AU2Gate.GetFD(), &fdset);
+		AddFDSet(max_nfds, AM2Gate.GetFD(), &fdset);
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; // 20 ms
@@ -1483,11 +1483,11 @@ void CQnetGateway::Process()
 		}
 
 		// process packets coming from the audio module
-		while (keep_running && FD_ISSET(AU2Gate.GetFD(), &fdset)) {
+		while (keep_running && FD_ISSET(AM2Gate.GetFD(), &fdset)) {
 			CDVST packet;
-			AU2Gate.Read(packet.title, 56);
+			AM2Gate.Read(packet.title, 56);
 			ProcessAudio(&packet);
-			FD_CLR(AU2Gate.GetFD(), &fdset);
+			FD_CLR(AM2Gate.GetFD(), &fdset);
 		}
 	}
 
@@ -1576,90 +1576,88 @@ void CQnetGateway::APRSBeaconThread()
 
 		time(&tnow);
 		if ((tnow - last_beacon_time) > (rptr.aprs_interval * 60)) {
-			for (short int i=0; i<3; i++) {
-				if (rptr.mod.desc[0] != '\0') {
-					float tmp_lat = fabs(rptr.mod.latitude);
-					float tmp_lon = fabs(rptr.mod.longitude);
-					float lat = floor(tmp_lat);
-					float lon = floor(tmp_lon);
-					lat = (tmp_lat - lat) * 60.0F + lat  * 100.0F;
-					lon = (tmp_lon - lon) * 60.0F + lon  * 100.0F;
+			if (rptr.mod.desc[0] != '\0') {
+				float tmp_lat = fabs(rptr.mod.latitude);
+				float tmp_lon = fabs(rptr.mod.longitude);
+				float lat = floor(tmp_lat);
+				float lon = floor(tmp_lon);
+				lat = (tmp_lat - lat) * 60.0F + lat  * 100.0F;
+				lon = (tmp_lon - lon) * 60.0F + lon  * 100.0F;
 
-					char lat_s[15], lon_s[15];
-					if (lat >= 1000.0F)
-						sprintf(lat_s, "%.2f", lat);
-					else if (lat >= 100.0F)
-						sprintf(lat_s, "0%.2f", lat);
-					else if (lat >= 10.0F)
-						sprintf(lat_s, "00%.2f", lat);
-					else
-						sprintf(lat_s, "000%.2f", lat);
+				char lat_s[15], lon_s[15];
+				if (lat >= 1000.0F)
+					sprintf(lat_s, "%.2f", lat);
+				else if (lat >= 100.0F)
+					sprintf(lat_s, "0%.2f", lat);
+				else if (lat >= 10.0F)
+					sprintf(lat_s, "00%.2f", lat);
+				else
+					sprintf(lat_s, "000%.2f", lat);
 
-					if (lon >= 10000.0F)
-						sprintf(lon_s, "%.2f", lon);
-					else if (lon >= 1000.0F)
-						sprintf(lon_s, "0%.2f", lon);
-					else if (lon >= 100.0F)
-						sprintf(lon_s, "00%.2f", lon);
-					else if (lon >= 10.0F)
-						sprintf(lon_s, "000%.2f", lon);
-					else
-						sprintf(lon_s, "0000%.2f", lon);
+				if (lon >= 10000.0F)
+					sprintf(lon_s, "%.2f", lon);
+				else if (lon >= 1000.0F)
+					sprintf(lon_s, "0%.2f", lon);
+				else if (lon >= 100.0F)
+					sprintf(lon_s, "00%.2f", lon);
+				else if (lon >= 10.0F)
+					sprintf(lon_s, "000%.2f", lon);
+				else
+					sprintf(lon_s, "0000%.2f", lon);
 
-					/* send to aprs */
-					sprintf(snd_buf, "%s>APJI23,TCPIP*,qAC,%sS:!%s%cD%s%c&RNG%04u %s %s",
-					        rptr.mod.call.c_str(),  rptr.mod.call.c_str(),
-					        lat_s,  (rptr.mod.latitude < 0.0)  ? 'S' : 'N',
-					        lon_s,  (rptr.mod.longitude < 0.0) ? 'W' : 'E',
-					        (unsigned int)rptr.mod.range, rptr.mod.band.c_str(), rptr.mod.desc.c_str());
+				/* send to aprs */
+				sprintf(snd_buf, "%s>APJI23,TCPIP*,qAC,%sS:!%s%cD%s%c&RNG%04u %s %s",
+						rptr.mod.call.c_str(),  rptr.mod.call.c_str(),
+						lat_s,  (rptr.mod.latitude < 0.0)  ? 'S' : 'N',
+						lon_s,  (rptr.mod.longitude < 0.0) ? 'W' : 'E',
+						(unsigned int)rptr.mod.range, rptr.mod.band.c_str(), rptr.mod.desc.c_str());
 
-					// printf("APRS Beacon =[%s]\n", snd_buf);
-					strcat(snd_buf, "\r\n");
+				// printf("APRS Beacon =[%s]\n", snd_buf);
+				strcat(snd_buf, "\r\n");
 
-					while (keep_running) {
-						if (aprs->aprs_sock.GetFD() == -1) {
-							aprs->Open(OWNER);
-							if (aprs->aprs_sock.GetFD() == -1)
-								sleep(1);
-							else
-								THRESHOLD_COUNTDOWN = 15;
-						} else {
-							int rc = aprs->aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
-							if (rc < 0) {
-								if ((errno == EPIPE) ||
-								        (errno == ECONNRESET) ||
-								        (errno == ETIMEDOUT) ||
-								        (errno == ECONNABORTED) ||
-								        (errno == ESHUTDOWN) ||
-								        (errno == EHOSTUNREACH) ||
-								        (errno == ENETRESET) ||
-								        (errno == ENETDOWN) ||
-								        (errno == ENETUNREACH) ||
-								        (errno == EHOSTDOWN) ||
-								        (errno == ENOTCONN)) {
-									printf("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
-									aprs->aprs_sock.Close();
-								} else if (errno == EWOULDBLOCK) {
-									std::this_thread::sleep_for(std::chrono::milliseconds(100));
-								} else {
-									/* Cant do nothing about it */
-									printf("send_aprs_beacon failed, error=%d\n", errno);
-									break;
-								}
+				while (keep_running) {
+					if (aprs->aprs_sock.GetFD() == -1) {
+						aprs->Open(OWNER);
+						if (aprs->aprs_sock.GetFD() == -1)
+							sleep(1);
+						else
+							THRESHOLD_COUNTDOWN = 15;
+					} else {
+						int rc = aprs->aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
+						if (rc < 0) {
+							if ((errno == EPIPE) ||
+									(errno == ECONNRESET) ||
+									(errno == ETIMEDOUT) ||
+									(errno == ECONNABORTED) ||
+									(errno == ESHUTDOWN) ||
+									(errno == EHOSTUNREACH) ||
+									(errno == ENETRESET) ||
+									(errno == ENETDOWN) ||
+									(errno == ENETUNREACH) ||
+									(errno == EHOSTDOWN) ||
+									(errno == ENOTCONN)) {
+								printf("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
+								aprs->aprs_sock.Close();
+							} else if (errno == EWOULDBLOCK) {
+								std::this_thread::sleep_for(std::chrono::milliseconds(100));
 							} else {
-								// printf("APRS beacon sent\n");
+								/* Cant do nothing about it */
+								printf("send_aprs_beacon failed, error=%d\n", errno);
 								break;
 							}
+						} else {
+							// printf("APRS beacon sent\n");
+							break;
 						}
-						int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-						if (rc > 0)
-							THRESHOLD_COUNTDOWN = 15;
 					}
+					int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+					if (rc > 0)
+						THRESHOLD_COUNTDOWN = 15;
 				}
-				int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-				if (rc > 0)
-					THRESHOLD_COUNTDOWN = 15;
 			}
+			int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+			if (rc > 0)
+				THRESHOLD_COUNTDOWN = 15;
 			time(&last_beacon_time);
 		}
 		/*
@@ -1711,19 +1709,19 @@ void CQnetGateway::APRSBeaconThread()
 
 void CQnetGateway::qrgs_and_maps()
 {
+	CFGDATA data;
+	cfg.CopyTo(data);
 	std::string desc1 = rptr.mod.desc.substr(0, 20);
 	std::string desc2 = rptr.mod.desc.substr(20,20);
-	for (int i=0; i<3; i++) {
-		std::string rptrcall = OWNER;
-		rptrcall.resize(CALL_SIZE-1);
-		rptrcall += i + 'A';
-		for (int j=0; j<2; j++) {
-			if (ii[j]) {
-				if (rptr.mod.latitude || rptr.mod.longitude || desc1.length() || rptr.mod.url.length())
-					ii[j]->rptrQTH(rptrcall, rptr.mod.latitude, rptr.mod.longitude, desc1, desc2, rptr.mod.url, rptr.mod.package_version);
-				if (rptr.mod.frequency)
-					ii[j]->rptrQRG(rptrcall, rptr.mod.frequency, rptr.mod.offset, rptr.mod.range, rptr.mod.agl);
-			}
+	std::string rptrcall = OWNER;
+	rptrcall.resize(CALL_SIZE-1);
+	rptrcall.append(1, data.cModule);
+	for (int j=0; j<2; j++) {
+		if (ii[j]) {
+			if (rptr.mod.latitude || rptr.mod.longitude || desc1.length() || rptr.mod.url.length())
+				ii[j]->rptrQTH(rptrcall, rptr.mod.latitude, rptr.mod.longitude, desc1, desc2, rptr.mod.url, rptr.mod.package_version);
+			if (rptr.mod.frequency)
+				ii[j]->rptrQRG(rptrcall, rptr.mod.frequency, rptr.mod.offset, rptr.mod.range, rptr.mod.agl);
 		}
 	}
 }
@@ -1886,8 +1884,8 @@ bool CQnetGateway::Init()
 	toRptr.sequence = 0x0;
 
 	// unix sockets
-	Gate2AU.SetUp("gate2au");
-	if (AU2Gate.Open("au2gate"))
+	Gate2AM.SetUp("gate2am");
+	if (AM2Gate.Open("am2gate"))
 		return true;
 
 	/*

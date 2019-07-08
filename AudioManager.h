@@ -27,6 +27,7 @@
 #include "TemplateClasses.h"
 #include "QnetTypeDefs.h"
 #include "Random.h"
+#include "UnixDgramSocket.h"
 
 using PacketQueue = CTQueue<CDVST>;
 
@@ -63,6 +64,9 @@ private:
 	std::future<void> r1, r2, r3, p1, p2, p3;
 	// helpers
 	CRandom random;
+	// Unix sockets
+	CUnixDgramReader Gate2AM, Link2AM;
+	CUnixDgramWriter AM2Gate, AM2Link;
 	// methods
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 	bool audio_is_empty();

@@ -138,7 +138,7 @@ void CQnetLink::print_status_file()
 		//	fam.family = AF_UNSPEC;
 		}
 
-        //Link2AU.Write(fam.title, sizeof(CLinkFamily));
+        //Link2AM.Write(fam.title, sizeof(CLinkFamily));
 		fclose(statusfp);
 	}
 }
@@ -295,15 +295,15 @@ bool CQnetLink::srv_open()
 	}
 
 	/* create our gateway unix sockets */
-	Link2AU.SetUp("link2au");
-	if (AU2Link.Open("au2link")) {
+	Link2AM.SetUp("link2am");
+	if (AM2Link.Open("am2link")) {
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
 		close(ref_g2_sock);
 		ref_g2_sock = -1;
-		AU2Link.Close();
+		AM2Link.Close();
 		return false;
 	}
 
@@ -334,7 +334,7 @@ void CQnetLink::srv_close()
 		printf("Closed rmt_dcs_port\n");
 	}
 
-	AU2Link.Close();
+	AM2Link.Close();
 
 	if (ref_g2_sock != -1) {
 		close(ref_g2_sock);
@@ -519,10 +519,10 @@ void CQnetLink::Process()
 		max_nfds = ref_g2_sock;
 	if (dcs_g2_sock > max_nfds)
 		max_nfds = dcs_g2_sock;
-	if (AU2Link.GetFD() > max_nfds)
-		max_nfds = AU2Link.GetFD();
+	if (AM2Link.GetFD() > max_nfds)
+		max_nfds = AM2Link.GetFD();
 
-	printf("xrf=%d, dcs=%d, ref=%d, AudioUnit=%d, MAX+1=%d\n", xrf_g2_sock, dcs_g2_sock, ref_g2_sock, AU2Link.GetFD(), max_nfds + 1);
+	printf("xrf=%d, dcs=%d, ref=%d, AudioUnit=%d, MAX+1=%d\n", xrf_g2_sock, dcs_g2_sock, ref_g2_sock, AM2Link.GetFD(), max_nfds + 1);
 
 	// initialize all request links
 	if (8 == link_at_startup.size()) {
@@ -653,7 +653,7 @@ void CQnetLink::Process()
 		FD_SET(xrf_g2_sock, &fdset);
 		FD_SET(dcs_g2_sock, &fdset);
 		FD_SET(ref_g2_sock, &fdset);
-		FD_SET(AU2Link.GetFD(), &fdset);
+		FD_SET(AM2Link.GetFD(), &fdset);
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000;
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
@@ -788,7 +788,7 @@ void CQnetLink::Process()
 						}
 
 						/* relay data to our local G2 */
-						Link2AU.Write(dvst.title, 56);
+						Link2AM.Write(dvst.title, 56);
 
 					}
 				} else if (found) {	// length is 27
@@ -801,7 +801,7 @@ void CQnetLink::Process()
 					}
 
 					/* relay data to our local G2 */
-					Link2AU.Write(dvst.title, 27);
+					Link2AM.Write(dvst.title, 27);
 				}
 			}
 			FD_CLR (xrf_g2_sock,&fdset);
@@ -964,7 +964,7 @@ void CQnetLink::Process()
 						}
 
 						/* send the data to the audio manager */
-						Link2AU.Write(rdvst.dvst.title, 56);
+						Link2AM.Write(rdvst.dvst.title, 56);
 
 						if ((! (to_remote_g2.addr==fromDst4)) && to_remote_g2.is_connected) {
 							if ( /*** (memcmp(readBuffer2 + 44, owner, 8) != 0) && ***/         /* block repeater announcements */
@@ -1009,7 +1009,7 @@ void CQnetLink::Process()
 					}
 
 					/* send the data to the audio mgr */
-					Link2AU.Write(rdvst.dvst.title, 27);
+					Link2AM.Write(rdvst.dvst.title, 27);
 
 					if (to_remote_g2.is_connected && (! (to_remote_g2.addr==fromDst4)) && to_remote_g2.in_streamid==rdvst.dvst.streamid) {
 						if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
@@ -1117,7 +1117,7 @@ void CQnetLink::Process()
 							calcPFCS(rdvst.dvst.title, 56);
 
 							/* send the header to the audio mgr */
-							Link2AU.Write(rdvst.dvst.title, 56);
+							Link2AM.Write(rdvst.dvst.title, 56);
 						}
 
 						if (0==memcmp(&to_remote_g2.in_streamid, dcs_buf+43, 2) && dcs_seq!=dcs_buf[45]) {
@@ -1143,7 +1143,7 @@ void CQnetLink::Process()
 							memcpy(rdvst.dvst.vasd.voice, dcs_buf+46, 12);
 
 							/* send the data to the audio mgr */
-							Link2AU.Write(rdvst.dvst.title, 27);
+							Link2AM.Write(rdvst.dvst.title, 27);
 
 							if ((dcs_buf[45] & 0x40) != 0) {
 								old_sid = 0x0;
@@ -1226,9 +1226,9 @@ void CQnetLink::Process()
 			FD_CLR (dcs_g2_sock, &fdset);
 		}
 
-		while (keep_running && FD_ISSET(AU2Link.GetFD(), &fdset)) {
+		while (keep_running && FD_ISSET(AM2Link.GetFD(), &fdset)) {
 			CDVST dvst;
-			int length = AU2Link.Read(dvst.title, 56);
+			int length = AM2Link.Read(dvst.title, 56);
 			if (0 == memcmp(dvst.title, "LINK", 4)) {
 				if (dvst.config) {
 					char target[9];
@@ -1359,7 +1359,7 @@ void CQnetLink::Process()
 					}
 				}
 			}
-			FD_CLR (AU2Link.GetFD(), &fdset);
+			FD_CLR (AM2Link.GetFD(), &fdset);
 		}
 
 		if (keep_running && notify_msg[0] && 0x0U == tracing.streamid) {
@@ -1380,7 +1380,7 @@ void CQnetLink::PlayAudioNotifyThread(char *msg)
 	CDVST dvst;
 	memcpy(dvst.title, "PLAY", 4);
 	memcpy(dvst.title+4, msg, strlen(msg)+1);	// copy the terminating NULL
-	Link2AU.Write(dvst.title, 56);
+	Link2AM.Write(dvst.title, 56);
 }
 
 bool CQnetLink::Init()

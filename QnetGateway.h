@@ -96,8 +96,8 @@ private:
 	bool C_seen = false;
     int Index = -1;
 
-	CUnixDgramReader AU2Gate;
-	CUnixDgramWriter Gate2AU;
+	CUnixDgramReader AM2Gate;
+	CUnixDgramWriter Gate2AM;
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
