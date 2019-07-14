@@ -56,6 +56,7 @@ private:
 	void SetState(const CFGDATA &data);
 	void RunLink();
 	void RunGate();
+	CUnixDgramReader Gate2AM, Link2AM;
 	// events
 	void on_QuitButton_clicked();
 	void on_SettingsButton_clicked();
@@ -64,4 +65,6 @@ private:
 	void on_RouteEntry_changed();
 	void on_EchoTestButton_toggled();
 	void on_PTTButton_toggled();
+	bool RelayLink2AM(Glib::IOCondition condition);
+	bool RelayGate2AM(Glib::IOCondition condition);
 };

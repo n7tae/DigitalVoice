@@ -22,6 +22,7 @@
 #include <future>
 #include <atomic>
 #include <mutex>
+#include <vector>
 
 #include "DV3000U.h"
 #include "TemplateClasses.h"
@@ -36,7 +37,7 @@ enum class E_PTT_Type { echo, gateway, link };
 class CAudioManager
 {
 public:
-	CAudioManager() : hot_mic(false), gate_sid_in(0U), link_sid_in(0U) {}
+	CAudioManager();
 	~CAudioManager() {}
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);
@@ -48,6 +49,7 @@ public:
 	void GetPacket4Gateway(CDVST &packet);
 	void GetPacket4Link(CDVST &packet);
 	void KeyOff();
+	void PlayFile(const char *filetoplay);
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;
@@ -64,8 +66,8 @@ private:
 	std::future<void> r1, r2, r3, p1, p2, p3;
 	// helpers
 	CRandom random;
+	std::vector<unsigned long> speak;
 	// Unix sockets
-	CUnixDgramReader Gate2AM, Link2AM;
 	CUnixDgramWriter AM2Gate, AM2Link;
 	// methods
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);

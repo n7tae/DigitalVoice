@@ -113,8 +113,16 @@ void CMainWindow::SetState(const CFGDATA &data)
 
 bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name)
 {
+	if (Gate2AM.Open("gate2am"))
+		return true;
+	if (Link2AM.Open("link2am")) {
+		Gate2AM.Close();
+		return true;
+	}
  	builder->get_widget(name, pWin);
 	if (nullptr == pWin) {
+		Link2AM.Close();
+		Gate2AM.Close();
 		std::cerr << "Failed to Initialize MainWindow!" << std::endl;
 		return true;
 	}
@@ -158,6 +166,10 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pPTTButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_PTTButton_toggled));
 	ReadRoutes();
 	SetState(cfgdata);
+
+	// i/o events
+	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayGate2AM), Gate2AM.GetFD(), Glib::IO_IN);
+	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
 
 	return false;
 }
@@ -281,4 +293,34 @@ void CMainWindow::on_PTTButton_toggled()
 			AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
 	} else
 		AudioManager.KeyOff();
+}
+
+bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
+{
+	if (condition & Glib::IO_IN) {
+		CDVST dvst;
+		Link2AM.Read(dvst.title, 56);
+		if (0 == memcmp(dvst.title, "DVST", 4))
+			AudioManager.Link2AudioMgr(dvst);
+		else
+			AudioManager.PlayFile((char *)&dvst.config);
+	} else {
+		std::cerr << "RelayLink2AM not a read event!" << std::endl;
+	}
+	return true;
+}
+
+bool CMainWindow::RelayGate2AM(Glib::IOCondition condition)
+{
+	if (condition & Glib::IO_IN) {
+		CDVST dvst;
+		Gate2AM.Read(dvst.title, 56);
+		if (0 == memcmp(dvst.title, "DVST", 4))
+			AudioManager.Gateway2AudioMgr(dvst);
+		else
+			AudioManager.PlayFile((char *)&dvst.config);
+	} else {
+		std::cerr << "RelayGate2AM not a read event!" << std::endl;
+	}
+	return true;
 }

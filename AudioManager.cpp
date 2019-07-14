@@ -21,6 +21,7 @@
 #include <netinet/in.h>
 
 #include <iostream>
+#include <fstream>
 
 #include "AudioManager.h"
 #include "MainWindow.h"
@@ -29,6 +30,37 @@
 // globals
 extern CConfigure cfg;
 extern CMainWindow MainWindow;
+extern bool GetCfgDirectory(std::string &path);
+
+CAudioManager::CAudioManager() : hot_mic(false), gate_sid_in(0U), link_sid_in(0U)
+{
+	std::string index;
+	if (GetCfgDirectory(index))
+		return;
+
+	index.append("announce/index.dat");
+	std::ifstream indexfile(index.c_str(), std::ifstream::in);
+	if (indexfile) {
+		for (int i=0; i<62; i++) {
+			std::string name, offset, size;
+			indexfile >> name >> offset >> size;
+			if (name.size() && offset.size() && size.size()) {
+				unsigned long of = std::stoul(offset);
+				unsigned long sz = std::stoul(size);
+				speak.push_back(1000U * of + sz);
+			}
+		}
+		indexfile.close();
+	}
+	if (62 == speak.size()) {
+		std::cout << "read " << speak.size() << " indicies from " << index << std::endl;
+	} else {
+		std::cerr << "read unexpected (" << speak.size() << " number of indices from " << index << std::endl;
+		speak.clear();
+	}
+
+}
+
 
 void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcall)
 {
@@ -115,8 +147,8 @@ void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, 
 		}
 		queue.Push(v);
 		mtx.unlock();
-		//std::cout << "ctrl=" << std::hex << unsigned(v.ctrl) << std::dec << std::endl;
 	} while (0U == (v.ctrl & 0x40U));
+	std::cout << count << " frames thru ambedevice2packetqueue\n";
 }
 
 void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDVST &d)
@@ -273,13 +305,14 @@ void CAudioManager::microphone2audioqueue()
 		audio_mutex.unlock();
 		count++;
 	} while (keep_running);
-//	std::cout << count << " frames by microphone2audioqueue\n";
+	std::cout << count << " frames by microphone2audioqueue\n";
 	snd_pcm_drop(handle);
 	snd_pcm_close(handle);
 }
 
 void CAudioManager::audioqueue2ambedevice()
 {
+	unsigned count = 0U;
 	unsigned char seq = 0U;
 	do {
 		while (audio_is_empty())
@@ -295,13 +328,14 @@ void CAudioManager::audioqueue2ambedevice()
 		a2d_mutex.lock();
 		a2d_queue.Push(frame.GetSequence());
 		a2d_mutex.unlock();
-		//std::cout << "audio2ambedev seq:" << std::hex << unsigned(seq) << std::dec << std::endl;
+		count++;
 	} while (0U == (seq & 0x40U));
-//	std::cout << "audioqueue2ambedevice is finished\n";
+	std::cout << count << " frames thru audioqueue2ambedevice\n";
 }
 
 void CAudioManager::ambedevice2ambequeue()
 {
+//	unsigned count = 0U;
 	unsigned char seq = 0U;
 	do {
 		unsigned char ambe[9];
@@ -317,9 +351,9 @@ void CAudioManager::ambedevice2ambequeue()
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
-		//std::cout << "ambedev2ambeque seq:" << std::hex << unsigned(seq) << std::dec << std::endl;
+//		count++;
 	} while (0U == (seq & 0x40U));
-	//std::cout << "amebedevice2ambequeue is finished\n";
+//	std::cout << count << "frames thru amebedevice2ambequeue\n";
 	return;
 }
 
@@ -605,4 +639,139 @@ void CAudioManager::KeyOff()
 	r1.get();
 	r2.get();
 	r3.get();
+}
+
+void CAudioManager::PlayFile(const char *filetoplay)
+{
+	CFGDATA cfgdata;
+	cfg.CopyTo(cfgdata);
+	std::string msg(filetoplay);
+	if (cfgdata.cModule != msg.at(0)) {
+		std::cerr << "Improper module in msg " << msg << std::endl;
+		return;
+	}
+
+	auto pos = msg.find("_linked.dat_LINKED_");
+	bool is_linked = (std::string::npos == pos) ? false : true;
+
+	pos = msg.find(".dat");
+	if (std::string::npos == pos) {
+		std::cerr << "Improper AMBE data file in msg " << msg << std::endl;
+		return;
+	}
+
+	std::string message;
+	if (msg.size() > pos+4) {
+		message.assign(msg.substr(pos+5));
+		std::cout << "Message is '" << message << "'" << std::endl;
+	}
+
+	std::string cfgdir;
+	if (GetCfgDirectory(cfgdir)) {
+		std::cerr << "can't get the configuration directory" << std::endl;
+		return;
+	}
+	cfgdir.append("announce/");
+
+	std::string path = cfgdir + msg.substr(2, pos+2);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+	std::cout << "sending File:" << path << " mod:" << cfgdata.cModule << " RADIO_ID=" << message << std::endl;
+
+	struct stat sbuf;
+	if (stat(path.c_str(), &sbuf)) {
+		std::cerr << "can't stat " << path << std::endl;
+		return;
+	}
+
+	if (sbuf.st_size % 9)
+		std::cerr << "Warning " << path << " file size is " << sbuf.st_size << " (not a multiple of 9)!" << std::endl;
+	int ambeblocks = (int)sbuf.st_size / 9;
+
+
+	FILE *fp = fopen(path.c_str(), "rb");
+	if (!fp) {
+		std::cerr << "Failed to open file " << path << " for reading" << std::endl;
+		return;
+	}
+
+	p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
+	p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
+	p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+
+	int count;
+	for (count=0; count<ambeblocks; count++) {
+		unsigned char voice[9];
+		int nread = fread(voice, 9, 1, fp);
+		if (nread == 1) {
+			CAMBEFrame frame(voice);
+			unsigned char ctrl = count % 21U;
+			if (count+1 == ambeblocks && ! is_linked)
+				ctrl |= 0x40U;
+			frame.SetSequence(ctrl);
+			ambe_mutex.lock();
+			ambe_queue.Push(frame);
+			ambe_mutex.unlock();
+		}
+	}
+	fclose(fp);
+
+	if (is_linked) {
+		// open the speak file
+		std::string speakfile(cfgdir);
+		speakfile.append("/speak.dat");
+		fp = fopen(speakfile.c_str(), "rb");
+		if (fp) {
+			// create the speak sentence
+			std::string say("2");
+			say.append(message.substr(7));
+			auto rit = say.rbegin();
+			while (isspace(*rit)) {
+				say.resize(say.size()-1);
+				rit = say.rbegin();
+			}
+
+			// play it
+			for (auto it=say.begin(); it!=say.end(); it++) {
+				bool lastch = (it+1 == say.end());
+				unsigned long offset = 0;
+				int size = 0;
+				if ('A' <= *it && *it <= 'Z')
+					offset = speak[*it - 'A' + (lastch ? 26 : 0)];
+				else if ('1' <= *it && *it <= '9')
+					offset = speak[*it - '1' + 52];
+				else if ('0' == *it)
+					offset = speak[61];
+				if (offset) {
+					size = (int)(offset % 1000UL);
+					offset = (offset / 1000UL) * 9UL;
+				}
+				if (0 == size)
+					continue;
+				if (fseek(fp, offset, SEEK_SET)) {
+					std::cerr << "fseek to " << offset << " error!" << std::endl;
+				} else {
+					for (int i=0; i<size; i++) {
+						unsigned char voice[9];
+						int nread = fread(voice, 9, 1, fp);
+						if (nread == 1) {
+							CAMBEFrame frame(voice);
+							unsigned char ctrl = count++ % 21U;
+							if (i+1==size && lastch)
+								ctrl |= 0x40U;	// signal the last voiceframe (of the last character)
+							frame.SetSequence(ctrl);
+							ambe_mutex.lock();
+							ambe_queue.Push(frame);
+							ambe_mutex.unlock();
+						}
+					}
+				}
+			}
+			fclose(fp);
+		}
+	}
+	p1.get();
+	p2.get();
+	p3.get();
 }

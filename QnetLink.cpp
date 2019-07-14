@@ -66,6 +66,11 @@ CQnetLink::CQnetLink()
 	cfg.CopyTo(cfgdata);
 }
 
+CQnetLink::~CQnetLink()
+{
+
+}
+
 bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr)
 {
 	struct addrinfo hints;
@@ -217,7 +222,7 @@ bool CQnetLink::Configure()
 	rmt_xrf_port = 30001U;
 	rmt_dcs_port = 30051U;
 	announce = true;
-	qso_details = false;
+	qso_details = true;
 	log_debug = false;
 
 	std::string homedir;
