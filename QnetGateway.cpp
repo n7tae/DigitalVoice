@@ -965,7 +965,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 	}
 }
 
-void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
+void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 {
 	static unsigned char lastctrl = 20U;
 	static std::string superframe;
@@ -1022,7 +1022,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 				if (diff > 1 && diff < 6) {	// fill up to 5 missing voice frames
 					if (LOG_DEBUG)
 						fprintf(stderr, "Warning: inserting %d missing voice frame(s)\n", diff - 1);
-					CDVST dsvt;
+					CDSVT dsvt;
 					memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
 					while (--diff > 0) {
 						lastctrl = (lastctrl + 1U) % 21U;
@@ -1104,14 +1104,14 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDVST &g2buf)
 	}
 }
 
-void CQnetGateway::ProcessAudio(const CDVST *packet)
+void CQnetGateway::ProcessAudio(const CDSVT *packet)
 {
 	char temp_mod;
 	char temp_radio_user[9];
 	//char tempfile[FILENAME_MAX];
 	std::string arearp_cs, ip, zonerp_cs;
 
-	CDVST dsvt;
+	CDSVT dsvt;
 	memcpy(dsvt.title, packet, (packet->config==0x10U) ? 56 : 27);
 
 	if (0 == memcmp(dsvt.title, "DSVT", 4)) {
@@ -1471,7 +1471,7 @@ void CQnetGateway::Process()
 			if (g2_sock[i] < 0)
 				continue;
 			if (keep_running && FD_ISSET(g2_sock[i], &fdset)) {
-				CDVST dsvt;
+				CDSVT dsvt;
 				socklen_t fromlen = sizeof(struct sockaddr_storage);
 				ssize_t g2buflen = recvfrom(g2_sock[i], dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
 				if (LOG_QSO && 4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4))
@@ -1484,7 +1484,7 @@ void CQnetGateway::Process()
 
 		// process packets coming from the audio module
 		while (keep_running && FD_ISSET(AM2Gate.GetFD(), &fdset)) {
-			CDVST packet;
+			CDSVT packet;
 			AM2Gate.Read(packet.title, 56);
 			ProcessAudio(&packet);
 			FD_CLR(AM2Gate.GetFD(), &fdset);

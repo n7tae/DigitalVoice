@@ -298,12 +298,12 @@ void CMainWindow::on_PTTButton_toggled()
 bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
 {
 	if (condition & Glib::IO_IN) {
-		CDVST dvst;
-		Link2AM.Read(dvst.title, 56);
-		if (0 == memcmp(dvst.title, "DVST", 4))
-			AudioManager.Link2AudioMgr(dvst);
-		else
-			AudioManager.PlayFile((char *)&dvst.config);
+		CDSVT dsvt;
+		Link2AM.Read(dsvt.title, 56);
+		if (0 == memcmp(dsvt.title, "DSVT", 4))
+			AudioManager.Link2AudioMgr(dsvt);
+		else if (0 == memcmp(dsvt.title, "PLAY", 4))
+			AudioManager.PlayFile((char *)&dsvt.config);
 	} else {
 		std::cerr << "RelayLink2AM not a read event!" << std::endl;
 	}
@@ -313,12 +313,12 @@ bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
 bool CMainWindow::RelayGate2AM(Glib::IOCondition condition)
 {
 	if (condition & Glib::IO_IN) {
-		CDVST dvst;
-		Gate2AM.Read(dvst.title, 56);
-		if (0 == memcmp(dvst.title, "DVST", 4))
-			AudioManager.Gateway2AudioMgr(dvst);
-		else
-			AudioManager.PlayFile((char *)&dvst.config);
+		CDSVT dsvt;
+		Gate2AM.Read(dsvt.title, 56);
+		if (0 == memcmp(dsvt.title, "DSVT", 4))
+			AudioManager.Gateway2AudioMgr(dsvt);
+		else if (0 == memcmp(dsvt.title, "PLAY", 4))
+			AudioManager.PlayFile((char *)&dsvt.config);
 	} else {
 		std::cerr << "RelayGate2AM not a read event!" << std::endl;
 	}

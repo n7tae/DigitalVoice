@@ -42,7 +42,7 @@
 
 typedef struct refdvst_tag {
 	unsigned char head[2];
-	CDVST dvst;
+	CDSVT dsvt;
 } SREFDVST;
 
 typedef struct link_to_remote_g2_tag {

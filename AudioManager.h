@@ -30,7 +30,7 @@
 #include "Random.h"
 #include "UnixDgramSocket.h"
 
-using PacketQueue = CTQueue<CDVST>;
+using PacketQueue = CTQueue<CDSVT>;
 
 enum class E_PTT_Type { echo, gateway, link };
 
@@ -42,12 +42,8 @@ public:
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);
 	void PlayAMBEDataThread();	// for Echo
-	void Gateway2AudioMgr(const CDVST &dvst);
-	void Link2AudioMgr(const CDVST &dvst);
-	bool GatewayQueueIsReady();
-	bool LinkQueueIsReady();
-	void GetPacket4Gateway(CDVST &packet);
-	void GetPacket4Link(CDVST &packet);
+	void Gateway2AudioMgr(const CDSVT &dsvt);
+	void Link2AudioMgr(const CDSVT &dsvt);
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
 
@@ -63,7 +59,7 @@ private:
 	PacketQueue gateway_queue, link_queue;
 	CSequenceQueue a2d_queue, d2a_queue;
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex;
-	std::future<void> r1, r2, r3, p1, p2, p3;
+	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	// helpers
 	CRandom random;
 	std::vector<unsigned long> speak;
@@ -79,7 +75,9 @@ private:
 	void ambequeue2ambedevice();
 	void ambedevice2audioqueue();
 	void ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall);
+	void packetqueue2link();
+	void packetqueue2gate();
 	void play_audio_queue();
-	void makeheader(CDVST &c, const std::string &urcall, unsigned char *ut, unsigned char *uh);
-	void SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDVST &v);
+	void makeheader(CDSVT &c, const std::string &urcall, unsigned char *ut, unsigned char *uh);
+	void SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDSVT &v);
 };
