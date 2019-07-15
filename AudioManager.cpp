@@ -396,8 +396,6 @@ void CAudioManager::PlayAMBEDataThread()
 
 void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 {
-	//static int count = 0;
-if (dsvt.config==0x10U) std::cout << "Link2AudioMgr got a header\n";
 	if (AMBEDevice.IsOpen() && 0U==gate_sid_in) {	// don't do anythings if the gateway is currently providing audio
 
 		if (0U==link_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
@@ -405,31 +403,25 @@ if (dsvt.config==0x10U) std::cout << "Link2AudioMgr got a header\n";
 			link_sid_in = dsvt.streamid;
 			MainWindow.Receive(true);
 			// launch the audio processing threads
-std::cout << "Launching decodeing threads\n";
 			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
 			p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
-	//		count = 0;
 		}
 		if (dsvt.streamid != link_sid_in)
 			return;
 		if (0x20U != dsvt.config)
 			return;	// we only need audio frames at this point
-	//	count++;
-std::cout << "." << std::flush;
 		CAMBEFrame frame(dsvt.vasd.voice);
 		frame.SetSequence(dsvt.ctrl);
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
 		if (dsvt.ctrl & 0x40U) {
-std::cout << ".\n";
 			p1.get();	// we're done, get the finished threads and reset the current stream id
 			p2.get();
 			p3.get();
 			link_sid_in = 0U;
 			MainWindow.Receive(false);
-	//		std::cout << "Recevied " << count << " packet stream from Link" << std::endl;
 		}
 	}
 }
