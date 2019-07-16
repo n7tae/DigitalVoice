@@ -52,7 +52,7 @@ public:
 
 private:
 	// data
-	std::atomic<bool> hot_mic;
+	std::atomic<bool> hot_mic, play_file;
 	std::atomic<unsigned short> gate_sid_in, link_sid_in;
 	CAudioQueue audio_queue;
 	CAMBEQueue ambe_queue;

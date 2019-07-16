@@ -64,6 +64,8 @@ public:
 	bool Init();
 	void Process();
 	void Shutdown();
+	void Link(const char *call, const char to_mod);
+	void Unlink();
 	std::atomic<bool> keep_running;
 private:
 	// functions
@@ -75,8 +77,6 @@ private:
 	void print_status_file();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
 	void PlayAudioNotifyThread(char *msg);
-	void Link(const char *call, const char to_mod);
-	void Unlink();
 
 	/* configuration data */
 	CFGDATA cfgdata;

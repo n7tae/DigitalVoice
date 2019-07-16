@@ -32,7 +32,7 @@ extern CConfigure cfg;
 extern CMainWindow MainWindow;
 extern bool GetCfgDirectory(std::string &path);
 
-CAudioManager::CAudioManager() : hot_mic(false), gate_sid_in(0U), link_sid_in(0U)
+CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0U), link_sid_in(0U)
 {
 	std::string index;
 	if (GetCfgDirectory(index))
@@ -396,7 +396,7 @@ void CAudioManager::PlayAMBEDataThread()
 
 void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 {
-	if (AMBEDevice.IsOpen() && 0U==gate_sid_in) {	// don't do anythings if the gateway is currently providing audio
+	if (AMBEDevice.IsOpen() && 0U==gate_sid_in && ! play_file) {	// don't do anythings if the gateway is currently providing audio
 
 		if (0U==link_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
@@ -428,7 +428,7 @@ void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 
 void CAudioManager::Gateway2AudioMgr(const CDSVT &dsvt)
 {
-	if (AMBEDevice.IsOpen() && 0U==link_sid_in) {	// don't do anythings if the link is currently providing audio
+	if (AMBEDevice.IsOpen() && 0U==link_sid_in && ! play_file) {	// don't do anythings if the link is currently providing audio
 
 		if (0U==gate_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
@@ -644,11 +644,13 @@ void CAudioManager::KeyOff()
 
 void CAudioManager::PlayFile(const char *filetoplay)
 {
+	play_file = true;
 	CFGDATA cfgdata;
 	cfg.CopyTo(cfgdata);
 	std::string msg(filetoplay);
 	if (cfgdata.cModule != msg.at(0)) {
 		std::cerr << "Improper module in msg " << msg << std::endl;
+		play_file = false;
 		return;
 	}
 
@@ -658,6 +660,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	pos = msg.find(".dat");
 	if (std::string::npos == pos) {
 		std::cerr << "Improper AMBE data file in msg " << msg << std::endl;
+		play_file = false;
 		return;
 	}
 
@@ -670,6 +673,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	std::string cfgdir;
 	if (GetCfgDirectory(cfgdir)) {
 		std::cerr << "can't get the configuration directory" << std::endl;
+		play_file = false;
 		return;
 	}
 	cfgdir.append("announce/");
@@ -683,6 +687,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	struct stat sbuf;
 	if (stat(path.c_str(), &sbuf)) {
 		std::cerr << "can't stat " << path << std::endl;
+		play_file = false;
 		return;
 	}
 
@@ -694,6 +699,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	FILE *fp = fopen(path.c_str(), "rb");
 	if (!fp) {
 		std::cerr << "Failed to open file " << path << " for reading" << std::endl;
+		play_file = false;
 		return;
 	}
 
@@ -775,4 +781,5 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	p1.get();
 	p2.get();
 	p3.get();
+	play_file = false;
 }

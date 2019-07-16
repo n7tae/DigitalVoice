@@ -199,6 +199,7 @@ Log message area...</property>
                             <property name="sensitive">False</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">True</property>
+                            <signal name="clicked" handler="on_LinkButton_clicked" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
@@ -210,7 +211,8 @@ Log message area...</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="max_length">8</property>
-                            <property name="placeholder_text" translatable="yes">Ex: XRF757A</property>
+                            <property name="placeholder_text" translatable="yes">NOT LINKED</property>
+                            <signal name="changed" handler="on_LinkEntry_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
@@ -240,6 +242,7 @@ Log message area...</property>
                             <property name="sensitive">False</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">True</property>
+                            <signal name="clicked" handler="on_UnlinkButton_clicked" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>

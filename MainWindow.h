@@ -65,6 +65,10 @@ private:
 	void on_RouteEntry_changed();
 	void on_EchoTestButton_toggled();
 	void on_PTTButton_toggled();
+	void on_LinkButton_clicked();
+	void on_UnlinkButton_clicked();
+	void on_LinkEntry_changed();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
+	bool TimeoutProcess();
 };

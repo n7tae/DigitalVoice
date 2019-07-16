@@ -164,12 +164,17 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pRouteEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteEntry_changed));
 	pEchoTestButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_EchoTestButton_toggled));
 	pPTTButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_PTTButton_toggled));
+	pLinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkButton_clicked));
+	pUnlinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_UnlinkButton_clicked));
+	pLinkEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkEntry_changed));
 	ReadRoutes();
 	SetState(cfgdata);
 
 	// i/o events
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayGate2AM), Gate2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
+	// idle processing
+	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 50);
 
 	return false;
 }
@@ -230,9 +235,16 @@ void CMainWindow::on_RouteEntry_changed()
 {
 	int pos = pRouteEntry->get_position();
 	Glib::ustring s = pRouteEntry->get_text().uppercase();
-	pRouteEntry->set_text(s);
+	const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
+	Glib::ustring n;
+	for (auto it=s.begin(); it!=s.end(); it++) {
+		if (Glib::ustring::npos != good.find(*it)) {
+			n.append(1, *it);
+		}
+	}
+	pRouteEntry->set_text(n);
 	pRouteEntry->set_position(pos);
-	pRouteActionButton->set_sensitive(s.size() ? true : false);
+	pRouteActionButton->set_sensitive(n.size() ? true : false);
 	pRouteActionButton->set_label((routeset.end() == routeset.find(s)) ? "Add to list" : "Delete from list");
 }
 
@@ -323,4 +335,84 @@ bool CMainWindow::RelayGate2AM(Glib::IOCondition condition)
 		std::cerr << "RelayGate2AM not a read event!" << std::endl;
 	}
 	return true;
+}
+
+bool CMainWindow::TimeoutProcess()
+{
+	// check the status file for changes
+	static double lasttime = 0.0;
+	std::string path;
+	if (! GetCfgDirectory(path)) {
+		path.append("status");
+		// get the last modified time
+		struct stat sbuf;
+		if (! stat(path.c_str(), &sbuf)) {
+			double mtime = sbuf.st_mtim.tv_sec + (sbuf.st_mtim.tv_nsec / 1.0e9);
+			if (mtime > lasttime) {
+				// time to update!
+				lasttime = mtime;
+				std::ifstream status(path.c_str(), std::ifstream::in);
+				if (status.is_open()) {
+					std::string cs, mod;
+					std::getline(status, cs, ',');
+					std::getline(status, cs, ',');
+					std::getline(status, mod, ',');
+					status.close();
+					if (8==cs.size() && 1==mod.size()) {
+						cs.resize(7);
+						cs.append(mod);
+						pLinkEntry->set_text(cs.c_str());
+						pLinkEntry->set_sensitive(false);
+						pLinkButton->set_sensitive(false);
+						pUnlinkButton->set_sensitive(true);
+					} else {
+						pLinkEntry->set_text("");
+						pLinkEntry->set_sensitive(true);
+						pLinkButton->set_sensitive(false);
+						pUnlinkButton->set_sensitive(false);
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
+void CMainWindow::on_LinkEntry_changed()
+{
+	int pos = pLinkEntry->get_position();
+	Glib::ustring s = pLinkEntry->get_text().uppercase();
+	const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
+	Glib::ustring n;
+	for (auto it=s.begin(); it!=s.end(); it++) {
+		if (Glib::ustring::npos != good.find(*it)) {
+			n.append(1, *it);
+		}
+	}
+	pLinkEntry->set_text(n);
+	pLinkEntry->set_position(pos);
+	std::string str(n.c_str());
+	str.resize(7, ' ');
+	str.append(1, ' ');
+	if (8==n.size() && isalpha(n.at(7)) && gwys.hostmap.end() != gwys.hostmap.find(str)) {
+		if (pLinkEntry->get_sensitive())
+			pLinkButton->set_sensitive(true);
+	} else
+		pLinkButton->set_sensitive(false);
+}
+
+void CMainWindow::on_LinkButton_clicked()
+{
+	if (pLink) {
+		std::string cs(pLinkEntry->get_text().c_str());
+		char mod = cs.at(7);
+		cs.at(7) = ' ';
+		pLink->Link(cs.c_str(), mod);
+	}
+}
+
+void CMainWindow::on_UnlinkButton_clicked()
+{
+	if (pLink)
+		pLink->Unlink();
 }
