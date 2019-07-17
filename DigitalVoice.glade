@@ -28,11 +28,6 @@ Author: Thomas A. Early, N7TAE
   <!-- interface-description With an AMBE device, route and link to the D-Star ham radio network. -->
   <!-- interface-copyright 2019. All rights Reserved. -->
   <!-- interface-authors Thomas A. Early, N7TAE -->
-  <object class="GtkTextBuffer" id="LogTextBuffer">
-    <property name="text" translatable="yes">Welcome to Qnet Digital Voice!
-
-Log message area...</property>
-  </object>
   <object class="GtkApplicationWindow" id="AppWindow">
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
@@ -52,17 +47,19 @@ Log message area...</property>
         <property name="orientation">vertical</property>
         <property name="spacing">5</property>
         <child>
-          <object class="GtkTextView" id="LogTextView">
-            <property name="height_request">256</property>
+          <object class="GtkScrolledWindow" id="ScrolledWindow">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="editable">False</property>
-            <property name="wrap_mode">char</property>
-            <property name="cursor_visible">False</property>
-            <property name="buffer">LogTextBuffer</property>
-            <property name="accepts_tab">False</property>
-            <property name="input_hints">GTK_INPUT_HINT_UPPERCASE_CHARS | GTK_INPUT_HINT_NONE</property>
-            <property name="monospace">True</property>
+            <property name="shadow_type">in</property>
+            <property name="min_content_height">256</property>
+            <child>
+              <object class="GtkTextView" id="LogTextView">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="editable">False</property>
+                <property name="cursor_visible">False</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -341,6 +338,11 @@ Log message area...</property>
         </child>
       </object>
     </child>
+  </object>
+  <object class="GtkTextBuffer" id="LogTextBuffer">
+    <property name="text" translatable="yes">Welcome to Qnet Digital Voice!
+
+Log message area...</property>
   </object>
   <object class="GtkDialog" id="SettingsDialog">
     <property name="can_focus">False</property>

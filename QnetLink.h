@@ -77,6 +77,7 @@ private:
 	void print_status_file();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
 	void PlayAudioNotifyThread(char *msg);
+	void SendLog(const char *fmt, ...);
 
 	/* configuration data */
 	CFGDATA cfgdata;
@@ -103,7 +104,7 @@ private:
 
 	// unix socket to the audio unit
 	CUnixDgramReader AM2Link;
-	CUnixDgramWriter Link2AM;
+	CUnixDgramWriter Link2AM, LogInput;
 
 	// input from our own local repeater
 	struct sockaddr_in fromRptr;

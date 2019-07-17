@@ -22,6 +22,7 @@
 #include <pwd.h>
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <thread>
 #include <chrono>
@@ -39,7 +40,6 @@ extern Glib::RefPtr<Gtk::Application> theApp;
 extern CAudioManager AudioManager;
 extern CConfigure cfg;
 extern bool GetCfgDirectory(std::string &path);
-
 
 CMainWindow::CMainWindow() :
 	pWin(nullptr),
@@ -67,6 +67,7 @@ CMainWindow::~CMainWindow()
 		pGate->keep_running = false;
 		futGate.get();
 	}
+	logdata.clear();
 }
 
 void CMainWindow::RunLink()
@@ -115,10 +116,18 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 {
 	if (Gate2AM.Open("gate2am"))
 		return true;
+
 	if (Link2AM.Open("link2am")) {
 		Gate2AM.Close();
 		return true;
 	}
+
+	if (LogInput.Open("log_input")) {
+		Gate2AM.Close();
+		Link2AM.Close();
+		return true;
+	}
+
  	builder->get_widget(name, pWin);
 	if (nullptr == pWin) {
 		Link2AM.Close();
@@ -156,8 +165,10 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("LinkEntry", pLinkEntry);
 	builder->get_widget("EchoTestButton", pEchoTestButton);
 	builder->get_widget("PTTButton", pPTTButton);
-	//builder->get_widget("LogTextBuffer", pLogTextBuffer);
+	builder->get_widget("ScrolledWindow", pScrolledWindow);
 	builder->get_widget("LogTextView", pLogTextView);
+	pLogTextBuffer = pLogTextView->get_buffer();
+
 	// events
 	pRouteActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteActionButton_clicked));
 	pRouteComboBox->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteComboBox_changed));
@@ -173,6 +184,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	// i/o events
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayGate2AM), Gate2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
+	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::GetLogInput), LogInput.GetFD(), Glib::IO_IN);
 	// idle processing
 	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 50);
 
@@ -333,6 +345,24 @@ bool CMainWindow::RelayGate2AM(Glib::IOCondition condition)
 			AudioManager.PlayFile((char *)&dsvt.config);
 	} else {
 		std::cerr << "RelayGate2AM not a read event!" << std::endl;
+	}
+	return true;
+}
+
+bool CMainWindow::GetLogInput(Glib::IOCondition condition)
+{
+	if (condition & Glib::IO_IN) {
+		char line[256];
+		LogInput.Read(line, 128);
+		logdata.push_back(line);
+		while (logdata.size()>100)
+			logdata.pop_front();
+		std::string current;
+		for (auto it=logdata.begin(); it!=logdata.end(); it++)
+			current.append(*it);
+		pLogTextBuffer->set_text(current.c_str());
+	} else {
+		std::cerr << "GetLogInput is not a read event!" << std::endl;
 	}
 	return true;
 }

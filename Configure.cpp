@@ -70,6 +70,8 @@ void CConfigure::ReadData()
 			continue;
 		if (*val == '\'')	// value is a quoted string
 			val = strtok(val, "'");
+		if (! val)
+			continue;
 
 		if (0 == strcmp(key, "MyCall")) {
 			data.sCallsign.assign(val);

@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <set>
+#include <deque>
 #include <future>
 #include <gtkmm.h>
 
@@ -43,11 +43,15 @@ private:
 	Gtk::RadioButton *pRouteRadioButton, *pLinkRadioButton;
 	Gtk::Entry *pLinkEntry, *pRouteEntry;
 	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
-	Gtk::TextBuffer *pLogTextBuffer;
+	Glib::RefPtr<Gtk::TextBuffer> pLogTextBuffer;
+	Gtk::ScrolledWindow *pScrolledWindow;
 	Gtk::TextView *pLogTextView;
+
 	// state data
 	std::set<Glib::ustring> routeset;
 	CFGDATA cfgdata;
+	std::deque<std::string> logdata;
+
 	// helpers
 	void ReadRoutes();
 	CQnetGateway *pGate;
@@ -56,7 +60,8 @@ private:
 	void SetState(const CFGDATA &data);
 	void RunLink();
 	void RunGate();
-	CUnixDgramReader Gate2AM, Link2AM;
+	CUnixDgramReader Gate2AM, Link2AM, LogInput;
+
 	// events
 	void on_QuitButton_clicked();
 	void on_SettingsButton_clicked();
@@ -70,5 +75,6 @@ private:
 	void on_LinkEntry_changed();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
+	bool GetLogInput(Glib::IOCondition condition);
 	bool TimeoutProcess();
 };

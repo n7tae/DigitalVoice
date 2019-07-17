@@ -84,7 +84,7 @@ bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAd
 
 	int rc = getaddrinfo(name, NULL, &hints, &res);
 	if (rc != 0) {
-		printf("getaddrinfo return error code %d for [%s]\n", rc, name);
+		fprintf(stderr, "getaddrinfo return error code %d for [%s]\n", rc, name);
 		return false;
 	}
 
@@ -122,7 +122,7 @@ void CQnetLink::print_status_file()
 {
 	FILE *statusfp = fopen(status_file.c_str(), "w");
 	if (!statusfp)
-		printf("Failed to create status file %s\n", status_file.c_str());
+		fprintf(stderr, "Failed to create status file %s\n", status_file.c_str());
 	else {
 		setvbuf(statusfp, (char *)NULL, _IOLBF, 0);
 		struct tm tm1;
@@ -246,7 +246,7 @@ bool CQnetLink::srv_open()
 	/* create our XRF gateway socket */
 	xrf_g2_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (xrf_g2_sock == -1) {
-		printf("Failed to create gateway socket for XRF,errno=%d\n",errno);
+		fprintf(stderr, "Failed to create gateway socket for XRF,errno=%d\n",errno);
 		return false;
 	}
 	fcntl(xrf_g2_sock,F_SETFL,O_NONBLOCK);
@@ -256,7 +256,7 @@ bool CQnetLink::srv_open()
 	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
 	sin.sin_port = htons(rmt_xrf_port);
 	if (bind(xrf_g2_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		printf("Failed to bind gateway socket on port %d for XRF, errno=%d\n", rmt_xrf_port ,errno);
+		fprintf(stderr, "Failed to bind gateway socket on port %d for XRF, errno=%d\n", rmt_xrf_port, errno);
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
 		return false;
@@ -265,7 +265,7 @@ bool CQnetLink::srv_open()
 	/* create the dcs socket */
 	dcs_g2_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (dcs_g2_sock == -1) {
-		printf("Failed to create gateway socket for DCS,errno=%d\n",errno);
+		fprintf(stderr, "Failed to create gateway socket for DCS,errno=%d\n", errno);
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
 		return false;
@@ -275,7 +275,7 @@ bool CQnetLink::srv_open()
 	/* socket for REF */
 	ref_g2_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (ref_g2_sock == -1) {
-		printf("Failed to create gateway socket for REF, errno=%d\n",errno);
+		fprintf(stderr, "Failed to create gateway socket for REF, errno=%d\n", errno);
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
@@ -288,8 +288,7 @@ bool CQnetLink::srv_open()
 	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
 	sin.sin_port = htons(rmt_ref_port);
 	if (bind(ref_g2_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		printf("Failed to bind gateway socket on port %d for REF, errno=%d\n",
-		        rmt_ref_port ,errno);
+		fprintf(stderr, "Failed to bind gateway socket on port %d for REF, errno=%d\n", rmt_ref_port, errno);
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
@@ -301,6 +300,7 @@ bool CQnetLink::srv_open()
 
 	/* create our gateway unix sockets */
 	Link2AM.SetUp("link2am");
+	LogInput.SetUp("log_input");
 	if (AM2Link.Open("am2link")) {
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
@@ -371,7 +371,7 @@ void CQnetLink::Link(const char *call, const char to_mod)
 	auto it = gwys.hostmap.find(call);
 	if (it == gwys.hostmap.end()) {
 		sprintf(notify_msg, "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", cfgdata.cModule);
-		printf("%s not found in gwy list\n", call);
+		SendLog("%s not found in gwy list\n", call);
 		return;
 	}
 
@@ -381,7 +381,7 @@ void CQnetLink::Link(const char *call, const char to_mod)
 	}
 	bool ok = resolve_rmt(it->second->address.c_str(), it->second->port, to_remote_g2.addr);
 	if (!ok) {
-		printf("Call %s is host %s but could not resolve to IP\n", call, it->second->address.c_str());
+		SendLog("Call %s is host %s but could not resolve to IP\n", call, it->second->address.c_str());
 		to_remote_g2.addr.Clear();
 		to_remote_g2.countdown = 0;
 		to_remote_g2.from_mod = '\0';
@@ -407,7 +407,7 @@ void CQnetLink::Link(const char *call, const char to_mod)
 		link_request[9] = to_mod;
 		link_request[10] = '\0';
 
-		printf("sending link request from mod %c to link with: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
+		SendLog("Sending link request from mod %c to link with: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
 
 		for (int j=0; j<5; j++)
 			sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
@@ -419,10 +419,10 @@ void CQnetLink::Link(const char *call, const char to_mod)
 		memcpy(link_request + 11, to_remote_g2.to_call, 8);
 		strcpy(link_request + 19, "<table border=\"0\" width=\"95%\"><tr><td width=\"4%\"><img border=\"0\" src=g2ircddb.jpg></td><td width=\"96%\"><font size=\"2\"><b>REPEATER</b> QnetGateway v1.0+</font></td></tr></table>");
 
-		printf("sending link request from mod %c to link with: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
+		SendLog("Sending link request from mod %c to link with: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
 		sendto(dcs_g2_sock, link_request, 519, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
 	} else if (it->second->port == rmt_ref_port) {
-		printf("sending link command from mod %c to: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
+		SendLog("Sending link command from mod %c to: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
 
 		queryCommand[0] = 5;
 		queryCommand[1] = 0;
@@ -466,7 +466,7 @@ void CQnetLink::Unlink()
 				sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
 		}
 
-		printf("Unlinked from [%s] mod %c\n", to_remote_g2.to_call, to_remote_g2.to_mod);
+		SendLog("Unlinked from [%s] mod %c\n", to_remote_g2.to_call, to_remote_g2.to_mod);
 		sprintf(notify_msg, "%c_unlinked.dat_UNLINKED", to_remote_g2.from_mod);
 
 		/* now zero out this entry */
@@ -531,7 +531,7 @@ void CQnetLink::Process()
 
 	// initialize all request links
 	if (8 == link_at_startup.size()) {
-		printf("sleep for 5 sec before link at startup\n");
+		SendLog("Sleep for 5 sec before link at startup\n");
 		std::this_thread::sleep_for(std::chrono::seconds(5));
 		std::string node(link_at_startup.substr(0, 6));
 		node.resize(CALL_SIZE, ' ');
@@ -784,7 +784,7 @@ void CQnetLink::Process()
 						/* Last Heard */
 						if (old_sid != dsvt.streamid) {
 							if (qso_details)
-								printf("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
+								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, r1=%.8s, r2=%.8s, %d bytes IP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
 
 
 							old_sid = dsvt.streamid;
@@ -798,7 +798,7 @@ void CQnetLink::Process()
 					if ((dsvt.ctrl & 0x40) != 0) {
 						if (old_sid == dsvt.streamid) {
 							if (qso_details)
-								printf("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
+								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
 							old_sid = 0x0;
 						}
 					}
@@ -951,10 +951,7 @@ void CQnetLink::Process()
 						/* Last Heard */
 						if (old_sid != rdvst.dsvt.streamid) {
 							if (qso_details)
-								printf("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
-								        ntohs(rdvst.dsvt.streamid), rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0],
-								        rdvst.dsvt.hdr.mycall, rdvst.dsvt.hdr.sfx, rdvst.dsvt.hdr.urcall, rdvst.dsvt.hdr.rpt1, rdvst.dsvt.hdr.rpt2,
-								        length, fromDst4.GetAddress(), source_stn);
+								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(rdvst.dsvt.streamid), rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.mycall, rdvst.dsvt.hdr.sfx, rdvst.dsvt.hdr.urcall, rdvst.dsvt.hdr.rpt1, rdvst.dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
 
 							// put user into tmp1
 							memcpy(tmp1, rdvst.dsvt.hdr.mycall, 8);
@@ -1001,7 +998,7 @@ void CQnetLink::Process()
 					if (rdvst.dsvt.ctrl & 0x40U) {
 						if (old_sid == rdvst.dsvt.streamid) {
 							if (qso_details)
-								printf("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdvst.dsvt.streamid), length, fromDst4.GetAddress());
+								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdvst.dsvt.streamid), length, fromDst4.GetAddress());
 
 							old_sid = 0U;
 							}
@@ -1404,14 +1401,14 @@ bool CQnetLink::Init()
 
 	/* process configuration file */
 	if (Configure()) {
-		printf("Failed to process config data\n");
+		SendLog("Failed to process config data\n");
 		return true;
 	}
 	print_status_file();
 
 	/* create our server */
 	if (!srv_open()) {
-		printf("srv_open() failed\n");
+		SendLog("srv_open() failed\n");
 		return true;
 	}
 	return false;
@@ -1458,4 +1455,24 @@ void CQnetLink::Shutdown()
 
 	print_status_file();
 	srv_close();
+}
+
+void CQnetLink::SendLog(const char *fmt, ...)
+{
+	time_t ltime;
+	struct tm tm;
+	char buf[256];
+
+	time(&ltime);
+	localtime_r(&ltime, &tm);
+
+	snprintf(buf ,255,"%d:%02d:%02d: ", tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	va_list args;
+	va_start(args,fmt);
+	vsnprintf(buf + strlen(buf), 256 - strlen(buf) -1, fmt, args);
+	va_end(args);
+
+	LogInput.Write(buf, strlen(buf)+1);
+	return;
 }
