@@ -25,6 +25,7 @@
 #include "aprs.h"
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"
+#include "Configure.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -84,6 +85,8 @@ public:
 	std::atomic<bool> keep_running;
 
 private:
+	// configuration data
+	CFGDATA cfgdata;
     // link type
     int link_family = AF_UNSPEC;
 	// network type
@@ -97,7 +100,7 @@ private:
     int Index = -1;
 
 	CUnixDgramReader AM2Gate;
-	CUnixDgramWriter Gate2AM;
+	CUnixDgramWriter Gate2AM, LogInput;
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 

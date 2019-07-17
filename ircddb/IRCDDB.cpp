@@ -150,8 +150,7 @@ bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &m
 	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3, dest, msg, "");
 }
 
-bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
-                        unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
+bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
 {
 	if (num_dv_frames<= 0 || num_dv_frames>65535) {
 		printf("CIRCDDB::sendHeard:num_dv_frames not in range 1-65535\n");

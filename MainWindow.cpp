@@ -107,8 +107,10 @@ void CMainWindow::SetState(const CFGDATA &data)
 			pLink->keep_running = false;
 			futLink.get();
 		}
-		if (nullptr == pGate)
+		if (nullptr == pGate) {
 			futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
+			std::cout << "start gateway\n";
+		}
 	}
 }
 
