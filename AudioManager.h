@@ -64,7 +64,7 @@ private:
 	CRandom random;
 	std::vector<unsigned long> speak;
 	// Unix sockets
-	CUnixDgramWriter AM2Gate, AM2Link;
+	CUnixDgramWriter AM2Gate, AM2Link, LogInput;
 	// methods
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 	bool audio_is_empty();

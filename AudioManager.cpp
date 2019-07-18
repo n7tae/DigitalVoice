@@ -60,6 +60,7 @@ CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0
 	}
 	AM2Gate.SetUp("am2gate");
 	AM2Link.SetUp("am2link");
+	LogInput.SetUp("log_input");
 }
 
 
@@ -564,7 +565,7 @@ void CAudioManager::play_audio_queue()
 		rc = snd_pcm_writei(handle, frame.GetData(), frames);
 		if (rc == -EPIPE) {
 			// EPIPE means underrun
-			std::cerr << "underrun occurred" << std::endl;
+			// std::cerr << "underrun occurred" << std::endl;
 			snd_pcm_prepare(handle);
 		} else if (rc < 0) {
 			std::cerr <<  "error from writei: " << snd_strerror(rc) << std::endl;
@@ -635,7 +636,6 @@ void CAudioManager::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 void CAudioManager::KeyOff()
 {
 	hot_mic = false;
-	std::cout << "Key OFF!!!" << std::endl;
 	r1.get();
 	r2.get();
 	r3.get();
@@ -667,7 +667,8 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	std::string message;
 	if (msg.size() > pos+4) {
 		message.assign(msg.substr(pos+5));
-		std::cout << "Message is '" << message << "'" << std::endl;
+		message.append("\n");
+		LogInput.Write(message.c_str(), message.size()+1);
 	}
 
 	std::string cfgdir;

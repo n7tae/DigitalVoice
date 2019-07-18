@@ -67,7 +67,6 @@ CMainWindow::~CMainWindow()
 		pGate->keep_running = false;
 		futGate.get();
 	}
-	logdata.clear();
 }
 
 void CMainWindow::RunLink()
@@ -353,16 +352,12 @@ bool CMainWindow::RelayGate2AM(Glib::IOCondition condition)
 
 bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 {
+	static auto it = pLogTextBuffer->begin();
 	if (condition & Glib::IO_IN) {
 		char line[256];
 		LogInput.Read(line, 128);
-		logdata.push_back(line);
-		while (logdata.size()>100)
-			logdata.pop_front();
-		std::string current;
-		for (auto it=logdata.begin(); it!=logdata.end(); it++)
-			current.append(*it);
-		pLogTextBuffer->set_text(current.c_str());
+		it = pLogTextBuffer->insert(it, line);
+		pLogTextView->scroll_to(it, 0.0, 0.0, 1.0);
 	} else {
 		std::cerr << "GetLogInput is not a read event!" << std::endl;
 	}

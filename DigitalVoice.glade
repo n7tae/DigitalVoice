@@ -30,8 +30,8 @@ Author: Thomas A. Early, N7TAE
   <!-- interface-authors Thomas A. Early, N7TAE -->
   <object class="GtkApplicationWindow" id="AppWindow">
     <property name="can_focus">False</property>
-    <property name="resizable">False</property>
     <property name="icon_name">audio-input-microphone-high-symbolic</property>
+    <property name="has_resize_grip">True</property>
     <property name="show_menubar">False</property>
     <child>
       <placeholder/>
@@ -58,6 +58,7 @@ Author: Thomas A. Early, N7TAE
                 <property name="can_focus">True</property>
                 <property name="editable">False</property>
                 <property name="cursor_visible">False</property>
+                <property name="monospace">True</property>
               </object>
             </child>
           </object>
@@ -331,7 +332,7 @@ Author: Thomas A. Early, N7TAE
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>

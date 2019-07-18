@@ -172,6 +172,7 @@ private:
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
     int FindIndex() const;
+	void SendLog(const char *fmt, ...);
 
 	// read configuration file
 	bool Configure();

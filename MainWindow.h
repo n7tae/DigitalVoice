@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <deque>
 #include <future>
 #include <gtkmm.h>
 
@@ -50,7 +49,6 @@ private:
 	// state data
 	std::set<Glib::ustring> routeset;
 	CFGDATA cfgdata;
-	std::deque<std::string> logdata;
 
 	// helpers
 	void ReadRoutes();
