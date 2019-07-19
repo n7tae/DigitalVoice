@@ -306,18 +306,6 @@ Author: Thomas A. Early, N7TAE
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="QuickKeyButton">
-                <property name="label" translatable="yes">QuickKey</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-              </object>
-              <packing>
-                <property name="left_attach">3</property>
-                <property name="top_attach">1</property>
-              </packing>
-            </child>
-            <child>
               <object class="GtkButton" id="QuitButton">
                 <property name="label" translatable="yes">Quit</property>
                 <property name="visible">True</property>
@@ -328,6 +316,19 @@ Author: Thomas A. Early, N7TAE
               <packing>
                 <property name="left_attach">3</property>
                 <property name="top_attach">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="QuickKeyButton">
+                <property name="label" translatable="yes">Quick Key</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <signal name="clicked" handler="on_QuickKeyButton_clicked" swapped="no"/>
+              </object>
+              <packing>
+                <property name="left_attach">3</property>
+                <property name="top_attach">1</property>
               </packing>
             </child>
           </object>

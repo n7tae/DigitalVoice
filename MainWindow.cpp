@@ -150,12 +150,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 		return true;
 
 	builder->get_widget("QuitButton", pQuitButton);
-	pQuitButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuitButton_clicked));
-
 	builder->get_widget("SettingsButton", pSettingsButton);
-	pSettingsButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
-
-	builder->get_widget("QuickKeyButton", pQuickKeyButton);
 	builder->get_widget("LinkButton", pLinkButton);
 	builder->get_widget("UnlinkButton", pUnlinkButton);
 	builder->get_widget("RouteActionButton", pRouteActionButton);
@@ -166,16 +161,20 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("LinkEntry", pLinkEntry);
 	builder->get_widget("EchoTestButton", pEchoTestButton);
 	builder->get_widget("PTTButton", pPTTButton);
+	builder->get_widget("QuickKeyButton", pQuickKeyButton);
 	builder->get_widget("ScrolledWindow", pScrolledWindow);
 	builder->get_widget("LogTextView", pLogTextView);
 	pLogTextBuffer = pLogTextView->get_buffer();
 
 	// events
+	pSettingsButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
+	pQuitButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuitButton_clicked));
 	pRouteActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteActionButton_clicked));
 	pRouteComboBox->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteComboBox_changed));
 	pRouteEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteEntry_changed));
 	pEchoTestButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_EchoTestButton_toggled));
 	pPTTButton->signal_toggled().connect(sigc::mem_fun(*this, &CMainWindow::on_PTTButton_toggled));
+	pQuickKeyButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuickKeyButton_clicked));
 	pLinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkButton_clicked));
 	pUnlinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_UnlinkButton_clicked));
 	pLinkEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkEntry_changed));
@@ -208,24 +207,40 @@ void CMainWindow::on_SettingsButton_clicked()
 	SettingsDlg.Show();
 }
 
+void CMainWindow::WriteRoutes()
+{
+	std::string path;
+	if (GetCfgDirectory(path))
+		return;
+	path.append("routes.cfg");
+	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
+	if (! file.is_open())
+		return;
+	for (auto it=routeset.begin(); it!=routeset.end(); it++) {
+		file << *it << std::endl;
+	}
+	file.close();
+}
+
 void CMainWindow::ReadRoutes()
 {
 	std::string path;
 
-	if ( !GetCfgDirectory(path)) {
+	if (! GetCfgDirectory(path)) {
 		path.append("routes.cfg");
 		std::ifstream file(path.c_str(), std::ifstream::in);
 		if (file.is_open()) {
 			char line[128];
-			while (!file.eof()) {
-				file.getline(line, 128);
+			while (file.getline(line, 128)) {
 				if ('#' != *line) {
 					routeset.insert(line);
 				}
 			}
 			file.close();
-			for (auto it=routeset.begin(); it!=routeset.end(); it++)
+			for (auto it=routeset.begin(); it!=routeset.end(); it++) {
 				pRouteComboBox->append(*it);
+			}
+			pRouteComboBox->set_active(0);
 			return;
 		}
 	}
@@ -286,6 +301,7 @@ void CMainWindow::on_RouteActionButton_clicked()
 			pRouteComboBox->append(*it);
 		pRouteComboBox->set_active_text(toadd);
 	}
+	WriteRoutes();
 }
 
 void CMainWindow::on_EchoTestButton_toggled()
@@ -318,6 +334,14 @@ void CMainWindow::on_PTTButton_toggled()
 			AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
 	} else
 		AudioManager.KeyOff();
+}
+
+void CMainWindow::on_QuickKeyButton_clicked()
+{
+	std::string urcall("CQCQCQ  ");
+	if (pRouteRadioButton->get_active())
+		urcall.assign(pRouteEntry->get_text().c_str());
+	AudioManager.QuickKey(urcall.c_str());
 }
 
 bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)

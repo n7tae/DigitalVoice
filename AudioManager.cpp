@@ -119,6 +119,36 @@ void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned cha
 	}
 }
 
+void CAudioManager::QuickKey(const char *urcall)
+{
+	hot_mic = true;
+	const unsigned char silence[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+	unsigned char ut[20];
+	unsigned char uh[41];
+	CDSVT h;
+	makeheader(h, urcall, ut, uh);
+	bool islink = (0 == memcmp(urcall, "CQCQCQ", 6));
+	if (islink)
+		AM2Link.Write(h.title, 56);
+	else
+		AM2Gate.Write(h.title, 56);
+
+	h.config = 0x20U;
+	memcpy(h.vasd.voice, silence, 9);
+	for (unsigned int i=0; i<10; i++) {
+		h.ctrl = i;
+		if (9U == i)
+			h.ctrl |= 0x40U;
+		SlowData(i, ut, uh, h);
+		std::this_thread::sleep_for(std::chrono::microseconds(19));
+		if (islink)
+			AM2Link.Write(h.title, 27);
+		else
+			AM2Gate.Write(h.title, 27);
+	}
+	hot_mic = false;
+}
+
 void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall)
 {
 	unsigned count = 0;

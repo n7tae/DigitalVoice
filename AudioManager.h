@@ -46,6 +46,7 @@ public:
 	void Link2AudioMgr(const CDSVT &dsvt);
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
+	void QuickKey(const char *urcall);
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;

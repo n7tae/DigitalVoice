@@ -37,7 +37,7 @@ public:
 private:
 	// widgets
 	Gtk::Window *pWin;
-	Gtk::Button *pQuitButton, *pSettingsButton, *pQuickKeyButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton;
+	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton;
 	Gtk::ComboBoxText *pRouteComboBox;
 	Gtk::RadioButton *pRouteRadioButton, *pLinkRadioButton;
 	Gtk::Entry *pLinkEntry, *pRouteEntry;
@@ -52,6 +52,7 @@ private:
 
 	// helpers
 	void ReadRoutes();
+	void WriteRoutes();
 	CQnetGateway *pGate;
 	CQnetLink *pLink;
 	std::future<void> futLink, futGate;
@@ -68,6 +69,7 @@ private:
 	void on_RouteEntry_changed();
 	void on_EchoTestButton_toggled();
 	void on_PTTButton_toggled();
+	void on_QuickKeyButton_clicked();
 	void on_LinkButton_clicked();
 	void on_UnlinkButton_clicked();
 	void on_LinkEntry_changed();
