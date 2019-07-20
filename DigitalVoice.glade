@@ -46,12 +46,14 @@ Author: Thomas A. Early, N7TAE
         <property name="margin_bottom">10</property>
         <property name="orientation">vertical</property>
         <property name="spacing">5</property>
+        <property name="baseline_position">bottom</property>
         <child>
           <object class="GtkScrolledWindow" id="ScrolledWindow">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
+            <property name="window_placement">top-right</property>
             <property name="shadow_type">in</property>
-            <property name="min_content_height">256</property>
+            <property name="min_content_height">400</property>
             <child>
               <object class="GtkTextView" id="LogTextView">
                 <property name="visible">True</property>
@@ -146,6 +148,7 @@ Author: Thomas A. Early, N7TAE
                             <property name="margin_right">10</property>
                             <property name="active">True</property>
                             <property name="draw_indicator">True</property>
+                            <signal name="clicked" handler="on_ModeGroup_clicked" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>
@@ -227,6 +230,7 @@ Author: Thomas A. Early, N7TAE
                             <property name="active">True</property>
                             <property name="draw_indicator">True</property>
                             <property name="group">RouteRadioButton</property>
+                            <signal name="clicked" handler="on_ModeGroup_clicked" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>
@@ -815,35 +819,6 @@ Log message area...</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="LinkAtStartEntry">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="halign">start</property>
-                        <property name="max_length">8</property>
-                        <property name="truncate_multiline">True</property>
-                        <property name="placeholder_text" translatable="yes">NONE</property>
-                        <signal name="changed" handler="on_LinkAtStartEntry_changed" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkCheckButton" id="MaintainLinkCheckButton">
-                        <property name="label" translatable="yes">Maintain link when routing</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">False</property>
-                        <property name="draw_indicator">True</property>
-                        <signal name="toggled" handler="on_MaintainLinkCheckButton_toggled" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left_attach">2</property>
-                        <property name="top_attach">0</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkCheckButton" id="LegacyCheckButton">
                         <property name="label" translatable="yes">Include Legacy DPlus (Register at www.dstargateway.org)</property>
                         <property name="visible">True</property>
@@ -859,6 +834,24 @@ Log message area...</property>
                         <property name="top_attach">1</property>
                         <property name="width">3</property>
                       </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="LinkAtStartEntry">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="halign">start</property>
+                        <property name="max_length">8</property>
+                        <property name="truncate_multiline">True</property>
+                        <property name="placeholder_text" translatable="yes">NONE</property>
+                        <signal name="changed" handler="on_LinkAtStartEntry_changed" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
                     </child>
                   </object>
                 </child>

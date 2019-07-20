@@ -91,24 +91,29 @@ void CMainWindow::RunGate()
 void CMainWindow::SetState(const CFGDATA &data)
 {
 	if (data.eNetType == EQuadNetType::norouting) {
-		pLinkRadioButton->set_active(true);
 		pRouteRadioButton->set_sensitive(false);
-		if (pGate) {
-			pGate->keep_running = false;
-			futGate.get();
-		}
-		if (nullptr == pLink) {
-			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+		if (! pLinkRadioButton->get_active()) {
+			pLinkRadioButton->set_active();
+			return;
 		}
 	} else {
 		pRouteRadioButton->set_sensitive(true);
-		if (pLink) {
-			pLink->keep_running = false;
-			futLink.get();
-		}
-		if (nullptr == pGate) {
-			futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
-			std::cout << "start gateway\n";
+		if (pRouteRadioButton->get_active()) {
+			if (pLink) {
+				pLink->keep_running = false;
+				futLink.get();
+			}
+			if (nullptr == pGate) {
+				futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
+			}
+		} else {
+			if (pGate) {
+				pGate->keep_running = false;
+				futGate.get();
+			}
+			if (nullptr == pLink) {
+				futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+			}
 		}
 	}
 }
@@ -178,6 +183,8 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pLinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkButton_clicked));
 	pUnlinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_UnlinkButton_clicked));
 	pLinkEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkEntry_changed));
+	pLinkRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_ModeGroup_clicked));
+	pRouteRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_ModeGroup_clicked));
 	ReadRoutes();
 	SetState(cfgdata);
 
@@ -204,7 +211,29 @@ void CMainWindow::on_QuitButton_clicked()
 
 void CMainWindow::on_SettingsButton_clicked()
 {
-	SettingsDlg.Show();
+	auto newdata = SettingsDlg.Show();
+	if (newdata) {	// the user clicked okay so we need to see if anything changed. We'll shut things down and let SetState start things up again
+		if (newdata->sStation.compare(cfgdata.sCallsign) || newdata->cModule!=cfgdata.cModule) {	// the station callsign has changed
+			if (pGate) {
+				pGate->keep_running = false;
+				futGate.get();
+			}
+			if (pLink) {
+				pLink->keep_running = false;
+				futLink.get();
+			}
+		}
+		if (newdata->eNetType != cfgdata.eNetType) {
+			if (pGate) {
+				pGate->keep_running = false;
+				futGate.get();
+			}
+		}
+		SetState(*newdata);
+		cfg.CopyFrom(*newdata);
+		cfg.CopyTo(cfgdata);
+		cfg.WriteData();
+	}
 }
 
 void CMainWindow::WriteRoutes()
@@ -466,4 +495,10 @@ void CMainWindow::on_UnlinkButton_clicked()
 {
 	if (pLink)
 		pLink->Unlink();
+}
+
+void CMainWindow::on_ModeGroup_clicked()
+{
+	CWaitCursor wait;
+	SetState(cfgdata);
 }

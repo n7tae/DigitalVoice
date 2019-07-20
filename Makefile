@@ -6,6 +6,9 @@ CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb `pkg-config --cflags gtkmm-3.0`
 #CPPFLAGS=-W -Wall -std=c++11 -Iircddb `pkg-config --cflags gtkmm-3.0`
 IRC=ircddb
 
+CFG_DIR = $(HOME)/.config/qdv
+BIN_DIR = $(HOME)/bin
+
 DSTROBJS = $(IRC)/dstar_dv.o $(IRC)/golay23.o
 IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMessageQueue.o $(IRC)/IRCProtocol.o $(IRC)/IRCMessage.o $(IRC)/IRCDDBApp.o $(IRC)/IRCutils.o $(DSTROBJS)
 SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
@@ -21,7 +24,7 @@ qdv :  $(OBJS) $(IRCOBJS)
 .PHONY : clean
 
 clean :
-	$(RM) $(OBJS) $(DEPS) qdv
+	$(RM) $(OBJS) $(DEPS)
 
 -include $(DEPS)
 
@@ -31,5 +34,15 @@ hostfiles :
 	/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
 	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt
 
-interactive :
-	GTK_DEBUG=interactive ./qdv
+install : qdv
+	mkdir -p $(CFG_DIR)
+	ln -s $(shell pwd)/XLX_Hosts.txt $(CFG_DIR)
+	ln -s $(shell pwd)/DExtra_Hosts.txt $(CFG_DIR)
+	ln -s $(shell pwd)/DCS_Hosts.txt $(CFG_DIR)
+	ln -s $(shell pwd)/DPlus_Hosts.txt $(CFG_DIR)
+	ln -s $(shell pwd)/announce $(CFG_DIR)
+	mkdir -p $(BIN_DIR)
+	ln -s #(shell pwd)/qdv $(BIN_DIR)
+
+#interactive :
+#	GTK_DEBUG=interactive ./qdv

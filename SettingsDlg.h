@@ -45,7 +45,7 @@ private:
 	// widgets
     Gtk::Dialog *pDlg;
 	Gtk::Button *pRescanButton, *pOkayButton;
-	Gtk::CheckButton *pUseMyCall, *pMaintainLink, *pDPlusEnableCheck;
+	Gtk::CheckButton *pUseMyCall, *pDPlusEnableCheck;
 	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pLocation, *pURL, *pLatitude, *pLongitude, *pLinkAtStart;
 	Gtk::RadioButton *p230k, *p460k, *pIPv4Only, *pIPv6Only, *pDualStack, *pNoRouting;
 	Gtk::Label *pDevicePath, *pProductID, *pVersion;

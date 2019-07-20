@@ -84,7 +84,6 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 	d.sURL.assign(pURL->get_text());
 	//link
 	d.sLinkAtStart.assign(pLinkAtStart->get_text());
-	d.bMaintainLink = pMaintainLink->get_active();
 	d.bDPlusEnable = pDPlusEnableCheck->get_active();
 	// quadnet
 	if (pIPv6Only->get_active())
@@ -113,7 +112,6 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 	pURL->set_text(d.sURL);
 	//link
 	pLinkAtStart->set_text(d.sLinkAtStart);
-	pMaintainLink->set_active(d.bMaintainLink);
 	if (d.bDPlusEnable != pDPlusEnableCheck->get_active())
 		pDPlusEnableCheck->set_active(d.bDPlusEnable);	// only do this if we need to
 	//quadnet
@@ -170,7 +168,6 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("RescanButton", pRescanButton);
 	// linking
 	builder->get_widget("LinkAtStartEntry", pLinkAtStart);
-	builder->get_widget("MaintainLinkCheckButton", pMaintainLink);
 	builder->get_widget("LegacyCheckButton", pDPlusEnableCheck);
 	// QuadNet
 	builder->get_widget("IPV4_RadioButton", pIPv4Only);
