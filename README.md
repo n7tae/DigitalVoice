@@ -17,7 +17,7 @@ If it builds okay, then you can install it:
 ```
 make install
 ```
-All the configuration files are located in ~/.config/qdv and the qdv executable is in ~/bin. Please note that symbolic links are installed, so you can do a `make clean` to get rid of the intermediate object files.
+All the configuration files are located in ~/.config/qdv and the qdv executable is in ~/bin. Please note that symbolic links are installed, so you can do a `make clean` to get rid of the intermediate object files, but don't delete the build directory unless you want to remove *qdv* from your system.
 
 If you are planning on doing linking, you need host files:
 ```

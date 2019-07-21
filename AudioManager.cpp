@@ -569,7 +569,7 @@ void CAudioManager::play_audio_queue()
 	// 8000 samples/second sampling rate
 	snd_pcm_hw_params_set_rate(handle, params, 8000, 0);
 
-	// Set period size to 32 frames.
+	// Set period size to 160 frames.
 	snd_pcm_uframes_t frames = 160;
 	snd_pcm_hw_params_set_period_size(handle, params, frames, 0);
 	//snd_pcm_hw_params_set_period_size_near(handle, params, &frames, &dir);
