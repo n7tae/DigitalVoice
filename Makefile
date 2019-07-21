@@ -43,7 +43,7 @@ install : qdv
 	ln -s $(shell pwd)/announce $(CFG_DIR)
 	ln -s $(shell pwd)/DigitalVoice.glat $(CFG_DIR)
 	mkdir -p $(BIN_DIR)
-	ln -s #(shell pwd)/qdv $(BIN_DIR)
+	ln -s $(shell pwd)/qdv $(BIN_DIR)
 
 #interactive :
 #	GTK_DEBUG=interactive ./qdv
