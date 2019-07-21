@@ -4,7 +4,7 @@
 ## Building and installing
 There are several library requirements before you start:
 ```
-sudo apt install -y git build-esential libgtkmm-3.0-dev libasound2-dev
+sudo apt install -y git build-essential libgtkmm-3.0-dev libasound2-dev
 ```
 
 Then you can download and build qdv:
