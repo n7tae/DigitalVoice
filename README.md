@@ -10,7 +10,7 @@ sudo apt install -y git build-essential libgtkmm-3.0-dev libasound2-dev
 Then you can download and build qdv:
 ```
 git clone git://gitlib.com/n7tae/DigitalVoice.git
-cd DigitVoice
+cd DigitalVoice
 make
 ```
 If it builds okay, then you can install it:
