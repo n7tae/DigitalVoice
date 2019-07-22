@@ -30,21 +30,25 @@ clean :
 
 hostfiles :
 	/bin/rm -f {DExtra,DCS,Dplus,XLX}_Hosts.txt
-	/usr/bin/curl -o XLX_Hosts.txt https://ar-dns.net/xlx
-	/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
-	/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
-	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt
+	/usr/bin/curl -o XLX_Hosts.txt https://ar-dns.net/xlx && /bin/mv -f XLX_Hosts.txt $(CFG_DIR)
+	/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt && /bin/mv -f DExtra_Hosts.txt $(CFG_DIR)
+	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt && /bin/mv -f DCS_Hosts.txt $(CFG_DIR)
+	/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt && /bin/mv -f DPlus_Hosts.txt $(CFG_DIR)
 
 install : qdv
 	mkdir -p $(CFG_DIR)
-	ln -sf $(shell pwd)/XLX_Hosts.txt $(CFG_DIR)
-	ln -sf $(shell pwd)/DExtra_Hosts.txt $(CFG_DIR)
-	ln -sf $(shell pwd)/DCS_Hosts.txt $(CFG_DIR)
-	ln -sf $(shell pwd)/DPlus_Hosts.txt $(CFG_DIR)
-	ln -sf $(shell pwd)/announce $(CFG_DIR)
-	ln -sf $(shell pwd)/DigitalVoice.glade $(CFG_DIR)
+	/bin/cp -f $(shell pwd)/XLX_Hosts.txt $(CFG_DIR)
+	/bin/cp -f $(shell pwd)/DExtra_Hosts.txt $(CFG_DIR)
+	/bin/cp -f $(shell pwd)/DCS_Hosts.txt $(CFG_DIR)
+	/bin/cp -f $(shell pwd)/DPlus_Hosts.txt $(CFG_DIR)
+	/bin/cp -rf $(shell pwd)/announce $(CFG_DIR)
+	/bin/cp -f $(shell pwd)/DigitalVoice.glade $(CFG_DIR)
 	mkdir -p $(BIN_DIR)
-	ln -sf $(shell pwd)/qdv $(BIN_DIR)
+	/bin/cp -f $(shell pwd)/qdv $(BIN_DIR)
+
+uninstall :
+	/bin/rm -rf $(CFG_DIR)
+	/bin/rm -f $(BIN_DIR)/qdv
 
 #interactive :
 #	GTK_DEBUG=interactive ./qdv
