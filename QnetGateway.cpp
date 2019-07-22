@@ -42,6 +42,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <fstream>
 
 #include "IRCutils.h"
 #include "QnetGateway.h"
@@ -260,9 +261,9 @@ bool CQnetGateway::Configure()
 	GATEWAY_SEND_QRGS_MAP = false;
 	rptr.mod.latitude = cfgdata.dLatitude;
 	rptr.mod.longitude = cfgdata.dLongitude;
-	std::string csv;
-	UnpackCallsigns(csv, findRoute);
-	PrintCallsigns("findRoutes", findRoute);
+	//std::string csv;
+	//UnpackCallsigns(csv, findRoute);
+	//PrintCallsigns("findRoutes", findRoute);
 
 	// APRS
 	APRS_ENABLE = false;
@@ -278,8 +279,20 @@ bool CQnetGateway::Configure()
 
 	// file
 	std::string path;
-	if (GetCfgDirectory(path)) {
+	if (! GetCfgDirectory(path)) {
 		FILE_STATUS.assign(path + "status");
+		path.append("routes.cfg");
+		std::ifstream file;
+		file.open(path.c_str(), std::ifstream::in);
+		if (file.is_open()) {
+			char line[128];
+			while (file.getline(line, 128)) {
+				std::string call(line);
+				call.resize(8, ' ');
+				findRoute.insert(call.c_str());
+			}
+			file.close();
+		}
 	}
 
 	// timing
