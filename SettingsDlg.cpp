@@ -247,7 +247,6 @@ void CSettingsDlg::on_MyCallsignEntry_changed()
 	 pMyCallsign->set_position(pos);
 	 bCallsign = std::regex_match(s.c_str(), CallRegEx);
 	 pMyCallsign->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
-	 pDPlusEnableCheck->set_sensitive(bCallsign);
 	 pOkayButton->set_sensitive(bCallsign && bStation);
 	 if (pUseMyCall->get_active())
 	 	pStationCallsign->set_text(s);
@@ -279,11 +278,12 @@ void CSettingsDlg::on_MyNameEntry_changed()
 void CSettingsDlg::on_StationCallsignEntry_changed()
  {
 	 int pos = pStationCallsign->get_position();
-	 Glib::ustring s = pStationCallsign->get_text();
-	 pStationCallsign->set_text(s.uppercase());
+	 Glib::ustring s = pStationCallsign->get_text().uppercase();
+	 pStationCallsign->set_text(s);
 	 pStationCallsign->set_position(pos);
 	 bStation = std::regex_match(s.c_str(), CallRegEx);
 	 pStationCallsign->set_icon_from_icon_name(bStation ? "gtk-ok" : "gtk-cancel");
+	 pDPlusEnableCheck->set_sensitive(bCallsign);
 	 pOkayButton->set_sensitive(bCallsign && bStation);
  }
 

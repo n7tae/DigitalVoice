@@ -26,7 +26,7 @@ enum class EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
 
 using CFGDATA = struct CFGData_struct {
 	std::string sCallsign, sName, sStation, sMessage, sLocation, sURL, sLinkAtStart;
-	bool bUseMyCall, bDPlusEnable, bMaintainLink;
+	bool bUseMyCall, bDPlusEnable;
 	int iBaudRate;
 	EQuadNetType eNetType;
 	double dLatitude, dLongitude;
@@ -42,6 +42,7 @@ public:
 	void WriteData();
 	void CopyFrom(const CFGDATA &);
 	void CopyTo(CFGDATA &);
+	bool IsOkay();
 
 private:
 	// data

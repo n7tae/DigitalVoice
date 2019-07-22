@@ -59,11 +59,11 @@ CMainWindow::~CMainWindow()
 {
 	if (pWin)
 		delete pWin;
-	if (pLink) {
+	if (nullptr != pLink) {
 		pLink->keep_running = false;
 		futLink.get();
 	}
-	if (pGate) {
+	if (nullptr != pGate) {
 		pGate->keep_running = false;
 		futGate.get();
 	}
@@ -99,19 +99,19 @@ void CMainWindow::SetState(const CFGDATA &data)
 	} else {
 		pRouteRadioButton->set_sensitive(true);
 		if (pRouteRadioButton->get_active()) {
-			if (pLink) {
+			if (nullptr != pLink) {
 				pLink->keep_running = false;
 				futLink.get();
 			}
-			if (nullptr == pGate) {
+			if (nullptr==pGate && cfg.IsOkay()) {
 				futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
 			}
 		} else {
-			if (pGate) {
+			if (nullptr != pGate) {
 				pGate->keep_running = false;
 				futGate.get();
 			}
-			if (nullptr == pLink) {
+			if (nullptr==pLink && cfg.IsOkay()) {
 				futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
 			}
 		}
@@ -214,25 +214,23 @@ void CMainWindow::on_SettingsButton_clicked()
 	auto newdata = SettingsDlg.Show();
 	if (newdata) {	// the user clicked okay so we need to see if anything changed. We'll shut things down and let SetState start things up again
 		if (newdata->sStation.compare(cfgdata.sCallsign) || newdata->cModule!=cfgdata.cModule) {	// the station callsign has changed
-			if (pGate) {
+			if (nullptr != pGate) {
 				pGate->keep_running = false;
 				futGate.get();
 			}
-			if (pLink) {
+			if (nullptr != pLink) {
 				pLink->keep_running = false;
 				futLink.get();
 			}
 		}
-		if (newdata->eNetType != cfgdata.eNetType) {
-			if (pGate) {
+		else if (newdata->eNetType != cfgdata.eNetType) {
+			if (nullptr != pGate) {
 				pGate->keep_running = false;
 				futGate.get();
 			}
 		}
 		SetState(*newdata);
-		cfg.CopyFrom(*newdata);
 		cfg.CopyTo(cfgdata);
-		cfg.WriteData();
 	}
 }
 

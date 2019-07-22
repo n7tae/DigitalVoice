@@ -35,7 +35,6 @@ void CConfigure::SetDefaultValues()
 	data.sLinkAtStart.clear();
 	data.sURL.assign("https://github.com/n7tae/DigitalVoice");
 	data.bUseMyCall = false;
-	data.bMaintainLink = false;
 	data.bDPlusEnable  = false;
 	data.iBaudRate = 460800;
 	data.dLatitude = data.dLongitude = 0.0;
@@ -85,8 +84,6 @@ void CConfigure::ReadData()
 			data.sMessage.assign(val);
 		} else if (0 == strcmp(key, "DPlusEnable")) {
 			data.bDPlusEnable = IS_TRUE(*val);
-		} else if (0 == strcmp(key, "MaintainLink")) {
-			data.bMaintainLink = IS_TRUE(*val);
 		} else if (0 == strcmp(key, "BaudRate")) {
 			data.iBaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
 		} else if (0 == strcmp(key, "QuadNetType")) {
@@ -152,7 +149,6 @@ void CConfigure::WriteData()
 	file << "Latitude=" << data.dLatitude << std::endl;
 	file << "Longitude=" << data.dLongitude << std::endl;
 	file << "Location='" << data.sLocation << "'" << std::endl;
-	file << "MaintainLink=" << (data.bMaintainLink ? "true" : "false") << std::endl;
 
 	file.close();
 }
@@ -168,7 +164,6 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 	data.sURL.assign(from.sURL);
 	data.bDPlusEnable = from.bDPlusEnable;
 	data.sLinkAtStart.assign(from.sLinkAtStart);
-	data.bMaintainLink = from.bMaintainLink;
 	data.bUseMyCall = from.bUseMyCall;
 	data.iBaudRate = from.iBaudRate;
 	data.eNetType = from.eNetType;
@@ -187,10 +182,17 @@ void CConfigure::CopyTo(CFGDATA &to)
 	to.sURL.assign(data.sURL);
 	to.bDPlusEnable = data.bDPlusEnable;
 	to.sLinkAtStart.assign(data.sLinkAtStart);
-	to.bMaintainLink = data.bMaintainLink;
 	to.bUseMyCall = data.bUseMyCall;
 	to.iBaudRate = data.iBaudRate;
 	to.eNetType = data.eNetType;
 	to.dLatitude = data.dLatitude;
 	to.dLongitude = data.dLongitude;
+}
+
+bool CConfigure::IsOkay()
+{
+	bool station = (data.sStation.size() > 0);
+	bool module = isalpha(data.cModule);
+	bool call = (data.sCallsign.size() > 0);
+	return (station && module && call);
 }
