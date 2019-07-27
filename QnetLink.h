@@ -40,11 +40,6 @@
 #define TIMEOUT 50
 #define LH_MAX_SIZE 39
 
-typedef struct refdvst_tag {
-	unsigned char head[2];
-	CDSVT dsvt;
-} SREFDVST;
-
 typedef struct link_to_remote_g2_tag {
     char to_call[CALL_SIZE + 1];
     CSockAddress addr;

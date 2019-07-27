@@ -674,6 +674,10 @@ void CAudioManager::KeyOff()
 
 void CAudioManager::PlayFile(const char *filetoplay)
 {
+	if (gate_sid_in || link_sid_in) {
+		std::cout << "Too busy to play " << filetoplay << std::endl;
+		return;
+	}
 	play_file = true;
 	CFGDATA cfgdata;
 	cfg.CopyTo(cfgdata);

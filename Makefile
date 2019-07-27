@@ -30,6 +30,7 @@ clean :
 
 hostfiles :
 	/bin/rm -f {DExtra,DCS,Dplus,XLX}_Hosts.txt
+	mkdir -p $(CFG_DIR)
 	/usr/bin/curl -o XLX_Hosts.txt https://ar-dns.net/xlx && /bin/mv -f XLX_Hosts.txt $(CFG_DIR)
 	/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt && /bin/mv -f DExtra_Hosts.txt $(CFG_DIR)
 	/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt && /bin/mv -f DCS_Hosts.txt $(CFG_DIR)
@@ -37,10 +38,6 @@ hostfiles :
 
 install : qdv
 	mkdir -p $(CFG_DIR)
-	/bin/cp -f $(shell pwd)/XLX_Hosts.txt $(CFG_DIR)
-	/bin/cp -f $(shell pwd)/DExtra_Hosts.txt $(CFG_DIR)
-	/bin/cp -f $(shell pwd)/DCS_Hosts.txt $(CFG_DIR)
-	/bin/cp -f $(shell pwd)/DPlus_Hosts.txt $(CFG_DIR)
 	/bin/cp -rf $(shell pwd)/announce $(CFG_DIR)
 	/bin/cp -f $(shell pwd)/DigitalVoice.glade $(CFG_DIR)
 	mkdir -p $(BIN_DIR)

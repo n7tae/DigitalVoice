@@ -48,6 +48,15 @@ public:
 #pragma pack(pop)
 
 #pragma pack(push, 1)
+class CREFDSVT
+{
+public:
+	unsigned char head[2];
+	CDSVT dsvt;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
 class CLinkFamily
 {
 public:

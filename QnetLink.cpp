@@ -763,12 +763,13 @@ void CQnetLink::Process()
 
 							memcpy(source_stn, to_remote_g2.to_call, 8);
 							source_stn[7] = to_remote_g2.to_mod;
-						} else
+						} else {
 							/* it is a repeater, our rpt1 */
 							if (memcmp(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.rpt1[7]==to_remote_g2.from_mod) {
 								memcpy(source_stn, to_remote_g2.to_call, 8);
 								source_stn[7] = to_remote_g2.to_mod;
 							}
+						}
 					}
 
 					/* somebody's crazy idea of having a personal callsign in RPT2 */
@@ -776,16 +777,15 @@ void CQnetLink::Process()
 					memcpy(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
 					dsvt.hdr.rpt2[7] = 'G';
 					calcPFCS(dsvt.title, 56);
-
 					/* At this point, all data have our RPT1 and RPT2 */
 
 					/* are we sure that RPT1 is our system? */
 					if (0==memcmp(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE-1) && (cfgdata.cModule == dsvt.hdr.rpt1[7])) {
 						/* Last Heard */
 						if (old_sid != dsvt.streamid) {
-							if (qso_details)
+							if (qso_details) {
 								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, r1=%.8s, r2=%.8s, %d bytes IP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
-
+							}
 
 							old_sid = dsvt.streamid;
 						}
@@ -898,7 +898,7 @@ void CQnetLink::Process()
 					found = true;
 				}
 
-				SREFDVST rdvst;
+				CREFDSVT rdvst;
 				memcpy(rdvst.head, buf, length);	// copy to struct
 
 				if (length==58 && found) {
@@ -935,14 +935,13 @@ void CQnetLink::Process()
 					calcPFCS(rdvst.dsvt.title, 56);
 
 					/* At this point, all data have our RPT1 and RPT2 */
-
 					/* are we sure that RPT1 is our system? */
 					if (0==memcmp(rdvst.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE-1) && (rdvst.dsvt.hdr.rpt1[7]==cfgdata.cModule)) {
 						/* Last Heard */
 						if (old_sid != rdvst.dsvt.streamid) {
-							if (qso_details)
+							if (qso_details) {
 								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(rdvst.dsvt.streamid), rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.mycall, rdvst.dsvt.hdr.sfx, rdvst.dsvt.hdr.urcall, rdvst.dsvt.hdr.rpt1, rdvst.dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
-
+							}
 							// put user into tmp1
 							memcpy(tmp1, rdvst.dsvt.hdr.mycall, 8);
 							tmp1[8] = '\0';
@@ -1074,7 +1073,7 @@ void CQnetLink::Process()
 							dcs_seq = 0xff;
 
 							/* generate our header */
-							SREFDVST rdvst;
+							CREFDSVT rdvst;
 							rdvst.head[0] = (unsigned char)(58 & 0xFF);
 							rdvst.head[1] = (unsigned char)(58 >> 8 & 0x1F);
 							rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
@@ -1108,7 +1107,7 @@ void CQnetLink::Process()
 
 						if (0==memcmp(&to_remote_g2.in_streamid, dcs_buf+43, 2) && dcs_seq!=dcs_buf[45]) {
 							dcs_seq = dcs_buf[45];
-							SREFDVST rdvst;
+							CREFDSVT rdvst;
 							rdvst.head[0] = (unsigned char)(29 & 0xFF);
 							rdvst.head[1] = (unsigned char)(29 >> 8 & 0x1F);
 							rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
@@ -1248,7 +1247,7 @@ void CQnetLink::Process()
 								to_remote_g2.out_streamid = dsvt.streamid;
 
 								if (to_remote_g2.addr.GetPort()==rmt_xrf_port || to_remote_g2.addr.GetPort()==rmt_ref_port) {
-									SREFDVST rdvst;
+									CREFDSVT rdvst;
 									rdvst.head[0] = (unsigned char)(58 & 0xFF);
 									rdvst.head[1] = (unsigned char)(58 >> 8 & 0x1F);
 									rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
@@ -1286,7 +1285,7 @@ void CQnetLink::Process()
 
 					if (to_remote_g2.is_connected && to_remote_g2.out_streamid==dsvt.streamid) {
 						if (to_remote_g2.addr.GetPort()==rmt_xrf_port || to_remote_g2.addr.GetPort()==rmt_ref_port) {
-							SREFDVST rdvst;
+							CREFDSVT rdvst;
 							rdvst.head[0] = (unsigned char)(29 & 0xFF);
 							rdvst.head[1] = (unsigned char)(29 >> 8 & 0x1F);
 							rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
