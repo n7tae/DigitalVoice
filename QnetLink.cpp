@@ -829,10 +829,12 @@ void CQnetLink::Process()
 					queryCommand[2] = 4;
 					queryCommand[3] = 0;
 
-					memcpy(queryCommand + 4, login_call.c_str(), CALL_SIZE);
+					memcpy(queryCommand + 4, owner.c_str(), CALL_SIZE);
 					for (int j=11; j>3; j--) {
 						if (queryCommand[j] == ' ')
 							queryCommand[j] = '\0';
+						else
+							break;
 					}
 					memset(queryCommand + 12, '\0', 8);
 					memcpy(queryCommand + 20, "DV019999", 8);
@@ -841,11 +843,7 @@ void CQnetLink::Process()
 					// remote IP, so  get out of the loop immediately
 					sendto(ref_g2_sock, queryCommand, 28, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
 				}
-			}
-
-			if ((fromDst4==to_remote_g2.addr) && (to_remote_g2.addr.GetPort()==rmt_ref_port)) {
-				found = true;
-				if (length==8 && buf[0]==8 && buf[1]==192 && buf[2]==4 && buf[3]==0) {
+				else if (length==8 && buf[0]==8 && buf[1]==192 && buf[2]==4 && buf[3]==0) {
 					if (buf[4]== 79 && buf[5]==75 && buf[6]==82) {
 						if (!to_remote_g2.is_connected) {
 							to_remote_g2.is_connected = true;
@@ -885,18 +883,10 @@ void CQnetLink::Process()
 						to_remote_g2.in_streamid = 0x0;
 					}
 				}
-			}
-
-			if ((fromDst4==to_remote_g2.addr) && (to_remote_g2.addr.GetPort()==rmt_ref_port)) {
-				found = true;
-				if (length==24 && buf[0]==24 && buf[1]==192 && buf[2]==3 && buf[3]==0) {
+				else if (length==24 && buf[0]==24 && buf[1]==192 && buf[2]==3 && buf[3]==0)
 					to_remote_g2.countdown = TIMEOUT;
-				}
-			}
 
-			if (fromDst4==to_remote_g2.addr && to_remote_g2.addr.GetPort()==rmt_ref_port) {
-				found = true;
-				if (length == 3)
+				else if (length == 3)
 					to_remote_g2.countdown = TIMEOUT;
 			}
 
@@ -1001,7 +991,7 @@ void CQnetLink::Process()
 								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdvst.dsvt.streamid), length, fromDst4.GetAddress());
 
 							old_sid = 0U;
-							}
+						}
 					}
 
 					/* send the data to the audio mgr */
