@@ -406,7 +406,7 @@ bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 	static auto it = pLogTextBuffer->begin();
 	if (condition & Glib::IO_IN) {
 		char line[256];
-		LogInput.Read(line, 128);
+		LogInput.Read(line, 256);
 		it = pLogTextBuffer->insert(it, line);
 		pLogTextView->scroll_to(it, 0.0, 0.0, 1.0);
 	} else {

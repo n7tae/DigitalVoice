@@ -940,7 +940,7 @@ void CQnetLink::Process()
 						/* Last Heard */
 						if (old_sid != rdvst.dsvt.streamid) {
 							if (qso_details) {
-								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(rdvst.dsvt.streamid), rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.mycall, rdvst.dsvt.hdr.sfx, rdvst.dsvt.hdr.urcall, rdvst.dsvt.hdr.rpt1, rdvst.dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
+								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(rdvst.dsvt.streamid), rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[1], rdvst.dsvt.hdr.flag[2], rdvst.dsvt.hdr.mycall, rdvst.dsvt.hdr.sfx, rdvst.dsvt.hdr.urcall, rdvst.dsvt.hdr.rpt1, rdvst.dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
 							}
 							// put user into tmp1
 							memcpy(tmp1, rdvst.dsvt.hdr.mycall, 8);
@@ -1461,7 +1461,6 @@ void CQnetLink::SendLog(const char *fmt, ...)
 	va_start(args,fmt);
 	vsnprintf(buf + strlen(buf), 256 - strlen(buf) -1, fmt, args);
 	va_end(args);
-
 	LogInput.Write(buf, strlen(buf)+1);
 	return;
 }
