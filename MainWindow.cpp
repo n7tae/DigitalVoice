@@ -170,6 +170,11 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("ScrolledWindow", pScrolledWindow);
 	builder->get_widget("LogTextView", pLogTextView);
 	pLogTextBuffer = pLogTextView->get_buffer();
+	if (cfgdata.eMode == EMode::routing) {
+		pRouteRadioButton->set_active();
+	} else {
+		pLinkRadioButton->set_active();
+	}
 
 	// events
 	pSettingsButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
@@ -482,21 +487,25 @@ void CMainWindow::on_LinkEntry_changed()
 void CMainWindow::on_LinkButton_clicked()
 {
 	if (pLink) {
-		std::string cs(pLinkEntry->get_text().c_str());
-		char mod = cs.at(7);
-		cs.at(7) = ' ';
-		pLink->Link(cs.c_str(), mod);
+		std::string cmd("LINK");
+		cmd.append(pLinkEntry->get_text().c_str());
+		AudioManager.Link(cmd);
 	}
 }
 
 void CMainWindow::on_UnlinkButton_clicked()
 {
-	if (pLink)
-		pLink->Unlink();
+	if (pLink) {
+		std::string cmd("LINK");
+		AudioManager.Link(cmd);
+	}
 }
 
 void CMainWindow::on_ModeGroup_clicked()
 {
 	CWaitCursor wait;
+	cfgdata.eMode = (pRouteRadioButton->get_active()) ? EMode::routing : EMode::linking;
+	cfg.CopyFrom(cfgdata);
 	SetState(cfgdata);
+	cfg.WriteData();
 }

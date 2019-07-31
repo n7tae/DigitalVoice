@@ -672,6 +672,11 @@ void CAudioManager::KeyOff()
 	r4.get();
 }
 
+void CAudioManager::Link(const std::string &linkcmd)
+{
+	AM2Link.Write(linkcmd.c_str(), linkcmd.size() + 1);
+}
+
 void CAudioManager::PlayFile(const char *filetoplay)
 {
 	if (gate_sid_in || link_sid_in) {

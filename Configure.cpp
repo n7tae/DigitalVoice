@@ -36,6 +36,7 @@ void CConfigure::SetDefaultValues()
 	data.sURL.assign("https://github.com/n7tae/DigitalVoice");
 	data.bUseMyCall = false;
 	data.bDPlusEnable  = false;
+	data.eMode = EMode::routing;
 	data.iBaudRate = 460800;
 	data.dLatitude = data.dLongitude = 0.0;
 	data.cModule = 'A';
@@ -95,6 +96,11 @@ void CConfigure::ReadData()
 				data.eNetType = EQuadNetType::dualstack;
 			else
 				data.eNetType = EQuadNetType::ipv4only;
+		} else if (0 == strcmp(key, "Mode")) {
+			if (0 == strcmp(val, "Route"))
+				data.eMode = EMode::routing;
+			else
+				data.eMode = EMode::linking;
 		} else if (0 == strcmp(key, "Latitide")) {
 			data.dLatitude = std::stod(val);
 		} else if (0 == strcmp(key, "Longitude")) {
@@ -143,6 +149,7 @@ void CConfigure::WriteData()
 	else
 		file << "IPv4";
 	file << std::endl;
+	file << "Mode=" << ((data.eMode == EMode::routing) ? "Route" : "Link") << std::endl;
 	file << "DPlusEnable=" << (data.bDPlusEnable ? "true" : "false") << std::endl;
 	file << "LinkAtStart='" << data.sLinkAtStart << "'" << std::endl;
 	file << "BaudRate=" << data.iBaudRate << std::endl;
@@ -167,6 +174,7 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 	data.bUseMyCall = from.bUseMyCall;
 	data.iBaudRate = from.iBaudRate;
 	data.eNetType = from.eNetType;
+	data.eMode = from.eMode;
 	data.dLatitude = from.dLatitude;
 	data.dLongitude = from.dLongitude;
 }
@@ -185,6 +193,7 @@ void CConfigure::CopyTo(CFGDATA &to)
 	to.bUseMyCall = data.bUseMyCall;
 	to.iBaudRate = data.iBaudRate;
 	to.eNetType = data.eNetType;
+	to.eMode = data.eMode;
 	to.dLatitude = data.dLatitude;
 	to.dLongitude = data.dLongitude;
 }

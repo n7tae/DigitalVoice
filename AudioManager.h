@@ -47,6 +47,7 @@ public:
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
 	void QuickKey(const char *urcall);
+	void Link(const std::string &linkcmd);
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;

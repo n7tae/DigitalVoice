@@ -23,10 +23,12 @@
 #define IS_TRUE(a) (a=='t' || a=='T' || a=='1')
 
 enum class EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
+enum class EMode { routing, linking };
 
 using CFGDATA = struct CFGData_struct {
 	std::string sCallsign, sName, sStation, sMessage, sLocation, sURL, sLinkAtStart;
 	bool bUseMyCall, bDPlusEnable;
+	EMode eMode;
 	int iBaudRate;
 	EQuadNetType eNetType;
 	double dLatitude, dLongitude;
