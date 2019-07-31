@@ -317,11 +317,11 @@ void CAudioManager::microphone2audioqueue()
 	// One channels (mono)
 	snd_pcm_hw_params_set_channels(handle, params, 1);
 
-	// 8000 samples/second
-	snd_pcm_hw_params_set_rate(handle, params, 8000, 0);
+	// 48000 samples/second
+	snd_pcm_hw_params_set_rate(handle, params, 48000, 0);
 
-	// Set period size to 160 frames.
-	snd_pcm_uframes_t frames = 160;
+	// Set period size to 160*6 frames.
+	snd_pcm_uframes_t frames = 960;
 	snd_pcm_hw_params_set_period_size(handle, params, frames, 0);
 
 	// Write the parameters to the driver
@@ -335,6 +335,7 @@ void CAudioManager::microphone2audioqueue()
 	bool keep_running;
 	do {
 		short int audio_buffer[frames];
+		short int audios[160];
 		rc = snd_pcm_readi(handle, audio_buffer, frames);
 		//std::cout << "audio:" << count << " hot_mic:" << hot_mic << std::endl;
 		if (rc == -EPIPE) {
@@ -350,7 +351,13 @@ void CAudioManager::microphone2audioqueue()
 		unsigned char seq = count % 21;
 		if (! keep_running)
 			seq |= 0x40U;
-		CAudioFrame frame(audio_buffer);
+		for (int i=0; i<160; i++) {
+			audios[i] = 0;
+			for (int j=0; j<6; j++)
+				audios[i] += audio_buffer[6*i+j];
+			audios[i] /= 6;
+		}
+		CAudioFrame frame(audios);
 		frame.SetSequence(seq);
 		audio_mutex.lock();
 		audio_queue.Push(frame);
@@ -566,11 +573,11 @@ void CAudioManager::play_audio_queue()
 	// One channels (mono)
 	snd_pcm_hw_params_set_channels(handle, params, 1);
 
-	// 8000 samples/second sampling rate
-	snd_pcm_hw_params_set_rate(handle, params, 8000, 0);
+	// samples/second sampling rate
+	snd_pcm_hw_params_set_rate(handle, params, 48000, 0);
 
 	// Set period size to 160 frames.
-	snd_pcm_uframes_t frames = 160;
+	snd_pcm_uframes_t frames = 960;
 	snd_pcm_hw_params_set_period_size(handle, params, frames, 0);
 	//snd_pcm_hw_params_set_period_size_near(handle, params, &frames, &dir);
 
@@ -586,13 +593,25 @@ void CAudioManager::play_audio_queue()
 
 	unsigned char seq = 0U;
 	do {
+		unsigned short audio[960];
 		while (audio_is_empty())
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		audio_mutex.lock();
 		CAudioFrame frame(audio_queue.Pop());
 		audio_mutex.unlock();
 		seq = frame.GetSequence();
-		rc = snd_pcm_writei(handle, frame.GetData(), frames);
+		const short int *pcm = frame.GetData();
+		for (int i=0; i<160; i++) {
+			int j = i * 6;
+			audio[j++] = *pcm;
+			audio[j++] = *pcm;
+			audio[j++] = *pcm;
+			audio[j++] = *pcm;
+			audio[j++] = *pcm;
+			audio[j++] = *pcm;
+			pcm++;
+		}
+		rc = snd_pcm_writei(handle, audio, frames);
 		if (rc == -EPIPE) {
 			// EPIPE means underrun
 			// std::cerr << "underrun occurred" << std::endl;

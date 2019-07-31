@@ -18,6 +18,7 @@
 
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <cstring>
 
@@ -101,7 +102,7 @@ void CConfigure::ReadData()
 				data.eMode = EMode::routing;
 			else
 				data.eMode = EMode::linking;
-		} else if (0 == strcmp(key, "Latitide")) {
+		} else if (0 == strcmp(key, "Latitude")) {
 			data.dLatitude = std::stod(val);
 		} else if (0 == strcmp(key, "Longitude")) {
 			data.dLongitude = std::stod(val);
@@ -153,8 +154,8 @@ void CConfigure::WriteData()
 	file << "DPlusEnable=" << (data.bDPlusEnable ? "true" : "false") << std::endl;
 	file << "LinkAtStart='" << data.sLinkAtStart << "'" << std::endl;
 	file << "BaudRate=" << data.iBaudRate << std::endl;
-	file << "Latitude=" << data.dLatitude << std::endl;
-	file << "Longitude=" << data.dLongitude << std::endl;
+	file << "Latitude=" << std::setprecision(9) << data.dLatitude << std::endl;
+	file << "Longitude=" << std::setprecision(9) << data.dLongitude << std::endl;
 	file << "Location='" << data.sLocation << "'" << std::endl;
 
 	file.close();

@@ -107,6 +107,7 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 	pUseMyCall->set_active(d.bUseMyCall);
 	pMessage->set_text(d.sMessage);
 	pLocation->set_text(d.sLocation);
+	std::cout << "Lat and long " << d.dLatitude << " " << d.dLongitude << std::endl;
 	pLatitude->set_text(std::to_string(d.dLatitude));
 	pLongitude->set_text(std::to_string(d.dLongitude));
 	pURL->set_text(d.sURL);
