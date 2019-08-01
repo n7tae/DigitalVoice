@@ -5,7 +5,7 @@
 
 My Ubuntu 19.04 did not need any of the following, but Raspbian is not ready for *qdv* out of the box. It needs pulseaudio:
 ```
-sudo apt install pulseaudio pavucontrol paprefs
+sudo apt install -y pulseaudio pavucontrol paprefs
 ```
 
 It's proabably a good idea to reboot after installing pulseaudio. After it's installed, take a look at the output of `aplay -L`. Near the beginning is should say:
