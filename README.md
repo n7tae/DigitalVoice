@@ -1,5 +1,21 @@
 # Quadnet Digital Voice
-*Quadnet Digital Voice* , qdv, is a fully functional, graphical repeater. It uses a *Northwest Digital Radio* **ThumbDV** and operates as a complete repeater, only there is no RF component. It can Link to reflectors or other repeaters and it can also do *routing*! It works best with a USB-based headset with microphone. qdv uses the default alsa audio input and output device, so for most versions of linux, all you need to do is plug your headset in and you should be ready to go. However, in Raspbian, you need to go to the ALSA audio configuration, select your headset in the drop-down list of devices, and then configure it. For Debian Buster, this is found in main menu under **Preferences-->Audio Device Settings**. Set your speaker and microphone gain somewhere near the top. You can use the Echo feature to help you set these gains.
+*Quadnet Digital Voice* , qdv, is a fully functional, graphical repeater. It uses a *Northwest Digital Radio* **ThumbDV** and operates as a complete repeater, only there is no RF component. It can Link to reflectors or other repeaters and it can also do *routing*! It works best with a USB-based headset with microphone. qdv uses the default alsa audio input and output device, so for most versions of linux, all you need to do is plug your headset in and you should be ready to go.
+
+## Building on a Raspberry Pi
+
+My Ubuntu 19.04 did not need any of the following, but Raspbian is not ready for *qdv* out of the box. It needs pulseaudio:
+```
+sudo apt install pulseaudio pavucontrol paprefs
+```
+
+It's proabably a good idea to reboot after installing pulseaudio. After it's installed, take a look at the output of `aplay -L`. Near the beginning is should say:
+```
+default
+    Playback/recording through the PulseAudio sound server
+```
+
+You'll also need to go to the ALSA audio configuration. For Debian Buster, this is found in main menu under **Preferences-->Audio Device Settings**. Select your headset in the drop-down list of devices, and then configure it and set it to be the default device. Set your speaker and microphone gain somewhere near the top. Once you build and configure *qdv*, you can use the Echo feature to help you set these gains adjust the speaker volume of you headset for a comfortable level and adjust the mic gain for the loudest playback without clipping. For my setup, the playback (speaker) was near 100% and the mic gain was at about 50%.
+
 
 ## Building and installing
 There are several library requirements before you start:
