@@ -1,9 +1,9 @@
 # Quadnet Digital Voice
-*Quadnet Digital Voice* , qdv, is a fully functional, graphical repeater. It uses a *Northwest Digital Radio* **ThumbDV** and operates as a complete repeater, only there is no RF component. It can Link to reflectors or other repeaters and it can also do *routing*! It works best with a USB-based headset with microphone. qdv uses the default alsa audio input and output device, so for most versions of linux, all you need to do is plug your headset in and you should be ready to go.
+*Quadnet Digital Voice* , qdv, is a fully functional, graphical repeater. It uses a *Northwest Digital Radio* **ThumbDV** and operates as a complete repeater, only there is no RF component. It can Link to reflectors or other repeaters and it can also do *routing*! It works best with a USB-based headset with microphone. qdv uses the default pulseaudio/ALSA input and output device, so for most versions of linux, all you need to do is plug your headset in and you should be ready to go.
 
 ## Building on a Raspberry Pi
 
-My Ubuntu 19.04 did not need any of the following, but Raspbian is not ready for *qdv* out of the box. It needs pulseaudio:
+Raspbian is not ready for *qdv* out of the box. While Raspbian has ALSA, it also needs pulseaudio:
 ```
 sudo apt install -y pulseaudio pavucontrol paprefs
 ```
