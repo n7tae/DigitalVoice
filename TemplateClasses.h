@@ -73,11 +73,11 @@ template <class T> class CTQueue
 {
 public:
 	CTQueue() {}
+
 	~CTQueue()
 	{
 		Clear();
 	}
-
 
 	void Push(T item)
 	{

@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <alsa/asoundlib.h>
 
 #include "AudioManager.h"
 #include "WaitCursor.h"
@@ -25,10 +26,10 @@
 #include "SettingsDlg.h"
 
 // globals
-extern Glib::RefPtr<Gtk::Application> theApp;
+//extern Glib::RefPtr<Gtk::Application> theApp;
 extern CAudioManager AudioManager;
 extern CConfigure cfg;
-extern bool GetCfgDirectory(std::string &path);
+//extern bool GetCfgDirectory(std::string &path);
 extern CHostFile gwys;
 
 CSettingsDlg::CSettingsDlg() :
@@ -48,12 +49,13 @@ CFGDATA *CSettingsDlg::Show()
 {
 	cfg.CopyTo(data);	// get the saved config data (MainWindow has alread read it)
 	SetWidgetStates(data);
-	on_RescanButton_clicked();	// reset the ambe device
+	on_RescanButton_clicked();		// reset the ambe device
+	on_AudioRescanButton_clicked();	// re-read the audio PCM devices
 
 	if (Gtk::RESPONSE_OK == pDlg->run()) {
 		CFGDATA newstate;			// the user clicked okay, time to look at what's changed
 		SaveWidgetStates(newstate); // newstate is now the current contents of the Settings Dialog
-		cfg.CopyFrom(newstate);		// and it is now in the cfg object
+		cfg.CopyFrom(newstate);		// and it is now in the global cfg object
 		cfg.WriteData();			// and it's saved in ~/.config/qdv/qdv.cfg
 
 		// reconfigure current environment if anything changed
@@ -96,6 +98,15 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 		d.eNetType = EQuadNetType::ipv4only;
 	// device
 	d.iBaudRate = (p230k->get_active()) ? 230400 : 460800;
+	// audio
+	Gtk::ListStore::iterator it = pAudioInputComboBox->get_active();
+	Gtk::ListStore::Row row = *it;
+	Glib::ustring s = row[audio_columns.audio_name];
+	d.sAudioIn.assign(s.c_str());
+	it = pAudioOutputComboBox->get_active();
+	row = *it;
+	s = row[audio_columns.audio_name];
+	d.sAudioOut.assign(s.c_str());
 }
 
 void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
@@ -175,6 +186,20 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("IPV6_RadioButton", pIPv6Only);
 	builder->get_widget("Dual_Stack_RadioButton", pDualStack);
 	builder->get_widget("No_Routing_RadioButton", pNoRouting);
+	// Audio
+	builder->get_widget("AudioInputComboBox", pAudioInputComboBox);
+	refAudioInListModel = Gtk::ListStore::create(audio_columns);
+	pAudioInputComboBox->set_model(refAudioInListModel);
+	pAudioInputComboBox->pack_start(audio_columns.audio_name);
+
+	builder->get_widget("AudioOutputComboBox", pAudioOutputComboBox);
+	refAudioOutListModel = Gtk::ListStore::create(audio_columns);
+	pAudioOutputComboBox->set_model(refAudioOutListModel);
+	pAudioOutputComboBox->pack_start(audio_columns.audio_name);
+
+	builder->get_widget("InputDescLabel", pInputDescLabel);
+	builder->get_widget("OutputDescLabel", pOutputDescLabel);
+	builder->get_widget("AudioRescanButton", pAudioRescanButton);
 
 	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
 	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
@@ -190,7 +215,10 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pDualStack->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pNoRouting->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
+	pAudioRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioRescanButton_clicked));
 	pLinkAtStart->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LinkAtStartEntry_changed));
+	pAudioInputComboBox->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioInputComboBox_changed));
+	pAudioOutputComboBox->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioOutputComboBox_changed));
 
 	return false;
 }
@@ -375,4 +403,109 @@ void CSettingsDlg::on_QuadNet_Group_clicked()
 		data.eNetType = EQuadNetType::norouting;
 	else
 		data.eNetType = EQuadNetType::ipv4only;
+}
+
+void CSettingsDlg::on_AudioInputComboBox_changed()
+{
+	Gtk::ListStore::iterator iter = pAudioInputComboBox->get_active();
+	if (iter) {
+		Gtk::ListStore::Row row = *iter;
+		if (row) {
+			Glib::ustring name = row[audio_columns.audio_name];
+			Glib::ustring desc = row[audio_columns.audio_desc];
+
+			data.sAudioIn.assign(name.c_str());
+			pInputDescLabel->set_text(desc);
+		}
+	}
+}
+
+void CSettingsDlg::on_AudioOutputComboBox_changed()
+{
+	Gtk::ListStore::iterator iter = pAudioOutputComboBox->get_active();
+	if (iter) {
+		Gtk::ListStore::Row row = *iter;
+		if (row) {
+			Glib::ustring name = row[audio_columns.audio_name];
+			Glib::ustring desc = row[audio_columns.audio_desc];
+
+			data.sAudioOut.assign(name.c_str());
+			pOutputDescLabel->set_text(desc);
+		}
+	}
+}
+
+void CSettingsDlg::on_AudioRescanButton_clicked()
+{
+	if (0 == data.sAudioIn.size())
+		data.sAudioIn.assign("default");
+	if (0 == data.sAudioOut.size())
+		data.sAudioOut.assign("default");
+	void **hints;
+	if (snd_device_name_hint(-1, "pcm", &hints) < 0)
+		return;
+	void **n = hints;
+	refAudioInListModel->clear();
+	refAudioOutListModel->clear();
+	while (*n != NULL) {
+		char *name = snd_device_name_get_hint(*n, "NAME");
+		if (NULL == name)
+			continue;
+		char *desc = snd_device_name_get_hint(*n, "DESC");
+		if (NULL == desc) {
+			free(name);
+			continue;
+		}
+
+		if ((0==strcmp(name, "default") || strstr(name, "plughw")) && NULL==strstr(desc, "without any conversions")) {
+
+			char *io = snd_device_name_get_hint(*n, "IOID");
+			bool is_input = true, is_output = true;
+
+			if (io) {	// io == NULL means it's for both input and output
+				if (0 == strcasecmp(io, "Input")) {
+					is_output = false;
+				} else if (0 == strcasecmp(io, "Output")) {
+					is_input = false;
+				} else {
+					std::cerr << "ERROR: unexpected IOID=" << io << std::endl;
+				}
+				free(io);
+			}
+
+			if (is_input) {
+				snd_pcm_t *handle;
+				if (snd_pcm_open(&handle, name, SND_PCM_STREAM_CAPTURE, 0) == 0) {
+					Gtk::ListStore::Row row = *(refAudioInListModel->append());
+					row[audio_columns.audio_name] = name;
+					row[audio_columns.audio_desc] = desc;
+					if (0==data.sAudioIn.compare(name))
+						pAudioInputComboBox->set_active(row);
+					snd_pcm_close(handle);
+				}
+			}
+
+			if (is_output) {
+				snd_pcm_t *handle;
+				if (snd_pcm_open(&handle, name, SND_PCM_STREAM_PLAYBACK, 0) == 0) {
+					Gtk::ListStore::Row row = *(refAudioOutListModel->append());
+					row[audio_columns.audio_name] = name;
+					row[audio_columns.audio_desc] = desc;
+					if (0==data.sAudioOut.compare(name))
+						pAudioOutputComboBox->set_active(row);
+					snd_pcm_close(handle);
+				}
+			}
+
+		}
+
+	    if (name) {
+	      	free(name);
+		}
+		if (desc) {
+			free(desc);
+		}
+		n++;
+	}
+	snd_device_name_free_hint(hints);
 }

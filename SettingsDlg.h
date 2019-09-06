@@ -32,6 +32,16 @@ public:
     bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
     CFGDATA *Show();	// returns a pointer to the private CFGDATA if okay is pressed, otherwise a nullptr
 
+protected:
+	class AudioColumns : public Gtk::ListStore::ColumnRecord
+	{
+	public:
+		AudioColumns() { add(audio_name); add(audio_desc); };
+		Gtk::TreeModelColumn<Glib::ustring> audio_name;
+		Gtk::TreeModelColumn<Glib::ustring> audio_desc;
+	};
+	AudioColumns audio_columns;
+	Glib::RefPtr<Gtk::ListStore> refAudioInListModel, refAudioOutListModel;
 private:
 	// persistance
 	void SaveWidgetStates(CFGDATA &d);
@@ -44,13 +54,15 @@ private:
 	std::regex CallRegEx;
 	// widgets
     Gtk::Dialog *pDlg;
-	Gtk::Button *pRescanButton, *pOkayButton;
+	Gtk::Button *pRescanButton, *pOkayButton, *pAudioRescanButton;
+	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
 	Gtk::CheckButton *pUseMyCall, *pDPlusEnableCheck;
 	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pLocation, *pURL, *pLatitude, *pLongitude, *pLinkAtStart;
 	Gtk::RadioButton *p230k, *p460k, *pIPv4Only, *pIPv6Only, *pDualStack, *pNoRouting;
-	Gtk::Label *pDevicePath, *pProductID, *pVersion;
+	Gtk::Label *pDevicePath, *pProductID, *pVersion, *pInputDescLabel, *pOutputDescLabel;
 	// events
 	void on_UseMyCallsignCheckButton_clicked();
+	void on_AudioRescanButton_clicked();
 	void on_MyCallsignEntry_changed();
 	void on_MyNameEntry_changed();
 	void on_StationCallsignEntry_changed();
@@ -64,6 +76,8 @@ private:
 	void on_RescanButton_clicked();
 	void on_QuadNet_Group_clicked();
 	void on_LinkAtStartEntry_changed();
+	void on_AudioInputComboBox_changed();
+	void on_AudioOutputComboBox_changed();
 	// state changed
 	void BaudrateChanged(int newBaudrate);
 	void RebuildGateways(bool includelegacy);

@@ -292,9 +292,11 @@ void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, cons
 
 void CAudioManager::microphone2audioqueue()
 {
+	CFGDATA data;
+	cfg.CopyTo(data);
 	// Open PCM device for recording (capture).
 	snd_pcm_t *handle;
-	int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_CAPTURE, 0);
+	int rc = snd_pcm_open(&handle, data.sAudioIn.c_str(), SND_PCM_STREAM_CAPTURE, 0);
 	if (rc < 0) {
 		std::cerr << "unable to open pcm device: " << snd_strerror(rc) << std::endl;
 		return;
@@ -538,11 +540,13 @@ void CAudioManager::ambedevice2audioqueue()
 
 void CAudioManager::play_audio_queue()
 {
+	CFGDATA data;
+	cfg.CopyTo(data);
 	//int count = 0;
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	// Open PCM device for playback.
 	snd_pcm_t *handle;
-	int rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
+	int rc = snd_pcm_open(&handle, data.sAudioOut.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
 	if (rc < 0) {
 		std::cerr << "unable to open pcm device: " << snd_strerror(rc) << std::endl;
 		return;

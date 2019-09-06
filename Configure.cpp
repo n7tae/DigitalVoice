@@ -41,6 +41,8 @@ void CConfigure::SetDefaultValues()
 	data.iBaudRate = 460800;
 	data.dLatitude = data.dLongitude = 0.0;
 	data.cModule = 'A';
+	data.sAudioIn.assign("default");
+	data.sAudioOut.assign("default");
 }
 
 void CConfigure::ReadData()
@@ -114,6 +116,10 @@ void CConfigure::ReadData()
 			data.sLinkAtStart.assign(val);
 		} else if (0 == strcmp(key, "Module")) {
 			data.cModule = *val;
+		} else if (0 == strcmp(key, "AudioInput")) {
+			data.sAudioIn.assign(val);
+		} else if (0 == strcmp(key, "AudioOutPut")) {
+			data.sAudioOut.assign(val);
 		}
 	}
 	cfg.close();
@@ -157,6 +163,8 @@ void CConfigure::WriteData()
 	file << "Latitude=" << std::setprecision(9) << data.dLatitude << std::endl;
 	file << "Longitude=" << std::setprecision(9) << data.dLongitude << std::endl;
 	file << "Location='" << data.sLocation << "'" << std::endl;
+	file << "AudioInput='" << data.sAudioIn << "'" << std::endl;
+	file << "AudioOutput='" << data.sAudioOut << "'" << std::endl;
 
 	file.close();
 }
@@ -178,6 +186,8 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 	data.eMode = from.eMode;
 	data.dLatitude = from.dLatitude;
 	data.dLongitude = from.dLongitude;
+	data.sAudioIn.assign(from.sAudioIn);
+	data.sAudioOut.assign(from.sAudioOut);
 }
 
 void CConfigure::CopyTo(CFGDATA &to)
@@ -197,6 +207,8 @@ void CConfigure::CopyTo(CFGDATA &to)
 	to.eMode = data.eMode;
 	to.dLatitude = data.dLatitude;
 	to.dLongitude = data.dLongitude;
+	to.sAudioIn.assign(data.sAudioIn);
+	to.sAudioOut.assign(data.sAudioOut);
 }
 
 bool CConfigure::IsOkay()
@@ -204,5 +216,6 @@ bool CConfigure::IsOkay()
 	bool station = (data.sStation.size() > 0);
 	bool module = isalpha(data.cModule);
 	bool call = (data.sCallsign.size() > 0);
-	return (station && module && call);
+	bool audio = (data.sAudioIn.size()>0 && data.sAudioOut.size()>0);
+	return (station && module && call && audio);
 }

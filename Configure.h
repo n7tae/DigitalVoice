@@ -26,7 +26,7 @@ enum class EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
 enum class EMode { routing, linking };
 
 using CFGDATA = struct CFGData_struct {
-	std::string sCallsign, sName, sStation, sMessage, sLocation, sURL, sLinkAtStart;
+	std::string sCallsign, sName, sStation, sMessage, sLocation, sURL, sLinkAtStart, sAudioIn, sAudioOut;
 	bool bUseMyCall, bDPlusEnable;
 	EMode eMode;
 	int iBaudRate;
