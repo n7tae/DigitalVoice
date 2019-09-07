@@ -118,7 +118,7 @@ void CConfigure::ReadData()
 			data.cModule = *val;
 		} else if (0 == strcmp(key, "AudioInput")) {
 			data.sAudioIn.assign(val);
-		} else if (0 == strcmp(key, "AudioOutPut")) {
+		} else if (0 == strcmp(key, "AudioOutput")) {
 			data.sAudioOut.assign(val);
 		}
 	}

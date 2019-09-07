@@ -118,7 +118,6 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 	pUseMyCall->set_active(d.bUseMyCall);
 	pMessage->set_text(d.sMessage);
 	pLocation->set_text(d.sLocation);
-	std::cout << "Lat and long " << d.dLatitude << " " << d.dLongitude << std::endl;
 	pLatitude->set_text(std::to_string(d.dLatitude));
 	pLongitude->set_text(std::to_string(d.dLongitude));
 	pURL->set_text(d.sURL);
@@ -491,6 +490,7 @@ void CSettingsDlg::on_AudioRescanButton_clicked()
 					Gtk::ListStore::Row row = *(refAudioOutListModel->append());
 					row[audio_columns.audio_name] = name;
 					row[audio_columns.audio_desc] = desc;
+					std::cout << "data.sAudioOut=" << data.sAudioOut << " name=" << name << std::endl;
 					if (0==data.sAudioOut.compare(name))
 						pAudioOutputComboBox->set_active(row);
 					snd_pcm_close(handle);
