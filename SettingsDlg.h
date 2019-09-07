@@ -36,9 +36,10 @@ protected:
 	class AudioColumns : public Gtk::ListStore::ColumnRecord
 	{
 	public:
-		AudioColumns() { add(audio_name); add(audio_desc); };
-		Gtk::TreeModelColumn<Glib::ustring> audio_name;
-		Gtk::TreeModelColumn<Glib::ustring> audio_desc;
+		AudioColumns() { add(short_name); add(name); add(desc); };
+		Gtk::TreeModelColumn<Glib::ustring> short_name;
+		Gtk::TreeModelColumn<Glib::ustring> name;
+		Gtk::TreeModelColumn<Glib::ustring> desc;
 	};
 	AudioColumns audio_columns;
 	Glib::RefPtr<Gtk::ListStore> refAudioInListModel, refAudioOutListModel;

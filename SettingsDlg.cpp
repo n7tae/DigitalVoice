@@ -101,11 +101,11 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 	// audio
 	Gtk::ListStore::iterator it = pAudioInputComboBox->get_active();
 	Gtk::ListStore::Row row = *it;
-	Glib::ustring s = row[audio_columns.audio_name];
+	Glib::ustring s = row[audio_columns.name];
 	d.sAudioIn.assign(s.c_str());
 	it = pAudioOutputComboBox->get_active();
 	row = *it;
-	s = row[audio_columns.audio_name];
+	s = row[audio_columns.name];
 	d.sAudioOut.assign(s.c_str());
 }
 
@@ -189,12 +189,12 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("AudioInputComboBox", pAudioInputComboBox);
 	refAudioInListModel = Gtk::ListStore::create(audio_columns);
 	pAudioInputComboBox->set_model(refAudioInListModel);
-	pAudioInputComboBox->pack_start(audio_columns.audio_name);
+	pAudioInputComboBox->pack_start(audio_columns.short_name);
 
 	builder->get_widget("AudioOutputComboBox", pAudioOutputComboBox);
 	refAudioOutListModel = Gtk::ListStore::create(audio_columns);
 	pAudioOutputComboBox->set_model(refAudioOutListModel);
-	pAudioOutputComboBox->pack_start(audio_columns.audio_name);
+	pAudioOutputComboBox->pack_start(audio_columns.short_name);
 
 	builder->get_widget("InputDescLabel", pInputDescLabel);
 	builder->get_widget("OutputDescLabel", pOutputDescLabel);
@@ -410,8 +410,8 @@ void CSettingsDlg::on_AudioInputComboBox_changed()
 	if (iter) {
 		Gtk::ListStore::Row row = *iter;
 		if (row) {
-			Glib::ustring name = row[audio_columns.audio_name];
-			Glib::ustring desc = row[audio_columns.audio_desc];
+			Glib::ustring name = row[audio_columns.name];
+			Glib::ustring desc = row[audio_columns.desc];
 
 			data.sAudioIn.assign(name.c_str());
 			pInputDescLabel->set_text(desc);
@@ -425,8 +425,8 @@ void CSettingsDlg::on_AudioOutputComboBox_changed()
 	if (iter) {
 		Gtk::ListStore::Row row = *iter;
 		if (row) {
-			Glib::ustring name = row[audio_columns.audio_name];
-			Glib::ustring desc = row[audio_columns.audio_desc];
+			Glib::ustring name = row[audio_columns.name];
+			Glib::ustring desc = row[audio_columns.desc];
 
 			data.sAudioOut.assign(name.c_str());
 			pOutputDescLabel->set_text(desc);
@@ -472,12 +472,24 @@ void CSettingsDlg::on_AudioRescanButton_clicked()
 				free(io);
 			}
 
+			Glib::ustring short_name(name);
+			auto pos = short_name.find("plughw:CARD=");
+			if (short_name.npos != pos) {
+				short_name = short_name.replace(pos, 12, "");
+				pos = short_name.find(",DEV=0");
+				if (short_name.npos != pos)
+					short_name = short_name.replace(pos, 6, "");
+				if (0 == short_name.size())
+					short_name.assign(name);
+			}
+
 			if (is_input) {
 				snd_pcm_t *handle;
 				if (snd_pcm_open(&handle, name, SND_PCM_STREAM_CAPTURE, 0) == 0) {
 					Gtk::ListStore::Row row = *(refAudioInListModel->append());
-					row[audio_columns.audio_name] = name;
-					row[audio_columns.audio_desc] = desc;
+					row[audio_columns.short_name] = short_name;
+					row[audio_columns.name] = name;
+					row[audio_columns.desc] = desc;
 					if (0==data.sAudioIn.compare(name))
 						pAudioInputComboBox->set_active(row);
 					snd_pcm_close(handle);
@@ -488,8 +500,9 @@ void CSettingsDlg::on_AudioRescanButton_clicked()
 				snd_pcm_t *handle;
 				if (snd_pcm_open(&handle, name, SND_PCM_STREAM_PLAYBACK, 0) == 0) {
 					Gtk::ListStore::Row row = *(refAudioOutListModel->append());
-					row[audio_columns.audio_name] = name;
-					row[audio_columns.audio_desc] = desc;
+					row[audio_columns.short_name] = short_name;
+					row[audio_columns.name] = name;
+					row[audio_columns.desc] = desc;
 					if (0==data.sAudioOut.compare(name))
 						pAudioOutputComboBox->set_active(row);
 					snd_pcm_close(handle);
