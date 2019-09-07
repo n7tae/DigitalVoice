@@ -490,7 +490,6 @@ void CSettingsDlg::on_AudioRescanButton_clicked()
 					Gtk::ListStore::Row row = *(refAudioOutListModel->append());
 					row[audio_columns.audio_name] = name;
 					row[audio_columns.audio_desc] = desc;
-					std::cout << "data.sAudioOut=" << data.sAudioOut << " name=" << name << std::endl;
 					if (0==data.sAudioOut.compare(name))
 						pAudioOutputComboBox->set_active(row);
 					snd_pcm_close(handle);
