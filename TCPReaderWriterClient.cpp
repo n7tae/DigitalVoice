@@ -18,7 +18,7 @@
  */
 
 #include "TCPReaderWriterClient.h"
-#include <iostream>
+#include <cstdio>
 #include <cerrno>
 #include <cassert>
 #include <cstring>
@@ -52,17 +52,17 @@ bool CTCPReaderWriterClient::Open(const std::string &address, int family, const 
 bool CTCPReaderWriterClient::Open()
 {
 	if (m_fd != -1) {
-		std::cerr << "ERROR: port for " << m_address << " is already open!\n"  << std::endl;
+		fprintf(stderr, "ERROR: port for '%s' is already open!\n", m_address.c_str());
 		return true;
 	}
 
 	if (0 == m_address.size() || 0 == m_port.size() || 0 == std::stoul(m_port)) {
-		std::cerr << "ERROR: [" << m_address << "]:" << m_port << " is malformed!" << std::endl;
+		fprintf(stderr, "ERROR: '[%s]:%s' is malformed!\n", m_address.c_str(), m_port.c_str());
 		return true;
 	}
 
 	if (AF_INET!=m_family && AF_INET6!=m_family && AF_UNSPEC!=m_family) {
-		std::cerr << "ERROR: family must be AF_INET, AF_INET6 or AF_UNSPEC" << std::endl;
+		fprintf(stderr, "ERROR: family must be AF_INET, AF_INET6 or AF_UNSPEC\n");
 		return true;
 	}
 
@@ -76,18 +76,18 @@ bool CTCPReaderWriterClient::Open()
 	struct addrinfo *res;
 	int s = EAI_AGAIN;
 	int count = 0;
-	while (EAI_AGAIN==s && count++<20) {
+	while (EAI_AGAIN==s and count++<20) {
 		// connecting to a server, so we can wait until it's ready
 		s = getaddrinfo(m_address.c_str(), m_port.c_str(), &hints, &res);
 		if (s && s != EAI_AGAIN) {
-			std::cerr << "ERROR: getaddrinfo of " << m_address << ": " << gai_strerror(s) << std::endl;
+			fprintf(stderr, "ERROR: getaddrinfo of %s: %s\n", m_address.c_str(), gai_strerror(s));
 			return true;
 		}
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
     if (EAI_AGAIN == s) {
-       std::cerr << "ERROR getaddrinfo of " << m_address << " failed 20 times" << std::endl;
+        fprintf(stderr, "ERROR getaddrinfo of %s failed 20 times\n", m_address.c_str());
         return true;
     }
 
@@ -111,14 +111,14 @@ bool CTCPReaderWriterClient::Open()
 				addr = &(addr6->sin6_addr);
 			}
 			if (inet_ntop(rp->ai_family, addr, buf, INET6_ADDRSTRLEN))
-				std::cout << "Successfully connected to " << m_address << " at [" << buf << "]:" << m_port << std::endl;
+				fprintf(stderr, "Successfully connected to %s at [%s]:%s\n", m_address.c_str(), buf, m_port.c_str());
 			break;
 		}
 	}
 	freeaddrinfo(res);
 
 	if (rp == NULL) {
-		std::cerr << "Could not connect to any system returned by " << m_address << std::endl;
+		fprintf(stderr, "Could not connect to any system returned by %s\n", m_address.c_str());
 		m_fd = -1;
 		return true;
 	}
@@ -150,7 +150,7 @@ int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int lengt
 	ssize_t len = recv(m_fd, buffer, length, 0);
 	if (len <= 0) {
 		if (len < 0)
-			std::cerr << "Error returned from recv: " << strerror(errno) << std::endl;
+			fprintf(stderr, "Error returned from recv, err=%d\n", errno);
 		return -1;
 	}
 
@@ -185,9 +185,9 @@ bool CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned i
 	ssize_t ret = send(m_fd, (char *)buffer, length, 0);
 	if (ret != ssize_t(length)) {
 		if (ret < 0)
-			std::cerr << "Error returned from send: " << strerror(errno) << std::endl;
+			fprintf(stderr, "Error returned from send, err=%d\n", errno);
 		else
-			std::cerr << "Error only wrote " << ret << " of " << length << " bytes" << std::endl;
+			fprintf(stderr, "Error only wrote %d of %d bytes\n", int(ret), int(length));
 		return true;
 	}
 

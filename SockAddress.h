@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *   Copyright (C) 2019 by Thomas Early N7TAE
+ *   Copyright (C) 2019-2020 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,10 +18,11 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <string.h>
+#include <iostream>
+#include <cstring>
+
 #include <strings.h>
 #include <netinet/in.h>
-#include <string>
 
 class CSockAddress
 {
@@ -31,103 +32,97 @@ public:
 		Clear();
 	}
 
-	CSockAddress(const struct sockaddr_storage &from)
+	CSockAddress(const int family, const unsigned short port = 0, const char *address = NULL)
 	{
-		Clear();
-		if (AF_INET == from.ss_family)
-			memcpy(&addr, &from, sizeof(struct sockaddr_in));
-		else
-			memcpy(&addr, &from, sizeof(struct sockaddr_in6));
-	}
-
-	CSockAddress(const int family, const unsigned short port, const char *address)
-	{
-		Clear();
-		if (AF_INET==family && address) {
-			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
-			addr4->sin_family = AF_INET;
-			addr4->sin_port = htons(port);
-			if (0 == strncasecmp(address, "loc", 3))
-				inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
-			else if (0 == strncasecmp(address, "any", 3))
-				inet_pton(AF_INET, "0.0.0.0", &(addr4->sin_addr));
-			else
-				inet_pton(AF_INET, address, &(addr4->sin_addr));
-		} else if (AF_INET6==family && address) {
-			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
-			addr6->sin6_family = AF_INET6;
-			addr6->sin6_port = htons(port);
-			if (0 == strncasecmp(address, "loc", 3))
-				inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
-			else if (0 == strncasecmp(address, "any", 3))
-				inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
-			else
-				inet_pton(AF_INET6, address, &(addr6->sin6_addr));
-		} else if (AF_UNSPEC == family) {
-			memset(&addr, 0, sizeof(struct sockaddr_storage));
-		}
+		Initialize(family, port, address);
 	}
 
 	~CSockAddress() {}
 
-	void Initialize(int family, uint16_t port = 0U, const char *address = NULL)
+	void Initialize(const int family, const uint16_t port = 0U, const char *address = NULL)
 	{
 		Clear();
-		addr.ss_family = (sa_family_t)family;
+		addr.ss_family = family;
 		if (AF_INET == family) {
-			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
+			auto addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_port = htons(port);
 			if (address) {
 				if (0 == strncasecmp(address, "loc", 3))
 					inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
 				else if (0 == strncasecmp(address, "any", 3))
 					inet_pton(AF_INET, "0.0.0.0", &(addr4->sin_addr));
-				else
-					inet_pton(AF_INET, address, &(addr4->sin_addr));
+				else if (address) {
+					if (1 > inet_pton(AF_INET, address, &(addr4->sin_addr)))
+						std::cerr << "Address Initialization Error: '" << address << "' is not a valdid IPV4 address!" << std::endl;
+				}
 			}
-		} else {
-			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
+		} else if (AF_INET6 == family) {
+			auto addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_port = htons(port);
 			if (address) {
 				if (0 == strncasecmp(address, "loc", 3))
 					inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
 				else if (0 == strncasecmp(address, "any", 3))
 					inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
-				else
-					inet_pton(AF_INET6, address, &(addr6->sin6_addr));
+				else if (address) {
+					if (1 > inet_pton(AF_INET6, address, &(addr6->sin6_addr)))
+						std::cerr << "Address Initialization Error: '" << address << "' is not a valid IPV6 address!" << std::endl;
+				}
 			}
-		}
+		} else
+			std::cerr << "Error: Wrong address family type:" << family << " for [" << (address ? address : "NULL") << "]:" << port << std::endl;
 	}
 
-	CSockAddress &operator=(CSockAddress &from)
+	CSockAddress &operator=(const CSockAddress &from)
 	{
 		Clear();
 		if (AF_INET == from.addr.ss_family)
-			memcpy(&addr, &from, sizeof(struct sockaddr_in));
+			memcpy(&addr, &from.addr, sizeof(struct sockaddr_in));
 		else
-			memcpy(&addr, &from, sizeof(struct sockaddr_in6));
+			memcpy(&addr, &from.addr, sizeof(struct sockaddr_in6));
+		strcpy(straddr, from.straddr);
 		return *this;
 	}
 
-	bool operator==(CSockAddress &from)
+	bool operator==(const CSockAddress &rhs) const	// doesn't compare ports, only addresses and families
 	{
-		if (addr.ss_family == from.addr.ss_family) {
-			if (AF_INET == addr.ss_family) {
-				return (0==memcmp(&addr, &from, sizeof(struct sockaddr_in)));
-			} else {
-				return (0==memcmp(&addr, &from, sizeof(struct sockaddr_in6)));
-			}
-		} else
+		if (addr.ss_family != rhs.addr.ss_family)
 			return false;
+		if (AF_INET == addr.ss_family) {
+			auto l = (struct sockaddr_in *)&addr;
+			auto r = (struct sockaddr_in *)&rhs.addr;
+			return (l->sin_addr.s_addr == r->sin_addr.s_addr);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto l = (struct sockaddr_in6 *)&addr;
+			auto r = (struct sockaddr_in6 *)&rhs.addr;
+			return (0 == memcmp(&(l->sin6_addr), &(r->sin6_addr), sizeof(struct in6_addr)));
+		}
+		return false;
 	}
 
-	bool AddressIsZero()
+	bool operator!=(const CSockAddress &rhs) const	// doesn't compare ports, only addresses and families
+	{
+		if (addr.ss_family != rhs.addr.ss_family)
+			return true;
+		if (AF_INET == addr.ss_family) {
+			auto l = (struct sockaddr_in *)&addr;
+			auto r = (struct sockaddr_in *)&rhs.addr;
+			return (l->sin_addr.s_addr != r->sin_addr.s_addr);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto l = (struct sockaddr_in6 *)&addr;
+			auto r = (struct sockaddr_in6 *)&rhs.addr;
+			return (0 != memcmp(&(l->sin6_addr), &(r->sin6_addr), sizeof(struct in6_addr)));
+		}
+		return true;
+	}
+
+	bool AddressIsZero() const
 	{
 		if (AF_INET == addr.ss_family) {
-			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
+			 auto addr4 = (struct sockaddr_in *)&addr;
 			return (addr4->sin_addr.s_addr == 0U);
 		} else {
-			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
+			auto addr6 = (struct sockaddr_in6 *)&addr;
 			for (unsigned int i=0; i<16; i++) {
 				if (addr6->sin6_addr.s6_addr[i])
 					return false;
@@ -139,51 +134,72 @@ public:
 	void ClearAddress()
 	{
 		if (AF_INET == addr.ss_family) {
-			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
+			auto addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_addr.s_addr = 0U;
+			strcpy(straddr, "0.0.0.0");
 		} else {
-			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
+			auto addr6 = (struct sockaddr_in6 *)&addr;
 			memset(&(addr6->sin6_addr.s6_addr), 0, 16);
+			strcpy(straddr, "::");
 		}
 	}
 
 	const char *GetAddress()
 	{
+		if (straddr[0])
+			return straddr;
 		if (AF_INET == addr.ss_family) {
-			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
-			if (NULL == inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN))
-				return "ERROR";
+			auto addr4 = (struct sockaddr_in *)&addr;
+			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto addr6 = (struct sockaddr_in6 *)&addr;
+			inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
 		} else {
-			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
-			if (NULL == inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN))
-				return "ERROR";
+			std::cerr << "Unknown socket family: " << addr.ss_family << std::endl;
 		}
-
 		return straddr;
 	}
 
-    int GetFamily()
+    int GetFamily() const
     {
         return addr.ss_family;
     }
 
-	unsigned short GetPort()
+	unsigned short GetPort() const
 	{
 		if (AF_INET == addr.ss_family) {
-			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
+			auto addr4 = (struct sockaddr_in *)&addr;
 			return ntohs(addr4->sin_port);
-		} else {
-			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
+		} else if (AF_INET6 == addr.ss_family) {
+			auto addr6 = (struct sockaddr_in6 *)&addr;
 			return ntohs(addr6->sin6_port);
+		} else
+			return 0;
+	}
+
+	void SetPort(const uint16_t newport)
+	{
+		if (AF_INET == addr.ss_family) {
+			auto addr4 = (struct sockaddr_in *)&addr;
+			addr4->sin_port = htons(newport);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto addr6 = (struct sockaddr_in6 *)&addr;
+			addr6->sin6_port = htons(newport);
 		}
 	}
 
 	struct sockaddr *GetPointer()
 	{
+		memset(straddr, 0, INET6_ADDRSTRLEN);	// things might change
 		return (struct sockaddr *)&addr;
 	}
 
-	size_t GetSize()
+	const struct sockaddr *GetCPointer() const
+	{
+		return (const struct sockaddr *)&addr;
+	}
+
+	size_t GetSize() const
 	{
 		if (AF_INET == addr.ss_family)
 			return sizeof(struct sockaddr_in);
@@ -194,6 +210,7 @@ public:
 	void Clear()
 	{
 		memset(&addr, 0, sizeof(struct sockaddr_storage));
+		memset(straddr, 0, INET6_ADDRSTRLEN);
 	}
 
 private:

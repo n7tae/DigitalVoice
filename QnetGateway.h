@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018-2019 by Thomas Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,18 +26,20 @@
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"
 #include "Configure.h"
+#include "QnetDB.h"
+#include "DStarDecode.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
 #define MAX_DTMF_BUF 32
 
-typedef struct gate_to_remote_g2_tag {
+using STOREMOTEG2 = struct gate_to_remote_g2_tag {
 	unsigned short streamid;
 	CSockAddress toDstar;
 	time_t last_time;
-} STOREMOTEG2;
+};
 
-typedef struct torepeater_tag {
+using STOREPEATER = struct torepeater_tag {
 	// help with header re-generation
 	CDSVT saved_hdr; // repeater format
 	CSockAddress saved_addr;
@@ -46,9 +48,9 @@ typedef struct torepeater_tag {
 	CSockAddress addr;
 	time_t last_time;
 	unsigned char sequence;
-} STOREPEATER;
+};
 
-typedef struct band_txt_tag {
+using SBANDTXT = struct band_txt_tag {
 	unsigned short streamID;
 	unsigned char flags[3];
 	char lh_mycall[CALL_SIZE + 1];
@@ -61,7 +63,7 @@ typedef struct band_txt_tag {
 	unsigned short txt_cnt;
 	bool sent_key_on_msg;
 
-	char dest_rptr[CALL_SIZE + 1];
+	std::string dest_rptr;
 
 	// try to process GPS mode: GPRMC and ID
 	char temp_line[256];
@@ -74,7 +76,7 @@ typedef struct band_txt_tag {
 	int num_dv_frames;
 	int num_dv_silent_frames;
 	int num_bit_errors;
-} SBANDTXT;
+};
 
 class CQnetGateway {
 public:
@@ -99,6 +101,8 @@ private:
 	bool C_seen = false;
     int Index = -1;
 
+	CQnetDB qnDB;
+	CDStarDecode decode;
 	CUnixDgramReader AM2Gate;
 	CUnixDgramWriter Gate2AM, LogInput;
 
@@ -117,7 +121,7 @@ private:
 
 	// data needed for aprs login and aprs beacon
 	// RPTR defined in aprs.h
-	SRPTR rptr;
+	SRPTR Rptr;
 
 	CDSVT recbuf; // 56 or 27, max is 56
 
@@ -148,11 +152,6 @@ private:
 	/* Used to validate MYCALL input */
 	std::regex preg;
 
-	// CACHE used to cache users, repeaters,
-	// gateways, IP numbers coming from the irc server
-
-	std::map<std::string, std::string> user2rptr_map[2], rptr2gwy_map[2], gwy2ip_map[2];
-
 	pthread_mutex_t irc_data_mutex[2] = PTHREAD_MUTEX_INITIALIZER;
 
 	bool VoicePacketIsSync(const unsigned char *text);
@@ -160,12 +159,13 @@ private:
 	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread(const int i);
-	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
-	int get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
+	int get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, unsigned short sid);
+	bool ProcessG2Msg(const unsigned char *data, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf);
 	void ProcessAudio(const CDSVT *packet);
 	bool Flag_is_ok(unsigned char flag);
@@ -184,6 +184,6 @@ private:
 
 	void qrgs_and_maps();
 
-	void set_dest_rptr(char *dest_rptr);
+	void set_dest_rptr(std::string &call);
 	bool validate_csum(SBANDTXT &bt, bool is_gps);
 };

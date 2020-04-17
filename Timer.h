@@ -20,39 +20,19 @@
 
 #include <ctime>
 #include <chrono>
-#include <cmath>
-#include <string>
 
 class CTimer
 {
 public:
-	CTimer() { Restart(); }
+	CTimer() { start(); }
 	~CTimer() {}
-	void Restart() {
+	void start() {
 		starttime = std::chrono::steady_clock::now();
 	}
-	double Time() {
-		std::chrono::steady_clock::duration elapsed = std::chrono::steady_clock::now() - starttime;
-		return double(elapsed.count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+	double time() {
+		std::chrono::duration<double> elapsed(std::chrono::steady_clock::now() - starttime);
+		return elapsed.count();
 	}
-
-	std::string TimeString()
-	{
-		std::string ret;
-		double t = Time();
-		if (t >= 60.0) {
-			double minutes = t / 60.0;
-			double integer;
-			double seconds = 60.0 * modf(minutes, &integer);
-			seconds = round(10.0 * seconds) / 10.0;
-			ret.assign(std::to_string(int(minutes)));
-			ret += " min " + std::to_string(seconds) + " sec";
-		} else {
-			ret = std::to_string(round(10.0 * t) / 10.0) + " sec";
-		}
-		return ret;
-	}
-
 private:
 	std::chrono::steady_clock::time_point starttime;
 };

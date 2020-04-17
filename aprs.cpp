@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2016-2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2016-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ void CAPRS::SelectBand(unsigned short streamID)
 {
 	/* lock on the streamID */
 	aprs_streamID.streamID = streamID;
-	// aprs_streamID[rptr_idx].last_time = 0;
+	// aprs_streamID.last_time = 0;
 
 	Reset();
 	return;
@@ -45,11 +45,17 @@ void CAPRS::SelectBand(unsigned short streamID)
 //              12 bytes(packet from repeater was 29 bytes) or
 //              15 bytes(packet from repeater was 32 bytes)
 // Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
-void CAPRS::ProcessText(unsigned char seq, unsigned char *buf)
+void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf)
 {
 	unsigned char aprs_data[200];
 	char aprs_buf[1024];
 	time_t tnow = 0;
+
+
+	if (streamID != aprs_streamID.streamID) {
+		printf("ERROR in aprs_process_text: streamID is invalid\n");
+		return;
+	}
 
 	if ((seq & 0x40) == 0x40)
 		return;
@@ -205,14 +211,15 @@ void CAPRS::Open(const std::string OWNER)
     }
 
 	/* login to aprs */
-	sprintf(snd_buf, "user %s pass %d vers qngateway 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
+	//sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
+	sprintf(snd_buf, "user %s pass %d vers QnetGateway-9 ", OWNER.c_str(), m_rptr->aprs_hash);
 
 	/* add the user's filter */
 	if (m_rptr->aprs_filter.length()) {
 		strcat(snd_buf, "filter ");
 		strcat(snd_buf, m_rptr->aprs_filter.c_str());
 	}
-	// printf("APRS login command:[%s]\n", snd_buf);
+	//printf("APRS Login command:[%s]\n", snd_buf);
 	strcat(snd_buf, "\r\n");
 
 	while (true) {
@@ -222,16 +229,16 @@ void CAPRS::Open(const std::string OWNER)
                 aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			} else {
-				printf("APRS login command failed, error=%d\n", errno);
+				printf("APRS Login command failed, error=%d\n", errno);
 				break;
 			}
 		} else {
-			// printf("APRS login command sent\n");
+			// printf("APRS Login command sent\n");
 			break;
 		}
 	}
     aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-
+	//printf("APRS Login returned: %s", rcv_buf);
 	return;
 }
 
@@ -315,6 +322,7 @@ bool CAPRS::CheckData()
 {
 	unsigned int my_sum;
 	char buf[5];
+
 	my_sum = CalcCRC(aprs_pack.data + 10, aprs_pack.len - 10);
 
 	sprintf(buf, "%04X", my_sum);

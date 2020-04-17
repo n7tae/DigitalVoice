@@ -1,5 +1,9 @@
+#pragma once
 /*
- *   Copyright (c) 2019 by Thomas A. Early N7TAE
+ *   Copyright (c) 1994 by Robert Morelos-Zaragoza. All rights reserved.
+ *   See http://www.eccpage.com/golay23.c
+ *   Copyright (C) 2010 by Michael Dirska, DL1BFF (dl1bff@mdx.de)
+ *   Copyright (C) 2020 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,28 +20,20 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#pragma once
-
-#include <string>
-#include <map>
-
-// value for the gateway table, the key is the callsign/reflector name
-using HOST_DATA = struct host_data_tag {
-	std::string address;
-	unsigned short port;
-};
-
-using HOST_MAP = std::map<std::string, HOST_DATA *>;
-
-class CHostFile
-{
+class CDStarDecode {
 public:
-	CHostFile();
-	~CHostFile();
-	int Open(const char *filename, unsigned short defaultport);
-	int Transfer(HOST_MAP &tomap, const char *type);
-	void Init();
+	CDStarDecode();
+	~CDStarDecode() {}
+	int Decode(const unsigned char *d, int data[3]);
+
+private:
+	// functions
+	long get_syndrome(long pattern);
+	long arr2int(int a[], int r);
+	void nextcomb(int n, int r, int a[]);
+	int golay2412(int data, int *decoded);
+
 	// data
-	HOST_MAP hostmap;
-	void ClearMap();
+	long decoding_table[2048];
+	int prng[4096];
 };
