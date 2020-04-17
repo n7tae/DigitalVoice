@@ -49,7 +49,7 @@ CFGDATA *CSettingsDlg::Show()
 {
 	cfg.CopyTo(data);	// get the saved config data (MainWindow has alread read it)
 	SetWidgetStates(data);
-	on_RescanButton_clicked();		// reset the ambe device
+	on_AMBERescanButton_clicked();		// reset the ambe device
 	on_AudioRescanButton_clicked();	// re-read the audio PCM devices
 
 	if (Gtk::RESPONSE_OK == pDlg->run()) {
@@ -74,30 +74,39 @@ CFGDATA *CSettingsDlg::Show()
 void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 {
 	// station
-	d.sCallsign.assign(pMyCallsign->get_text());
-	d.sName.assign(pMyName->get_text());
-	d.bUseMyCall = pUseMyCall->get_active();
-	d.sStation = pStationCallsign->get_text();
-	d.sMessage.assign(pMessage->get_text());
-	d.sLocation.assign(pLocation->get_text());
+	d.sCallsign.assign(pMyCallsignEntry->get_text());
+	d.sName.assign(pMyNameEntry->get_text());
+	d.bUseMyCall = pUseMyCallCheckButton->get_active();
+	d.sStation = pStationCallsignEntry->get_text();
+	d.sMessage.assign(pMessageEntry->get_text());
 	d.cModule = data.cModule;
-	d.dLatitude = std::stod(pLatitude->get_text());
-	d.dLongitude = std::stod(pLongitude->get_text());
-	d.sURL.assign(pURL->get_text());
+	d.sURL.assign(pURLEntry->get_text());
+	// location
+	d.sLocation[0].assign(pLocationEntry[0]->get_text());
+	d.sLocation[1].assign(pLocationEntry[1]->get_text());
+	d.dLatitude = std::stod(pLatitudeEntry->get_text());
+	d.dLongitude = std::stod(pLongitudeEntry->get_text());
+	d.bAPRSEnable = pAPRSEnableCheckButton->get_active();
+	d.sAPRSServer.assign(pAPRSServerEntry->get_text());
+	d.usAPRSPort = std::stoul(pAPRSPortEntry->get_text());
+	d.iAPRSInterval = std::stoi(pAPRSIntervalEntry->get_text());
+	d.bGPSDEnable = pGPSDEnableCheckButton->get_active();
+	d.sGPSDServer.assign(pGPSDServerEntry->get_text());
+	d.usGPSDPort = std::stoul(pGPSDPortEntry->get_text());
 	//link
-	d.sLinkAtStart.assign(pLinkAtStart->get_text());
-	d.bDPlusEnable = pDPlusEnableCheck->get_active();
+	d.sLinkAtStart.assign(pLinkAtStartEntry->get_text());
+	d.bDPlusEnable = pDPlusEnableCheckButton->get_active();
 	// quadnet
-	if (pIPv6Only->get_active())
+	if (pIPv6OnlyRadioButton->get_active())
 		d.eNetType = EQuadNetType::ipv6only;
-	else if (pDualStack->get_active())
+	else if (pDualStackRadioButton->get_active())
 		d.eNetType = EQuadNetType::dualstack;
-	else if (pNoRouting->get_active())
+	else if (pNoRoutingRadioButton->get_active())
 		d.eNetType = EQuadNetType::norouting;
 	else
 		d.eNetType = EQuadNetType::ipv4only;
 	// device
-	d.iBaudRate = (p230k->get_active()) ? 230400 : 460800;
+	d.iBaudRate = (p230kRadioButton->get_active()) ? 230400 : 460800;
 	// audio
 	Gtk::ListStore::iterator it = pAudioInputComboBox->get_active();
 	Gtk::ListStore::Row row = *it;
@@ -112,39 +121,48 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 {
 	// station
-	pMyCallsign->set_text(d.sCallsign);
-	pMyName->set_text(d.sName);
-	pStationCallsign->set_text(d.sStation);
-	pUseMyCall->set_active(d.bUseMyCall);
-	pMessage->set_text(d.sMessage);
-	pLocation->set_text(d.sLocation);
-	pLatitude->set_text(std::to_string(d.dLatitude));
-	pLongitude->set_text(std::to_string(d.dLongitude));
-	pURL->set_text(d.sURL);
+	pMyCallsignEntry->set_text(d.sCallsign);
+	pMyNameEntry->set_text(d.sName);
+	pStationCallsignEntry->set_text(d.sStation);
+	pUseMyCallCheckButton->set_active(d.bUseMyCall);
+	pMessageEntry->set_text(d.sMessage);
+	pURLEntry->set_text(d.sURL);
+	// location
+	pLocationEntry[0]->set_text(d.sLocation[0]);
+	pLocationEntry[1]->set_text(d.sLocation[1]);
+	pLatitudeEntry->set_text(std::to_string(d.dLatitude));
+	pLongitudeEntry->set_text(std::to_string(d.dLongitude));
+	pAPRSEnableCheckButton->set_active(d.bAPRSEnable);
+	pAPRSIntervalEntry->set_text(std::to_string(d.iAPRSInterval));
+	pAPRSServerEntry->set_text(d.sAPRSServer);
+	pAPRSPortEntry->set_text(std::to_string(d.usAPRSPort));
+	pGPSDEnableCheckButton->set_active(d.bGPSDEnable);
+	pGPSDServerEntry->set_text(d.sGPSDServer);
+	pGPSDPortEntry->set_text(std::to_string(d.usGPSDPort));
 	//link
-	pLinkAtStart->set_text(d.sLinkAtStart);
-	if (d.bDPlusEnable != pDPlusEnableCheck->get_active())
-		pDPlusEnableCheck->set_active(d.bDPlusEnable);	// only do this if we need to
+	pLinkAtStartEntry->set_text(d.sLinkAtStart);
+	if (d.bDPlusEnable != pDPlusEnableCheckButton->get_active())
+		pDPlusEnableCheckButton->set_active(d.bDPlusEnable);	// only do this if we need to
 	//quadnet
 	switch (d.eNetType) {
 		case EQuadNetType::ipv6only:
-			pIPv6Only->set_active();
+			pIPv6OnlyRadioButton->set_active();
 			break;
 		case EQuadNetType::dualstack:
-			pDualStack->set_active();
+			pDualStackRadioButton->set_active();
 			break;
 		case EQuadNetType::norouting:
-			pNoRouting->set_active();
+			pNoRoutingRadioButton->set_active();
 			break;
 		default:
-			pIPv4Only->set_active();
+			pIPv4OnlyRadioButton->set_active();
 			break;
 	}
 	//device
 	if (230400 == d.iBaudRate)
-		p230k->clicked();
+		p230kRadioButton->clicked();
 	else
-		p460k->clicked();
+		p460kRadioButton->clicked();
 }
 
 bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
@@ -161,30 +179,39 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pOkayButton->set_sensitive(false);
 
 	// station
-	builder->get_widget("MyCallsignEntry", pMyCallsign);
-	builder->get_widget("MyNameEntry", pMyName);
-	builder->get_widget("UseMyCallsignCheckButton", pUseMyCall);
-	builder->get_widget("StationCallsignEntry", pStationCallsign);
-	builder->get_widget("MessageEntry", pMessage);
-	builder->get_widget("LocationEntry", pLocation);
-	builder->get_widget("LatitudeEntry", pLatitude);
-	builder->get_widget("LongitudeEntry", pLongitude);
-	builder->get_widget("URLEntry", pURL);
-	// device
-	builder->get_widget("DeviceLabel", pDevicePath);
-	builder->get_widget("ProductIDLabel", pProductID);
-	builder->get_widget("VersionLabel", pVersion);
-	builder->get_widget("Baud230kRadioButton", p230k);
-	builder->get_widget("Baud460kRadioButton", p460k);
-	builder->get_widget("RescanButton", pRescanButton);
+	builder->get_widget("MyCallsignEntry", pMyCallsignEntry);
+	builder->get_widget("MyNameEntry", pMyNameEntry);
+	builder->get_widget("UseMyCallsignCheckButton", pUseMyCallCheckButton);
+	builder->get_widget("StationCallsignEntry", pStationCallsignEntry);
+	builder->get_widget("MessageEntry", pMessageEntry);
+	builder->get_widget("URLEntry", pURLEntry);
+	// location
+	builder->get_widget("Location1Entry", pLocationEntry[0]);
+	builder->get_widget("Location2Entry", pLocationEntry[1]);
+	builder->get_widget("LatitudeEntry", pLatitudeEntry);
+	builder->get_widget("LongitudeEntry", pLongitudeEntry);
+	builder->get_widget("APRSEnableCheckButton", pAPRSEnableCheckButton);
+	builder->get_widget("APRSIntervalEntry", pAPRSIntervalEntry);
+	builder->get_widget("APRSServerEntry", pAPRSServerEntry);
+	builder->get_widget("APRSPortEntry", pAPRSPortEntry);
+	builder->get_widget("GPSDEnableCheckButton", pGPSDEnableCheckButton);
+	builder->get_widget("APRSServerEntry", pAPRSServerEntry);
+	builder->get_widget("APRSPortEntry", pAPRSPortEntry);
+	// AMBE device
+	builder->get_widget("DeviceLabel", pDevicePathLabel);
+	builder->get_widget("ProductIDLabel", pProductIDLabel);
+	builder->get_widget("VersionLabel", pVersionLabel);
+	builder->get_widget("Baud230kRadioButton", p230kRadioButton);
+	builder->get_widget("Baud460kRadioButton", p460kRadioButton);
+	builder->get_widget("AMBERescanButton", pAMBERescanButton);
 	// linking
-	builder->get_widget("LinkAtStartEntry", pLinkAtStart);
-	builder->get_widget("LegacyCheckButton", pDPlusEnableCheck);
+	builder->get_widget("LinkAtStartEntry", pLinkAtStartEntry);
+	builder->get_widget("LegacyCheckButton", pDPlusEnableCheckButton);
 	// QuadNet
-	builder->get_widget("IPV4_RadioButton", pIPv4Only);
-	builder->get_widget("IPV6_RadioButton", pIPv6Only);
-	builder->get_widget("Dual_Stack_RadioButton", pDualStack);
-	builder->get_widget("No_Routing_RadioButton", pNoRouting);
+	builder->get_widget("IPV4_RadioButton", pIPv4OnlyRadioButton);
+	builder->get_widget("IPV6_RadioButton", pIPv6OnlyRadioButton);
+	builder->get_widget("Dual_Stack_RadioButton", pDualStackRadioButton);
+	builder->get_widget("No_Routing_RadioButton", pNoRoutingRadioButton);
 	// Audio
 	builder->get_widget("AudioInputComboBox", pAudioInputComboBox);
 	refAudioInListModel = Gtk::ListStore::create(audio_columns);
@@ -199,25 +226,37 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("InputDescLabel", pInputDescLabel);
 	builder->get_widget("OutputDescLabel", pOutputDescLabel);
 	builder->get_widget("AudioRescanButton", pAudioRescanButton);
+	// APRS
+	builder->get_widget("APRSEnableCheckButton", pAPRSEnableCheckButton);
+	builder->get_widget("APRSIntervalEntry", pAPRSIntervalEntry);
+	builder->get_widget("APRSServerEntry", pAPRSServerEntry);
+	builder->get_widget("APRSPortEntry", pAPRSPortEntry);
+	// GPSD
+	builder->get_widget("GPSDEnableCheckButton", pGPSDEnableCheckButton);
+	builder->get_widget("GPSDServerEntry", pGPSDServerEntry);
+	builder->get_widget("GPSDPortEntry", pGPSDPortEntry);
 
-	pMyCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
-	pMyName->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
-	pStationCallsign->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
-	pUseMyCall->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_clicked));
-	pMessage->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
-	pLocation->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LocationEntry_changed));
-	pLatitude->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LatitudeEntry_changed));
-	pLongitude->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LongitudeEntry_changed));
-	pURL->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_URLEntry_changed));
-	pIPv4Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pIPv6Only->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pDualStack->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pNoRouting->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_RescanButton_clicked));
+	pMyCallsignEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyCallsignEntry_changed));
+	pMyNameEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MyNameEntry_changed));
+	pStationCallsignEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_StationCallsignEntry_changed));
+	pUseMyCallCheckButton->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_UseMyCallsignCheckButton_toggled));
+	pMessageEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_MessageEntry_changed));
+	pLocationEntry[0]->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Location1Entry_changed));
+	pLocationEntry[1]->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Location2Entry_changed));
+	pLatitudeEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LatitudeEntry_changed));
+	pLongitudeEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LongitudeEntry_changed));
+	pURLEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_URLEntry_changed));
+	pIPv4OnlyRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pIPv6OnlyRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pDualStackRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pNoRoutingRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pAMBERescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AMBERescanButton_clicked));
 	pAudioRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioRescanButton_clicked));
-	pLinkAtStart->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LinkAtStartEntry_changed));
+	pLinkAtStartEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LinkAtStartEntry_changed));
 	pAudioInputComboBox->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioInputComboBox_changed));
 	pAudioOutputComboBox->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioOutputComboBox_changed));
+	pAPRSEnableCheckButton->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_APRSEnableCheckButton_toggled));
+	pGPSDEnableCheckButton->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_GPSDEnableCheckButton_toggled));
 
 	return false;
 }
@@ -228,7 +267,7 @@ void CSettingsDlg::RebuildGateways(bool includelegacy)
 
 	if (includelegacy) {
 		CWaitCursor wait;
-		const std::string call(pMyCallsign->get_text().c_str());
+		const std::string call(pMyCallsignEntry->get_text().c_str());
 		CDPlusAuthenticator auth(call, "auth.dstargateway.org");
 		if (auth.Process(gwys.hostmap, true, false)) {
 			std::cerr << "Error processing D-Plus authorization" << std::endl;
@@ -236,7 +275,7 @@ void CSettingsDlg::RebuildGateways(bool includelegacy)
 	}
 }
 
-void CSettingsDlg::on_RescanButton_clicked()
+void CSettingsDlg::on_AMBERescanButton_clicked()
 {
 	CWaitCursor wait;
 	if (AudioManager.AMBEDevice.IsOpen())
@@ -245,53 +284,71 @@ void CSettingsDlg::on_RescanButton_clicked()
 	AudioManager.AMBEDevice.FindandOpen(data.iBaudRate, DSTAR_TYPE);
 	if (AudioManager.AMBEDevice.IsOpen()) {
 		const Glib::ustring path(AudioManager.AMBEDevice.GetDevicePath());
-		pDevicePath->set_text(path);
+		pDevicePathLabel->set_text(path);
 		const Glib::ustring prodid(AudioManager.AMBEDevice.GetProductID());
-		pProductID->set_text(prodid);
+		pProductIDLabel->set_text(prodid);
 		const Glib::ustring version(AudioManager.AMBEDevice.GetVersion());
-		pVersion->set_text(version);
+		pVersionLabel->set_text(version);
 	} else {
-		pDevicePath->set_text("Not found!");
-		pProductID->set_text("Is the device plugged in?");
-		pVersion->set_text("Are you in the 'dialout' group?");
+		pDevicePathLabel->set_text("Not found!");
+		pProductIDLabel->set_text("Is the device plugged in?");
+		pVersionLabel->set_text("Are you in the 'dialout' group?");
 	}
 }
 
-void CSettingsDlg::on_UseMyCallsignCheckButton_clicked()
+void CSettingsDlg::on_APRSEnableCheckButton_toggled()
 {
-	if (pUseMyCall->get_active()) {
-		pStationCallsign->hide();
-		pStationCallsign->set_text(pMyCallsign->get_text());
+	bool checked = pAPRSEnableCheckButton->get_active();
+	pAPRSIntervalEntry->set_sensitive(checked);
+	pAPRSServerEntry->set_sensitive(checked);
+	pAPRSPortEntry->set_sensitive(checked);
+	if (! checked && pGPSDEnableCheckButton->get_active())
+		pGPSDEnableCheckButton->set_active(false);
+	pGPSDEnableCheckButton->set_sensitive(checked);
+}
+
+void CSettingsDlg::on_GPSDEnableCheckButton_toggled()
+{
+	bool checked = pGPSDEnableCheckButton->get_active();
+	pGPSDServerEntry->set_sensitive(checked);
+	pGPSDPortEntry->set_sensitive(checked);
+}
+
+void CSettingsDlg::on_UseMyCallsignCheckButton_toggled()
+{
+	if (pUseMyCallCheckButton->get_active()) {
+		pStationCallsignEntry->hide();
+		pStationCallsignEntry->set_text(pMyCallsignEntry->get_text());
 	} else {
-		pStationCallsign->show();
+		pStationCallsignEntry->show();
 	}
 }
 
 void CSettingsDlg::on_MyCallsignEntry_changed()
  {
-	 int pos = pMyCallsign->get_position();
-	 Glib::ustring s = pMyCallsign->get_text().uppercase();
-	 pMyCallsign->set_text(s);
-	 pMyCallsign->set_position(pos);
+	 int pos = pMyCallsignEntry->get_position();
+	 Glib::ustring s = pMyCallsignEntry->get_text().uppercase();
+	 pMyCallsignEntry->set_text(s);
+	 pMyCallsignEntry->set_position(pos);
 	 bCallsign = std::regex_match(s.c_str(), CallRegEx);
-	 pMyCallsign->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
+	 pMyCallsignEntry->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
 	 pOkayButton->set_sensitive(bCallsign && bStation);
-	 if (pUseMyCall->get_active())
-	 	pStationCallsign->set_text(s);
+	 if (pUseMyCallCheckButton->get_active())
+	 	pStationCallsignEntry->set_text(s);
  }
 
 void CSettingsDlg::on_MyNameEntry_changed()
  {
-	 int pos = pMyName->get_position();
-	 Glib::ustring s = pMyName->get_text();
-	 pMyName->set_text(s.uppercase());
-	 pMyName->set_position(pos);
+	 int pos = pMyNameEntry->get_position();
+	 Glib::ustring s = pMyNameEntry->get_text();
+	 pMyNameEntry->set_text(s.uppercase());
+	 pMyNameEntry->set_position(pos);
  }
 
  void CSettingsDlg::on_LinkAtStartEntry_changed()
  {
-	 int pos = pLinkAtStart->get_position();
-	 Glib::ustring s = pLinkAtStart->get_text().uppercase();
+	 int pos = pLinkAtStartEntry->get_position();
+	 Glib::ustring s = pLinkAtStartEntry->get_text().uppercase();
 	 const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
 	 Glib::ustring n;
 	 for (auto it=s.begin(); it!=s.end(); it++) {
@@ -299,21 +356,51 @@ void CSettingsDlg::on_MyNameEntry_changed()
 			 n.append(1, *it);
 		 }
 	 }
-	 pLinkAtStart->set_text(n);
-	 pLinkAtStart->set_position(pos);
+	 pLinkAtStartEntry->set_text(n);
+	 pLinkAtStartEntry->set_position(pos);
  }
 
 void CSettingsDlg::on_StationCallsignEntry_changed()
  {
-	 int pos = pStationCallsign->get_position();
-	 Glib::ustring s = pStationCallsign->get_text().uppercase();
-	 pStationCallsign->set_text(s);
-	 pStationCallsign->set_position(pos);
+	 int pos = pStationCallsignEntry->get_position();
+	 Glib::ustring s = pStationCallsignEntry->get_text().uppercase();
+	 pStationCallsignEntry->set_text(s);
+	 pStationCallsignEntry->set_position(pos);
 	 bStation = std::regex_match(s.c_str(), CallRegEx);
-	 pStationCallsign->set_icon_from_icon_name(bStation ? "gtk-ok" : "gtk-cancel");
-	 pDPlusEnableCheck->set_sensitive(bCallsign);
+	 pStationCallsignEntry->set_icon_from_icon_name(bStation ? "gtk-ok" : "gtk-cancel");
+	 pDPlusEnableCheckButton->set_sensitive(bCallsign);
 	 pOkayButton->set_sensitive(bCallsign && bStation);
  }
+
+void CSettingsDlg::OnIntegerChanged(Gtk::Entry *pEntry)
+{
+	int pos = pEntry->get_position();
+	const Glib::ustring good("0123456789");
+	Glib::ustring s = pEntry->get_text();
+	Glib::ustring n;
+	for (auto it=s.begin(); it!=s.end(); it++) {
+		if (Glib::ustring::npos != good.find(*it)) {
+			n.append(1, *it);
+		}
+	}
+	pEntry->set_text(n);
+	pEntry->set_position(pos);
+}
+
+void CSettingsDlg::on_APRSIntervalEntry_changed()
+{
+	OnIntegerChanged(pAPRSIntervalEntry);
+}
+
+void CSettingsDlg::on_APRSPortEntry_changed()
+{
+	OnIntegerChanged(pAPRSPortEntry);
+}
+
+void CSettingsDlg::on_GPSDPortEntry_changed()
+{
+	OnIntegerChanged(pGPSDPortEntry);
+}
 
 void CSettingsDlg::On20CharMsgChanged(Gtk::Entry *pEntry)
 {
@@ -332,27 +419,47 @@ void CSettingsDlg::On20CharMsgChanged(Gtk::Entry *pEntry)
 
 void CSettingsDlg::on_URLEntry_changed()
 {
-	int pos = pURL->get_position();
+	OnServerChanged(pURLEntry);
+}
+
+void CSettingsDlg::on_APRSServerEntry_changed()
+{
+	OnServerChanged(pAPRSServerEntry);
+}
+
+void CSettingsDlg::on_GPSDServerEntry_changed()
+{
+	OnServerChanged(pGPSDServerEntry);
+}
+
+void CSettingsDlg::OnServerChanged(Gtk::Entry *pEntry)
+{
+	int pos = pEntry->get_position();
 	const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/.:_%");
-	Glib::ustring s = pURL->get_text();
+	Glib::ustring s = pEntry->get_text();
 	Glib::ustring n;
 	for (auto it=s.begin(); it!=s.end(); it++) {
 		if (Glib::ustring::npos != good.find(*it)) {
 			n.append(1, *it);
 		}
 	}
-	pURL->set_text(n);
-	pURL->set_position(pos);
+	pEntry->set_text(n);
+	pEntry->set_position(pos);
 }
 
 void CSettingsDlg::on_MessageEntry_changed()
 {
-	On20CharMsgChanged(pMessage);
+	On20CharMsgChanged(pMessageEntry);
 }
 
-void CSettingsDlg::on_LocationEntry_changed()
+void CSettingsDlg::on_Location1Entry_changed()
 {
-	On20CharMsgChanged(pLocation);
+	On20CharMsgChanged(pLocationEntry[0]);
+}
+
+void CSettingsDlg::on_Location2Entry_changed()
+{
+	On20CharMsgChanged(pLocationEntry[1]);
 }
 
 void CSettingsDlg::OnLatLongChanged(Gtk::Entry *pEntry)
@@ -372,12 +479,12 @@ void CSettingsDlg::OnLatLongChanged(Gtk::Entry *pEntry)
 
 void CSettingsDlg::on_LatitudeEntry_changed()
 {
-	OnLatLongChanged(pLatitude);
+	OnLatLongChanged(pLatitudeEntry);
 }
 
 void CSettingsDlg::on_LongitudeEntry_changed()
 {
-	OnLatLongChanged(pLongitude);
+	OnLatLongChanged(pLongitudeEntry);
 }
 
 void CSettingsDlg::BaudrateChanged(int baudrate)
@@ -385,20 +492,20 @@ void CSettingsDlg::BaudrateChanged(int baudrate)
 	if (AudioManager.AMBEDevice.IsOpen()) {
 		if (AudioManager.AMBEDevice.SetBaudRate(baudrate)) {
 			AudioManager.AMBEDevice.CloseDevice();
-			pDevicePath->set_text("Error");
-			pProductID->set_text("Setting the baudrate failed");
-			pVersion->set_text("Please Rescan.");
+			pDevicePathLabel->set_text("Error");
+			pProductIDLabel->set_text("Setting the baudrate failed");
+			pVersionLabel->set_text("Please Rescan.");
 		}
 	}
 }
 
 void CSettingsDlg::on_QuadNet_Group_clicked()
 {
-	if (pIPv6Only->get_active())
+	if (pIPv6OnlyRadioButton->get_active())
 		data.eNetType = EQuadNetType::ipv6only;
-	else if (pDualStack->get_active())
+	else if (pDualStackRadioButton->get_active())
 		data.eNetType = EQuadNetType::dualstack;
-	else if (pNoRouting->get_active())
+	else if (pNoRoutingRadioButton->get_active())
 		data.eNetType = EQuadNetType::norouting;
 	else
 		data.eNetType = EQuadNetType::ipv4only;

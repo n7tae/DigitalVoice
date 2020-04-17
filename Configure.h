@@ -26,10 +26,11 @@ enum class EQuadNetType { ipv4only, ipv6only, dualstack, norouting };
 enum class EMode { routing, linking };
 
 using CFGDATA = struct CFGData_struct {
-	std::string sCallsign, sName, sStation, sMessage, sLocation, sURL, sLinkAtStart, sAudioIn, sAudioOut;
-	bool bUseMyCall, bDPlusEnable;
+	std::string sCallsign, sName, sStation, sMessage, sLocation[2], sURL, sLinkAtStart, sAudioIn, sAudioOut, sAPRSServer, sGPSDServer;
+	bool bUseMyCall, bDPlusEnable, bGPSDEnable, bAPRSEnable;
 	EMode eMode;
-	int iBaudRate;
+	int iBaudRate, iAPRSInterval;
+	unsigned short usAPRSPort, usGPSDPort;
 	EQuadNetType eNetType;
 	double dLatitude, dLongitude;
 	char cModule;

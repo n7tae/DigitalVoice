@@ -32,7 +32,8 @@ void CConfigure::SetDefaultValues()
 	data.sName.clear();
 	data.sStation.clear();
 	data.sMessage.clear();
-	data.sLocation.clear();
+	data.sLocation[0].clear();
+	data.sLocation[2].clear();
 	data.sLinkAtStart.clear();
 	data.sURL.assign("https://github.com/n7tae/DigitalVoice");
 	data.bUseMyCall = false;
@@ -43,6 +44,13 @@ void CConfigure::SetDefaultValues()
 	data.cModule = 'A';
 	data.sAudioIn.assign("default");
 	data.sAudioOut.assign("default");
+	data.bAPRSEnable = true;
+	data.sAPRSServer.assign("rotate.aprs2.net");
+	data.usAPRSPort = 14580U;
+	data.iAPRSInterval = 40;
+	data.bGPSDEnable = false;
+	data.sGPSDServer.assign("localhost");
+	data.usGPSDPort = 2947U;
 }
 
 void CConfigure::ReadData()
@@ -108,8 +116,10 @@ void CConfigure::ReadData()
 			data.dLatitude = std::stod(val);
 		} else if (0 == strcmp(key, "Longitude")) {
 			data.dLongitude = std::stod(val);
-		} else if (0 == strcmp(key, "Location")) {
-			data.sLocation.assign(val);
+		} else if (0 == strcmp(key, "Location1")) {
+			data.sLocation[0].assign(val);
+		} else if (0 == strcmp(key, "Location2")) {
+			data.sLocation[1].assign(val);
 		} else if (0 == strcmp(key, "URL")) {
 			data.sURL.assign(val);
 		} else if (0 == strcmp(key, "LinkAtStart")) {
@@ -120,6 +130,20 @@ void CConfigure::ReadData()
 			data.sAudioIn.assign(val);
 		} else if (0 == strcmp(key, "AudioOutput")) {
 			data.sAudioOut.assign(val);
+		} else if (0 == strcmp(key, "APRSEnable")) {
+			data.bAPRSEnable = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "APRSServer")) {
+			data.sAPRSServer.assign(val);
+		} else if (0 == strcmp(key, "APRSPort")) {
+			data.usAPRSPort = std::stoul(val);
+		} else if (0 == strcmp(key, "APRSInterval")) {
+			data.iAPRSInterval = std::stoi(val);
+		} else if (0 == strcmp(key, "GPSDEnable")) {
+			data.bGPSDEnable = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "GPSDServer")) {
+			data.sGPSDServer.assign(val);
+		} else if (0 == strcmp(key, "GPSDPort")) {
+			data.usGPSDPort = std::stoul(val);
 		}
 	}
 	cfg.close();
@@ -162,9 +186,17 @@ void CConfigure::WriteData()
 	file << "BaudRate=" << data.iBaudRate << std::endl;
 	file << "Latitude=" << std::setprecision(9) << data.dLatitude << std::endl;
 	file << "Longitude=" << std::setprecision(9) << data.dLongitude << std::endl;
-	file << "Location='" << data.sLocation << "'" << std::endl;
+	file << "Location1='" << data.sLocation[0] << "'" << std::endl;
+	file << "Location2='" << data.sLocation[1] << "'" << std::endl;
 	file << "AudioInput='" << data.sAudioIn << "'" << std::endl;
 	file << "AudioOutput='" << data.sAudioOut << "'" << std::endl;
+	file << "APRSEnable=" << (data.bAPRSEnable ? "true" : "false") << std::endl;
+	file << "APRSServer='" << data.sAPRSServer << "'" << std::endl;
+	file << "APRSPort=" << data.usAPRSPort << std::endl;
+	file << "APRSInterval=" << data.iAPRSInterval << std::endl;
+	file << "GPSDEnable=" << (data.bGPSDEnable ? "true" : "false") << std::endl;
+	file << "GPSDServer=" << data.sGPSDServer << std::endl;
+	file << "GPSDPort=" << data.usGPSDPort << std::endl;
 
 	file.close();
 }
@@ -172,7 +204,8 @@ void CConfigure::WriteData()
 void CConfigure::CopyFrom(const CFGDATA &from)
 {
 	data.sCallsign.assign(from.sCallsign);
-	data.sLocation.assign(from.sLocation);
+	data.sLocation[0].assign(from.sLocation[0]);
+	data.sLocation[1].assign(from.sLocation[1]);
 	data.sMessage.assign(from.sMessage);
 	data.sName.assign(from.sName);
 	data.sStation.assign(from.sStation);
@@ -188,12 +221,20 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 	data.dLongitude = from.dLongitude;
 	data.sAudioIn.assign(from.sAudioIn);
 	data.sAudioOut.assign(from.sAudioOut);
+	data.bAPRSEnable = from.bAPRSEnable;
+	data.sAPRSServer.assign(from.sAPRSServer);
+	data.usAPRSPort = from.usAPRSPort;
+	data.iAPRSInterval = from.iAPRSInterval;
+	data.bGPSDEnable = from.bGPSDEnable;
+	data.sGPSDServer.assign(from.sGPSDServer);
+	data.usGPSDPort = from.usGPSDPort;
 }
 
 void CConfigure::CopyTo(CFGDATA &to)
 {
 	to.sCallsign.assign(data.sCallsign);
-	to.sLocation.assign(data.sLocation);
+	to.sLocation[0].assign(data.sLocation[0]);
+	to.sLocation[1].assign(data.sLocation[1]);
 	to.sMessage.assign(data.sMessage);
 	to.sName.assign(data.sName);
 	to.sStation.assign(data.sStation);
@@ -209,6 +250,13 @@ void CConfigure::CopyTo(CFGDATA &to)
 	to.dLongitude = data.dLongitude;
 	to.sAudioIn.assign(data.sAudioIn);
 	to.sAudioOut.assign(data.sAudioOut);
+	to.bAPRSEnable = data.bAPRSEnable;
+	to.sAPRSServer.assign(data.sAPRSServer);
+	to.usAPRSPort = data.usAPRSPort;
+	to.iAPRSInterval = data.iAPRSInterval;
+	to.bGPSDEnable = data.bGPSDEnable;
+	to.sGPSDServer.assign(data.sGPSDServer);
+	to.usGPSDPort = data.usGPSDPort;
 }
 
 bool CConfigure::IsOkay()

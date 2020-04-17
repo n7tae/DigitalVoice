@@ -55,30 +55,40 @@ private:
 	std::regex CallRegEx;
 	// widgets
     Gtk::Dialog *pDlg;
-	Gtk::Button *pRescanButton, *pOkayButton, *pAudioRescanButton;
+	Gtk::Button *pAMBERescanButton, *pOkayButton, *pAudioRescanButton;
 	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
-	Gtk::CheckButton *pUseMyCall, *pDPlusEnableCheck;
-	Gtk::Entry *pStationCallsign, *pMyCallsign, *pMyName, *pMessage, *pLocation, *pURL, *pLatitude, *pLongitude, *pLinkAtStart;
-	Gtk::RadioButton *p230k, *p460k, *pIPv4Only, *pIPv6Only, *pDualStack, *pNoRouting;
-	Gtk::Label *pDevicePath, *pProductID, *pVersion, *pInputDescLabel, *pOutputDescLabel;
+	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton;
+	Gtk::Entry *pStationCallsignEntry, *pMyCallsignEntry, *pMyNameEntry, *pMessageEntry, *pLocationEntry[2], *pURLEntry, *pLatitudeEntry, *pLongitudeEntry, *pLinkAtStartEntry, *pAPRSServerEntry, *pAPRSPortEntry, *pAPRSIntervalEntry, *pGPSDServerEntry, *pGPSDPortEntry;
+	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton, *pNoRoutingRadioButton;
+	Gtk::Label *pDevicePathLabel, *pProductIDLabel, *pVersionLabel, *pInputDescLabel, *pOutputDescLabel;
 	// events
-	void on_UseMyCallsignCheckButton_clicked();
+	void on_UseMyCallsignCheckButton_toggled();
 	void on_AudioRescanButton_clicked();
 	void on_MyCallsignEntry_changed();
 	void on_MyNameEntry_changed();
 	void on_StationCallsignEntry_changed();
 	void On20CharMsgChanged(Gtk::Entry *pEntry);
 	void on_MessageEntry_changed();
-	void on_LocationEntry_changed();
+	void on_Location1Entry_changed();
+	void on_Location2Entry_changed();
 	void OnLatLongChanged(Gtk::Entry *pEntry);
 	void on_LatitudeEntry_changed();
 	void on_LongitudeEntry_changed();
 	void on_URLEntry_changed();
-	void on_RescanButton_clicked();
+	void OnServerChanged(Gtk::Entry *pEntry);
+	void on_AMBERescanButton_clicked();
 	void on_QuadNet_Group_clicked();
 	void on_LinkAtStartEntry_changed();
 	void on_AudioInputComboBox_changed();
 	void on_AudioOutputComboBox_changed();
+	void on_APRSServerEntry_changed();
+	void on_GPSDServerEntry_changed();
+	void OnIntegerChanged(Gtk::Entry *pEntry);
+	void on_APRSPortEntry_changed();
+	void on_APRSIntervalEntry_changed();
+	void on_GPSDPortEntry_changed();
+	void on_APRSEnableCheckButton_toggled();
+	void on_GPSDEnableCheckButton_toggled();
 	// state changed
 	void BaudrateChanged(int newBaudrate);
 	void RebuildGateways(bool includelegacy);

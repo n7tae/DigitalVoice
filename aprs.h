@@ -47,7 +47,7 @@ typedef struct rptr_tag{
 		//bool defined;
 		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
-		std::string desc, url, package_version;
+		std::string desc[2], url, package_version;
 	} mod;
 } SRPTR;
 

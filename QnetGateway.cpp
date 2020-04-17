@@ -249,7 +249,8 @@ bool CQnetGateway::Configure()
 	rptr.mod.package_version.assign(IRCDDB_VERSION+".DigVoice");
 	rptr.mod.frequency = rptr.mod.offset = 0.0;
 	rptr.mod.range = rptr.mod.agl = 0.0;
-	rptr.mod.desc.assign(cfgdata.sLocation);
+	rptr.mod.desc[0].assign(cfgdata.sLocation[0]);
+	rptr.mod.desc[1].append(cfgdata.sLocation[1]);
 	rptr.mod.url.assign(cfgdata.sURL);
 
 	// gateway
@@ -1578,7 +1579,7 @@ void CQnetGateway::APRSBeaconThread()
 
 		time(&tnow);
 		if ((tnow - last_beacon_time) > (rptr.aprs_interval * 60)) {
-			if (rptr.mod.desc[0] != '\0') {
+			if (rptr.mod.desc[0][0] != '\0') {
 				float tmp_lat = fabs(rptr.mod.latitude);
 				float tmp_lon = fabs(rptr.mod.longitude);
 				float lat = floor(tmp_lat);
@@ -1612,7 +1613,7 @@ void CQnetGateway::APRSBeaconThread()
 						rptr.mod.call.c_str(),  rptr.mod.call.c_str(),
 						lat_s,  (rptr.mod.latitude < 0.0)  ? 'S' : 'N',
 						lon_s,  (rptr.mod.longitude < 0.0) ? 'W' : 'E',
-						(unsigned int)rptr.mod.range, rptr.mod.band.c_str(), rptr.mod.desc.c_str());
+						(unsigned int)rptr.mod.range, rptr.mod.band.c_str(), rptr.mod.desc[0].c_str());
 
 				// printf("APRS Beacon =[%s]\n", snd_buf);
 				strcat(snd_buf, "\r\n");
@@ -1713,15 +1714,13 @@ void CQnetGateway::qrgs_and_maps()
 {
 	CFGDATA data;
 	cfg.CopyTo(data);
-	std::string desc1 = rptr.mod.desc.substr(0, 20);
-	std::string desc2 = rptr.mod.desc.substr(20,20);
 	std::string rptrcall = OWNER;
 	rptrcall.resize(CALL_SIZE-1);
 	rptrcall.append(1, data.cModule);
 	for (int j=0; j<2; j++) {
 		if (ii[j]) {
-			if (rptr.mod.latitude || rptr.mod.longitude || desc1.length() || rptr.mod.url.length())
-				ii[j]->rptrQTH(rptrcall, rptr.mod.latitude, rptr.mod.longitude, desc1, desc2, rptr.mod.url, rptr.mod.package_version);
+			if (rptr.mod.latitude || rptr.mod.longitude || rptr.mod.desc[0].length() || rptr.mod.url.length())
+				ii[j]->rptrQTH(rptrcall, rptr.mod.latitude, rptr.mod.longitude, rptr.mod.desc[0], rptr.mod.desc[1], rptr.mod.url, rptr.mod.package_version);
 			if (rptr.mod.frequency)
 				ii[j]->rptrQRG(rptrcall, rptr.mod.frequency, rptr.mod.offset, rptr.mod.range, rptr.mod.agl);
 		}
