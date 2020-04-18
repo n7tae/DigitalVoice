@@ -23,20 +23,22 @@
 #include <iostream>
 #include <fstream>
 
-#include "AudioManager.h"
 #include "MainWindow.h"
+#include "AudioManager.h"
 #include "Configure.h"
 
-// globals
-extern CConfigure cfg;
-extern CMainWindow MainWindow;
-extern bool GetCfgDirectory(std::string &path);
+#ifndef CFG_DIR
+#define CFG_DIR "/tmp/"
+#endif
 
 CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0U), link_sid_in(0U)
 {
-	std::string index;
-	if (GetCfgDirectory(index))
-		return;
+}
+
+bool CAudioManager::Init(CMainWindow *pMain)
+{
+	pMainWindow = pMain;
+	std::string index(CFG_DIR);
 
 	index.append("announce/index.dat");
 	std::ifstream indexfile(index.c_str(), std::ifstream::in);
@@ -61,6 +63,7 @@ CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0
 	AM2Gate.SetUp("am2gate");
 	AM2Link.SetUp("am2link");
 	LogInput.SetUp("log_input");
+	return false;
 }
 
 
@@ -93,7 +96,7 @@ void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned cha
 	// only the 1-byte header need to be interleaved before and between each 5 byte set
 	const unsigned char scramble[5] = { 0x4FU, 0x93U, 0x70U, 0x4FU, 0x93U };
 	CFGDATA cfgdata;
-	cfg.CopyTo(cfgdata);
+	pMainWindow->cfg.CopyTo(cfgdata);
 	cfgdata.sMessage.resize(20, ' ');
 	for (int i=0; i<20; i++) {
 		ut[i] = scramble[i%5] ^ cfgdata.sMessage.at(i);
@@ -293,7 +296,7 @@ void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, cons
 void CAudioManager::microphone2audioqueue()
 {
 	CFGDATA data;
-	cfg.CopyTo(data);
+	pMainWindow->cfg.CopyTo(data);
 	// Open PCM device for recording (capture).
 	snd_pcm_t *handle;
 	int rc = snd_pcm_open(&handle, data.sAudioIn.c_str(), SND_PCM_STREAM_CAPTURE, 0);
@@ -434,7 +437,7 @@ void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 		if (0U==link_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
 			link_sid_in = dsvt.streamid;
-			MainWindow.Receive(true);
+			pMainWindow->Receive(true);
 			// launch the audio processing threads
 			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
@@ -454,7 +457,7 @@ void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 			p2.get();
 			p3.get();
 			link_sid_in = 0U;
-			MainWindow.Receive(false);
+			pMainWindow->Receive(false);
 		}
 	}
 }
@@ -466,7 +469,7 @@ void CAudioManager::Gateway2AudioMgr(const CDSVT &dsvt)
 		if (0U==gate_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
 			gate_sid_in = dsvt.streamid;
-			MainWindow.Receive(true);
+			pMainWindow->Receive(true);
 			// launch the audio processing threads
 			p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 			p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
@@ -486,7 +489,7 @@ void CAudioManager::Gateway2AudioMgr(const CDSVT &dsvt)
 			p2.get();
 			p3.get();
 			gate_sid_in = 0U;
-			MainWindow.Receive(false);
+			pMainWindow->Receive(false);
 		}
 	}
 }
@@ -541,7 +544,7 @@ void CAudioManager::ambedevice2audioqueue()
 void CAudioManager::play_audio_queue()
 {
 	CFGDATA data;
-	cfg.CopyTo(data);
+	pMainWindow->cfg.CopyTo(data);
 	//int count = 0;
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	// Open PCM device for playback.
@@ -689,7 +692,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	}
 	play_file = true;
 	CFGDATA cfgdata;
-	cfg.CopyTo(cfgdata);
+	pMainWindow->cfg.CopyTo(cfgdata);
 	std::string msg(filetoplay);
 	if (cfgdata.cModule != msg.at(0)) {
 		std::cerr << "Improper module in msg " << msg << std::endl;
@@ -714,12 +717,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 		LogInput.Write(message.c_str(), message.size()+1);
 	}
 
-	std::string cfgdir;
-	if (GetCfgDirectory(cfgdir)) {
-		std::cerr << "can't get the configuration directory" << std::endl;
-		play_file = false;
-		return;
-	}
+	std::string cfgdir(CFG_DIR);
 	cfgdir.append("announce/");
 
 	std::string path = cfgdir + msg.substr(2, pos+2);

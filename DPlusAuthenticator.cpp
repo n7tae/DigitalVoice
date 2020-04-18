@@ -57,7 +57,7 @@ int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool 
 
 int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
 {
-	unsigned char* buffer = new unsigned char[4096U];
+	unsigned char buffer[4096U];
 	::memset(buffer, ' ', 56U);
 
 	buffer[0U] = 0x38U;
@@ -73,7 +73,6 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 	if (client.Write(buffer, 56U)) {
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
 		client.Close();
-		delete[] buffer;
 		return 0;
 	}
 
@@ -120,8 +119,6 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 
 	printf("Probably authorized DPlus on %s using callsign %s\n", m_address.c_str(), m_loginCallsign.c_str());
 	client.Close();
-
-	delete[] buffer;
 
 	return rval;
 }

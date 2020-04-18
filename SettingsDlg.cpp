@@ -1,5 +1,5 @@
 /*
- *   Copyright (c) 2019 by Thomas A. Early N7TAE
+ *   Copyright (c) 2019-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <alsa/asoundlib.h>
 
@@ -24,19 +25,12 @@
 #include "WaitCursor.h"
 #include "DPlusAuthenticator.h"
 #include "SettingsDlg.h"
+#include "QnetDB.h"
+#include "MainWindow.h"
 
-// globals
-//extern Glib::RefPtr<Gtk::Application> theApp;
-extern CAudioManager AudioManager;
-extern CConfigure cfg;
-//extern bool GetCfgDirectory(std::string &path);
-extern CHostFile gwys;
-
-CSettingsDlg::CSettingsDlg() :
-	pDlg(nullptr)
+CSettingsDlg::CSettingsDlg() : pMainWindow(nullptr), pDlg(nullptr)
 {
-	CallRegEx = std::regex("^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
-	std::string path;
+	CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 }
 
 CSettingsDlg::~CSettingsDlg()
@@ -47,25 +41,25 @@ CSettingsDlg::~CSettingsDlg()
 
 CFGDATA *CSettingsDlg::Show()
 {
-	cfg.CopyTo(data);	// get the saved config data (MainWindow has alread read it)
+	pMainWindow->cfg.CopyTo(data);	// get the saved config data (MainWindow has alread read it)
 	SetWidgetStates(data);
 	on_AMBERescanButton_clicked();		// reset the ambe device
 	on_AudioRescanButton_clicked();	// re-read the audio PCM devices
 
 	if (Gtk::RESPONSE_OK == pDlg->run()) {
-		CFGDATA newstate;			// the user clicked okay, time to look at what's changed
-		SaveWidgetStates(newstate); // newstate is now the current contents of the Settings Dialog
-		cfg.CopyFrom(newstate);		// and it is now in the global cfg object
-		cfg.WriteData();			// and it's saved in ~/.config/qdv/qdv.cfg
+		CFGDATA newstate;						// the user clicked okay, time to look at what's changed
+		SaveWidgetStates(newstate);				// newstate is now the current contents of the Settings Dialog
+		pMainWindow->cfg.CopyFrom(newstate);	// and it is now in the global cfg object
+		pMainWindow->cfg.WriteData();			// and it's saved in ~/.config/qdv/qdv.cfg
 
 		// reconfigure current environment if anything changed
 		if (data.bDPlusEnable != newstate.bDPlusEnable)
-			RebuildGateways(newstate.bDPlusEnable);
+			pMainWindow->RebuildGateways(newstate.bDPlusEnable);
 		if (data.iBaudRate != newstate.iBaudRate)
 			BaudrateChanged(newstate.iBaudRate);
-		cfg.CopyTo(data);	// we need to return to the MainWindow a pointer to the new state
+		pMainWindow->cfg.CopyTo(data);	// we need to return to the MainWindow a pointer to the new state
 		pDlg->hide();
-		return &data;		// changes to the irc client will be done in the MainWindow
+		return &data;					// changes to the irc client will be done in the MainWindow
 	}
 	pDlg->hide();
 	return nullptr;
@@ -165,8 +159,9 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 		p460kRadioButton->clicked();
 }
 
-bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin)
+bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name, Gtk::Window *pWin, CMainWindow *pMain)
 {
+	pMainWindow = pMain;
 	bCallsign = bStation = false;
 	builder->get_widget(name, pDlg);
 	if (nullptr == pDlg) {
@@ -261,33 +256,19 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	return false;
 }
 
-void CSettingsDlg::RebuildGateways(bool includelegacy)
-{
-	gwys.Init();
-
-	if (includelegacy) {
-		CWaitCursor wait;
-		const std::string call(pMyCallsignEntry->get_text().c_str());
-		CDPlusAuthenticator auth(call, "auth.dstargateway.org");
-		if (auth.Process(gwys.hostmap, true, false)) {
-			std::cerr << "Error processing D-Plus authorization" << std::endl;
-		}
-	}
-}
-
 void CSettingsDlg::on_AMBERescanButton_clicked()
 {
 	CWaitCursor wait;
-	if (AudioManager.AMBEDevice.IsOpen())
-		AudioManager.AMBEDevice.CloseDevice();
+	if (pMainWindow->AudioManager.AMBEDevice.IsOpen())
+		pMainWindow->AudioManager.AMBEDevice.CloseDevice();
 
-	AudioManager.AMBEDevice.FindandOpen(data.iBaudRate, DSTAR_TYPE);
-	if (AudioManager.AMBEDevice.IsOpen()) {
-		const Glib::ustring path(AudioManager.AMBEDevice.GetDevicePath());
+	pMainWindow->AudioManager.AMBEDevice.FindandOpen(data.iBaudRate, DSTAR_TYPE);
+	if (pMainWindow->AudioManager.AMBEDevice.IsOpen()) {
+		const Glib::ustring path(pMainWindow->AudioManager.AMBEDevice.GetDevicePath());
 		pDevicePathLabel->set_text(path);
-		const Glib::ustring prodid(AudioManager.AMBEDevice.GetProductID());
+		const Glib::ustring prodid(pMainWindow->AudioManager.AMBEDevice.GetProductID());
 		pProductIDLabel->set_text(prodid);
-		const Glib::ustring version(AudioManager.AMBEDevice.GetVersion());
+		const Glib::ustring version(pMainWindow->AudioManager.AMBEDevice.GetVersion());
 		pVersionLabel->set_text(version);
 	} else {
 		pDevicePathLabel->set_text("Not found!");
@@ -489,9 +470,9 @@ void CSettingsDlg::on_LongitudeEntry_changed()
 
 void CSettingsDlg::BaudrateChanged(int baudrate)
 {
-	if (AudioManager.AMBEDevice.IsOpen()) {
-		if (AudioManager.AMBEDevice.SetBaudRate(baudrate)) {
-			AudioManager.AMBEDevice.CloseDevice();
+	if (pMainWindow->AudioManager.AMBEDevice.IsOpen()) {
+		if (pMainWindow->AudioManager.AMBEDevice.SetBaudRate(baudrate)) {
+			pMainWindow->AudioManager.AMBEDevice.CloseDevice();
 			pDevicePathLabel->set_text("Error");
 			pProductIDLabel->set_text("Setting the baudrate failed");
 			pVersionLabel->set_text("Please Rescan.");

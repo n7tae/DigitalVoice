@@ -1,3 +1,9 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <pwd.h>
+
+#include <iostream>
 #include <algorithm>
 #include <cctype>
 #include <locale>

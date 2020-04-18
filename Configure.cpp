@@ -24,7 +24,9 @@
 
 #include "Configure.h"
 
-extern bool GetCfgDirectory(std::string &dir);
+#ifndef CFG_DIR
+#define CFG_DIR "/tmp/"
+#endif
 
 void CConfigure::SetDefaultValues()
 {
@@ -55,12 +57,7 @@ void CConfigure::SetDefaultValues()
 
 void CConfigure::ReadData()
 {
-	std::string path;
-	if (GetCfgDirectory(path)) {
-		SetDefaultValues();
-		return;
-	}
-
+	std::string path(CFG_DIR);
 	path.append("qdv.cfg");
 
 	std::ifstream cfg(path.c_str(), std::ifstream::in);
@@ -152,9 +149,7 @@ void CConfigure::ReadData()
 void CConfigure::WriteData()
 {
 
-	std::string path;
-	if (GetCfgDirectory(path))
-		return;
+	std::string path(CFG_DIR);
 	path.append("qdv.cfg");
 
 	// directory exists, now make the file

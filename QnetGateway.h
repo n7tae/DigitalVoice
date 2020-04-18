@@ -83,12 +83,12 @@ public:
 	CQnetGateway();
 	~CQnetGateway();
 	void Process();
-	bool Init();
+	bool Init(CFGDATA *pData);
 	std::atomic<bool> keep_running;
 
 private:
 	// configuration data
-	CFGDATA cfgdata;
+	const CFGDATA *pCFGData;
     // link type
     int link_family = AF_UNSPEC;
 	// network type
@@ -108,7 +108,7 @@ private:
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
-	std::string OWNER, owner, FILE_STATUS, IRCDDB_PASSWORD[2];
+	std::string OWNER, owner, IRCDDB_PASSWORD[2];
 
 	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
 	bool LOG_DEBUG, LOG_IRC, LOG_QSO;

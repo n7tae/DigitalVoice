@@ -1,5 +1,5 @@
 /*
- *   Copyright (c) 2019 by Thomas A. Early N7TAE
+ *   Copyright (c) 2019-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,19 +27,16 @@
 #include <thread>
 #include <chrono>
 
-#include "SettingsDlg.h"
 #include "MainWindow.h"
-#include "AudioManager.h"
-#include "HostFile.h"
 #include "WaitCursor.h"
+#include "DPlusAuthenticator.h"
+#include "Utilities.h"
 
-// globals
-extern CSettingsDlg SettingsDlg;
-extern CHostFile gwys;
-extern Glib::RefPtr<Gtk::Application> theApp;
-extern CAudioManager AudioManager;
-extern CConfigure cfg;
-extern bool GetCfgDirectory(std::string &path);
+#ifndef CFG_DIR
+#define CFG_DIR "/tmp/"
+#endif
+
+static Glib::RefPtr<Gtk::Application> theApp;
 
 CMainWindow::CMainWindow() :
 	pWin(nullptr),
@@ -49,7 +46,7 @@ CMainWindow::CMainWindow() :
 	pLink(nullptr)
 {
 	cfg.CopyTo(cfgdata);
-	gwys.Init();
+	RebuildGateways(cfgdata.bDPlusEnable);
 	if (! AudioManager.AMBEDevice.IsOpen()) {
 		AudioManager.AMBEDevice.FindandOpen(cfgdata.iBaudRate, DSTAR_TYPE);
 	}
@@ -72,9 +69,8 @@ CMainWindow::~CMainWindow()
 void CMainWindow::RunLink()
 {
 	pLink = new CQnetLink;
-	if (! pLink->Init())
+	if (! pLink->Init(&cfgdata))
 		pLink->Process();
-	pLink->Shutdown();
 	delete pLink;
 	pLink = nullptr;
 }
@@ -82,7 +78,7 @@ void CMainWindow::RunLink()
 void CMainWindow::RunGate()
 {
 	pGate = new CQnetGateway;
-	if (! pGate->Init())
+	if (! pGate->Init(&cfgdata))
 		pGate->Process();
 	delete pGate;
 	pGate = nullptr;
@@ -120,6 +116,11 @@ void CMainWindow::SetState(const CFGDATA &data)
 
 bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name)
 {
+	std::string dbname(CFG_DIR);
+	dbname.append("qn.db");
+	if (qnDB.Open(dbname.c_str()) || qnDB.Init())
+		return true;
+
 	if (Gate2AM.Open("gate2am"))
 		return true;
 
@@ -134,8 +135,16 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 		return true;
 	}
 
+	if (AudioManager.Init(this)) {
+		LogInput.Close();
+		Gate2AM.Close();
+		Link2AM.Close();
+		return true;
+	}
+
  	builder->get_widget(name, pWin);
 	if (nullptr == pWin) {
+		LogInput.Close();
 		Link2AM.Close();
 		Gate2AM.Close();
 		std::cerr << "Failed to Initialize MainWindow!" << std::endl;
@@ -151,7 +160,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 		style->add_provider_for_screen(pWin->get_screen(), css, GTK_STYLE_PROVIDER_PRIORITY_USER);
 	}
 
-	if (SettingsDlg.Init(builder, "SettingsDialog", pWin))
+	if (SettingsDlg.Init(builder, "SettingsDialog", pWin, this))
 		return true;
 
 	builder->get_widget("QuitButton", pQuitButton);
@@ -198,7 +207,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::GetLogInput), LogInput.GetFD(), Glib::IO_IN);
 	// idle processing
-	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 50);
+	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 100);
 
 	return false;
 }
@@ -241,9 +250,7 @@ void CMainWindow::on_SettingsButton_clicked()
 
 void CMainWindow::WriteRoutes()
 {
-	std::string path;
-	if (GetCfgDirectory(path))
-		return;
+	std::string path(CFG_DIR);
 	path.append("routes.cfg");
 	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
 	if (! file.is_open())
@@ -256,26 +263,25 @@ void CMainWindow::WriteRoutes()
 
 void CMainWindow::ReadRoutes()
 {
-	std::string path;
+	std::string path(CFG_DIR);
 
-	if (! GetCfgDirectory(path)) {
-		path.append("routes.cfg");
-		std::ifstream file(path.c_str(), std::ifstream::in);
-		if (file.is_open()) {
-			char line[128];
-			while (file.getline(line, 128)) {
-				if ('#' != *line) {
-					routeset.insert(line);
-				}
+	path.append("routes.cfg");
+	std::ifstream file(path.c_str(), std::ifstream::in);
+	if (file.is_open()) {
+		char line[128];
+		while (file.getline(line, 128)) {
+			if ('#' != *line) {
+				routeset.insert(line);
 			}
-			file.close();
-			for (auto it=routeset.begin(); it!=routeset.end(); it++) {
-				pRouteComboBox->append(*it);
-			}
-			pRouteComboBox->set_active(0);
-			return;
 		}
+		file.close();
+		for (auto it=routeset.begin(); it!=routeset.end(); it++) {
+			pRouteComboBox->append(*it);
+		}
+		pRouteComboBox->set_active(0);
+		return;
 	}
+
 	routeset.insert("DSTAR3");
 	routeset.insert("DSTAR3 T");
 	routeset.insert("DSTAR2");
@@ -422,40 +428,27 @@ bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 
 bool CMainWindow::TimeoutProcess()
 {
-	// check the status file for changes
-	static double lasttime = 0.0;
-	std::string path;
-	if (! GetCfgDirectory(path)) {
-		path.append("status");
-		// get the last modified time
-		struct stat sbuf;
-		if (! stat(path.c_str(), &sbuf)) {
-			double mtime = sbuf.st_mtim.tv_sec + (sbuf.st_mtim.tv_nsec / 1.0e9);
-			if (mtime > lasttime) {
-				// time to update!
-				lasttime = mtime;
-				std::ifstream status(path.c_str(), std::ifstream::in);
-				if (status.is_open()) {
-					std::string cs, mod;
-					std::getline(status, cs, ',');
-					std::getline(status, cs, ',');
-					std::getline(status, mod, ',');
-					status.close();
-					if (8==cs.size() && 1==mod.size()) {
-						cs.resize(7);
-						cs.append(mod);
-						pLinkEntry->set_text(cs.c_str());
-						pLinkEntry->set_sensitive(false);
-						pLinkButton->set_sensitive(false);
-						pUnlinkButton->set_sensitive(true);
-					} else {
-						pLinkEntry->set_text("");
-						pLinkEntry->set_sensitive(true);
-						pLinkButton->set_sensitive(false);
-						pUnlinkButton->set_sensitive(false);
-					}
-				}
-			}
+	std::list<CLink> linkstatus;
+	if (qnDB.FindLS(cfgdata.cModule, linkstatus))	// get the link status list of our module (there should only be one, or none if it's not linked)
+		return true;
+
+	std::string call;
+	if (linkstatus.size()) {	// extract it from the returned list, no list means our module is not linked!
+		CLink ls(linkstatus.front());
+		call.assign(ls.callsign);
+	}
+
+	if (call.compare(pLinkEntry->get_text().c_str())) {	// we only need to do something if the returned link status is different from the entry widget
+		if (8 == call.size()) {
+			pLinkEntry->set_text(call.c_str());
+			pLinkEntry->set_sensitive(false);
+			pLinkButton->set_sensitive(false);
+			pUnlinkButton->set_sensitive(true);
+		} else {
+			//pLinkEntry->set_text("");
+			pLinkEntry->set_sensitive(true);
+			pLinkButton->set_sensitive(false);
+			pUnlinkButton->set_sensitive(false);
 		}
 	}
 	return true;
@@ -477,7 +470,7 @@ void CMainWindow::on_LinkEntry_changed()
 	std::string str(n.c_str());
 	str.resize(7, ' ');
 	str.append(1, ' ');
-	if (8==n.size() && isalpha(n.at(7)) && gwys.hostmap.end() != gwys.hostmap.find(str)) {
+	if (8==n.size() && isalpha(n.at(7)) && qnDB.FindGW(str.c_str())) {
 		if (pLinkEntry->get_sensitive())
 			pLinkButton->set_sensitive(true);
 	} else
@@ -508,4 +501,81 @@ void CMainWindow::on_ModeGroup_clicked()
 	cfg.CopyFrom(cfgdata);
 	SetState(cfgdata);
 	cfg.WriteData();
+}
+
+void CMainWindow::RebuildGateways(bool includelegacy)
+{
+	CWaitCursor WaitCursor;
+	qnDB.ClearGW();
+
+	std::string filename(CFG_DIR);	// now open the gateways text file
+	filename.append("gwys.txt");
+	int count = 0;
+	std::ifstream hostfile(filename);
+	if (hostfile.is_open()) {
+		std::string line;
+		while (std::getline(hostfile, line)) {
+			trim(line);
+			if (! line.empty() && ('#' != line.at(0))) {
+				std::istringstream iss(line);
+				std::string host, address;
+				unsigned short port;
+				iss >> host >> address >> port;
+				qnDB.UpdateGW(host.c_str(), address.c_str(), port);
+				count++;
+			}
+		}
+		hostfile.close();
+	}
+
+	if (includelegacy) {
+		const std::string website("auth.dstargateway.org");
+		CDPlusAuthenticator auth(cfgdata.sStation, website);
+		int dplus = auth.Process(qnDB, true, true);
+		if (0 == dplus) {
+			fprintf(stdout, "DPlus Authorization failed.\n");
+			printf("# of Gateways: %s=%d\n", filename.c_str(), count);
+		} else {
+			fprintf(stderr, "DPlus Authorization completed!\n");
+			printf("# of Gateways %s=%d %s=%d Total=%d\n", filename.c_str(), count, website.c_str(), dplus, qnDB.Count("GATEWAYS"));
+		}
+	} else {
+		printf("#Gateways: %s=%d\n", filename.c_str(), count);
+	}
+}
+
+int main (int argc, char **argv)
+{
+	theApp = Gtk::Application::create(argc, argv, "net.openquad.QnetDV");
+
+	//Load the GtkBuilder file and instantiate its widgets:
+	Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
+	try
+	{
+		std::string path(CFG_DIR);
+		builder->add_from_file(path + "DigitalVoice.glade");
+	}
+	catch (const Glib::FileError& ex)
+	{
+		std::cerr << "FileError: " << ex.what() << std::endl;
+		return 1;
+	}
+	catch (const Glib::MarkupError& ex)
+	{
+		std::cerr << "MarkupError: " << ex.what() << std::endl;
+		return 1;
+	}
+	catch (const Gtk::BuilderError& ex)
+	{
+		std::cerr << "BuilderError: " << ex.what() << std::endl;
+		return 1;
+	}
+
+	CMainWindow MainWindow;
+	if (MainWindow.Init(builder, "AppWindow"))
+		return 1;
+
+	MainWindow.Run();
+
+	return 0;
 }

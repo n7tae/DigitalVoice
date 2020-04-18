@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"
 #include "Configure.h"
+#include "QnetDB.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -40,7 +41,7 @@
 #define TIMEOUT 50
 #define LH_MAX_SIZE 39
 
-typedef struct link_to_remote_g2_tag {
+using STOREMOTE = struct link_to_remote_g2_tag {
     char to_call[CALL_SIZE + 1];
     CSockAddress addr;
     char from_mod;
@@ -49,14 +50,14 @@ typedef struct link_to_remote_g2_tag {
     bool is_connected;
     unsigned short in_streamid;  // incoming from remote systems
     unsigned short out_streamid; // outgoing to remote systems
-} STOREMOTE;
+};
 
 class CQnetLink {
 public:
 	// functions
 	CQnetLink();
 	~CQnetLink();
-	bool Init();
+	bool Init(CFGDATA *pData);
 	void Process();
 	void Shutdown();
 	std::atomic<bool> keep_running;
@@ -67,7 +68,6 @@ private:
 	bool Configure();
 	bool srv_open();
 	void srv_close();
-	void print_status_file();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
 	void PlayAudioNotifyThread(char *msg);
 	void Link(const char *call, const char to_mod);
@@ -75,8 +75,8 @@ private:
 	void SendLog(const char *fmt, ...);
 
 	/* configuration data */
-	CFGDATA cfgdata;
-	std::string owner, to_g2_external_ip, my_g2_link_ip, status_file, qnvoice_file, announce_dir;
+	const CFGDATA *pCFGData;
+	std::string owner, to_g2_external_ip, my_g2_link_ip, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, announce;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
     int delay_before;
@@ -116,4 +116,5 @@ private:
 	unsigned short old_sid;
 
 	CRandom Random;
+	CQnetDB qnDB;
 };

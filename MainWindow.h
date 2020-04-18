@@ -24,6 +24,9 @@
 #include "Configure.h"
 #include "QnetGateway.h"
 #include "QnetLink.h"
+#include "QnetDB.h"
+#include "SettingsDlg.h"
+#include "AudioManager.h"
 
 class CMainWindow
 {
@@ -31,10 +34,18 @@ public:
 	CMainWindow();
 	~CMainWindow();
 
+	CConfigure cfg;
+	CAudioManager AudioManager;
+
 	bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &);
 	void Run();
 	void Receive(bool is_rx);
+	void RebuildGateways(bool includelegacy);
 private:
+	// classes
+	CSettingsDlg SettingsDlg;
+	CQnetDB qnDB;
+
 	// widgets
 	Gtk::Window *pWin;
 	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton;

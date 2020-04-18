@@ -30,6 +30,7 @@ CWaitCursor::~CWaitCursor()
 {
 	gtkSetCursor(GDK_LEFT_PTR);
 }
+
 void CWaitCursor::gtkSetCursor(GdkCursorType cursorType)
 {
 	GdkCursor *cursor = gdk_cursor_new_for_display(display, cursorType);

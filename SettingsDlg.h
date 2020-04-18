@@ -1,5 +1,5 @@
 /*
- *   Copyright (c) 2019 by Thomas A. Early N7TAE
+ *   Copyright (c) 2019-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -21,15 +21,16 @@
 #include <gtkmm.h>
 #include <regex>
 
-#include "HostFile.h"
 #include "Configure.h"
+
+class CMainWindow;
 
 class CSettingsDlg
 {
 public:
     CSettingsDlg();
     ~CSettingsDlg();
-    bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *);
+    bool Init(const Glib::RefPtr<Gtk::Builder>, const Glib::ustring &, Gtk::Window *, CMainWindow *);
     CFGDATA *Show();	// returns a pointer to the private CFGDATA if okay is pressed, otherwise a nullptr
 
 protected:
@@ -53,8 +54,10 @@ private:
 	bool bCallsign, bStation;
 	// regular expression for testing callsign
 	std::regex CallRegEx;
-	// widgets
+	// Windows
+	CMainWindow *pMainWindow;
     Gtk::Dialog *pDlg;
+	// widgets
 	Gtk::Button *pAMBERescanButton, *pOkayButton, *pAudioRescanButton;
 	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
 	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton;
@@ -91,5 +94,4 @@ private:
 	void on_GPSDEnableCheckButton_toggled();
 	// state changed
 	void BaudrateChanged(int newBaudrate);
-	void RebuildGateways(bool includelegacy);
 };

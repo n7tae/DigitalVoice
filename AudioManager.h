@@ -34,11 +34,14 @@ using PacketQueue = CTQueue<CDSVT>;
 
 enum class E_PTT_Type { echo, gateway, link };
 
+class CMainWindow;
+
 class CAudioManager
 {
 public:
 	CAudioManager();
 	~CAudioManager() {}
+	bool Init(CMainWindow *);
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);
 	void PlayAMBEDataThread();	// for Echo
@@ -63,6 +66,7 @@ private:
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	// helpers
+	CMainWindow *pMainWindow;
 	CRandom random;
 	std::vector<unsigned long> speak;
 	// Unix sockets

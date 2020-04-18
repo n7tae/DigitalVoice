@@ -45,15 +45,14 @@
 #include <fstream>
 
 #include "IRCutils.h"
-#include "Utilities.h"
 #include "DStarDecode.h"
 #include "QnetGateway.h"
 
+#ifndef CFG_DIR
+#define CFG_DIR "/tmp/"
+#endif
 
 const std::string GW_VERSION("QnetGateway-417");
-
-extern bool GetCfgDirectory(std::string &path);
-extern CConfigure cfg;
 
 int CQnetGateway::FindIndex() const
 {
@@ -106,7 +105,7 @@ void CQnetGateway::PrintCallsigns(const std::string &key, const std::set<std::st
 void CQnetGateway::set_dest_rptr(std::string &call)
 {
 	std::list<CLink> linklist;
-	if (qnDB.FindLS(cfgdata.cModule, linklist))
+	if (qnDB.FindLS(pCFGData->cModule, linklist))
 		return;
 
 	auto count = linklist.size();
@@ -179,13 +178,13 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 bool CQnetGateway::Configure()
 {
 	// ircddb
-	owner.assign(cfgdata.sStation);
+	owner.assign(pCFGData->sStation);
 	OWNER = owner;
 	ToLower(owner);
 	ToUpper(OWNER);
 	OWNER.resize(CALL_SIZE, ' ');
 
-	switch (cfgdata.eNetType) {
+	switch (pCFGData->eNetType) {
 		case EQuadNetType::ipv4only:
 			ircddb[0].ip.assign("rr.openquad.net");
 			ircddb[0].port = 9007U;
@@ -229,9 +228,9 @@ bool CQnetGateway::Configure()
 	Rptr.mod.package_version.assign(GW_VERSION+".DigVoice");
 	Rptr.mod.frequency = Rptr.mod.offset = 0.0;
 	Rptr.mod.range = Rptr.mod.agl = 0.0;
-	Rptr.mod.desc1.assign(cfgdata.sLocation[0]);
-	Rptr.mod.desc2.append(cfgdata.sLocation[1]);
-	Rptr.mod.url.assign(cfgdata.sURL);
+	Rptr.mod.desc1.assign(pCFGData->sLocation[0]);
+	Rptr.mod.desc2.append(pCFGData->sLocation[1]);
+	Rptr.mod.url.assign(pCFGData->sURL);
 
 	// gateway
 	g2_external.ip.assign("ANY_PORT");
@@ -240,8 +239,8 @@ bool CQnetGateway::Configure()
 	g2_ipv6_external.port = 9011U;
 	GATEWAY_HEADER_REGEN = true;
 	GATEWAY_SEND_QRGS_MAP = false;
-	Rptr.mod.latitude = cfgdata.dLatitude;
-	Rptr.mod.longitude = cfgdata.dLongitude;
+	Rptr.mod.latitude = pCFGData->dLatitude;
+	Rptr.mod.longitude = pCFGData->dLongitude;
 	//std::string csv;
 	//UnpackCallsigns(csv, findRoute);
 	//PrintCallsigns("findRoutes", findRoute);
@@ -259,21 +258,18 @@ bool CQnetGateway::Configure()
 	LOG_DEBUG = false;
 
 	// file
-	std::string path;
-	if (! GetCfgDirectory(path)) {
-		FILE_STATUS.assign(path + "status");
-		path.append("routes.cfg");
-		std::ifstream file;
-		file.open(path.c_str(), std::ifstream::in);
-		if (file.is_open()) {
-			char line[128];
-			while (file.getline(line, 128)) {
-				std::string call(line);
-				call.resize(8, ' ');
-				findRoute.insert(call.c_str());
-			}
-			file.close();
+	std::string path(CFG_DIR);
+	path.append("routes.cfg");
+	std::ifstream file;
+	file.open(path.c_str(), std::ifstream::in);
+	if (file.is_open()) {
+		char line[128];
+		while (file.getline(line, 128)) {
+			std::string call(line);
+			call.resize(8, ' ');
+			findRoute.insert(call.c_str());
 		}
+		file.close();
 	}
 
 	// timing
@@ -310,7 +306,6 @@ int CQnetGateway::open_port(const SPORTIP *pip, int family)
 void CQnetGateway::GetIRCDataThread(const int i)
 {
 	std::string user, rptr, gateway, ipaddr;
-	DSTAR_PROTOCOL proto;
 	IRCDDB_RESPONSE_TYPE type;
 	short last_status = 0;
 
@@ -323,7 +318,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 		if (rc > 5 && rc < 8 && is_quadnet) {
 			char ch = '\0';
 			if (not_announced)
-				ch = cfgdata.cModule;
+				ch = pCFGData->cModule;
 			if (ch) {
 				// we need to announce quadnet
 				char str[56];
@@ -477,7 +472,7 @@ void CQnetGateway::ProcessTimeouts()
 			//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 			//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 			if ((t_now - toRptr.last_time) > TIMING_TIMEOUT_REMOTE_G2) {
-				SendLog("Inactivity to local rptr module %c, removing stream id %04x\n", cfgdata.cModule, ntohs(toRptr.streamid));
+				SendLog("Inactivity to local rptr module %c, removing stream id %04x\n", pCFGData->cModule, ntohs(toRptr.streamid));
 
 				// Send end_of_audio to local repeater.
 				// Let the repeater re-initialize
@@ -499,7 +494,7 @@ void CQnetGateway::ProcessTimeouts()
 			if ((t_now - band_txt.last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				/* This local stream never went to a remote system, so trace the timeout */
 				if (to_remote_g2.toDstar.AddressIsZero())
-					SendLog("Inactivity from local rptr module %c, removing stream id %04x\n", cfgdata.cModule, ntohs(band_txt.streamID));
+					SendLog("Inactivity from local rptr module %c, removing stream id %04x\n", pCFGData->cModule, ntohs(band_txt.streamID));
 
 				band_txt.streamID = 0;
 				band_txt.flags[0] = band_txt.flags[1] = band_txt.flags[2] = 0x0;
@@ -526,7 +521,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (! to_remote_g2.toDstar.AddressIsZero()) {
 			time(&t_now);
 			if ((t_now - to_remote_g2.last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
-				SendLog("Inactivity from local rptr mod %c, removing stream id %04x\n", cfgdata.cModule, ntohs(to_remote_g2.streamid));
+				SendLog("Inactivity from local rptr mod %c, removing stream id %04x\n", pCFGData->cModule, ntohs(to_remote_g2.streamid));
 
 				to_remote_g2.toDstar.Initialize(AF_UNSPEC);
 				to_remote_g2.streamid = 0;
@@ -875,7 +870,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
 			/* valid repeater module? */
-			if (g2buf.hdr.rpt1[7]==cfgdata.cModule || true) {
+			if (g2buf.hdr.rpt1[7]==pCFGData->cModule || true) {
 				// toRptr is active if a remote system is talking to it or
 				// toRptr is receiving data from a cross-band
 				if (0==toRptr.last_time && 0==band_txt.last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
@@ -892,7 +887,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 							set_dest_rptr(reflector);
 						else if (0 == reflector.compare(OWNER))
 							reflector.assign("CSRoute");
-						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), cfgdata.cModule, reflector.c_str());
+						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), pCFGData->cModule, reflector.c_str());
 					}
 
 					Gate2AM.Write(g2buf.title, 56);
@@ -910,7 +905,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 					time(&toRptr.last_time);
 
 					toRptr.sequence = g2buf.ctrl;
-					csroute = (0 == memcmp(g2buf.hdr.urcall, cfgdata.sCallsign.c_str(), cfgdata.sCallsign.size()));
+					csroute = (0 == memcmp(g2buf.hdr.urcall, pCFGData->sCallsign.c_str(), pCFGData->sCallsign.size()));
 				}
 			}
 		} else {	// g2buflen == 27
@@ -921,7 +916,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 					const unsigned int ctrl = g2buf.ctrl & 0x3FU;
 					if (VoicePacketIsSync(g2buf.vasd.text)) {
 						if (superframe.size() > 65U) {
-							SendLog("Frame[%c]: %s\n", cfgdata.cModule, superframe.c_str());
+							SendLog("Frame[%c]: %s\n", pCFGData->cModule, superframe.c_str());
 							superframe.clear();
 						}
 						const char *ch = "#abcdefghijklmnopqrstuvwxyz";
@@ -960,7 +955,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 					Gate2AM.Write(g2buf.title, 27);
 					std::string smartgroup;
 					if (ProcessG2Msg(g2buf.vasd.text, smartgroup))
-						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), cfgdata.cModule, smartgroup.c_str());
+						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), pCFGData->cModule, smartgroup.c_str());
 				} else {
 					if (LOG_DEBUG)
 						fprintf(stderr, "Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);
@@ -981,7 +976,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 					toRptr.streamid = 0;
 					toRptr.addr.ClearAddress();
 					if (LOG_DEBUG && superframe.size()) {
-						SendLog("Final[%c]: %s\n", cfgdata.cModule, superframe.c_str());
+						SendLog("Final[%c]: %s\n", pCFGData->cModule, superframe.c_str());
 						superframe.clear();
 					}
 					if (LOG_QSO)
@@ -989,7 +984,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 
 					if (csroute) {
 						char play[56];
-						snprintf(play, 56, "PLAY%c_ringing.dat_CALLSIGN_ROUTE", cfgdata.cModule);
+						snprintf(play, 56, "PLAY%c_ringing.dat_CALLSIGN_ROUTE", pCFGData->cModule);
 						Gate2AM.Write(play, strlen(play)+1);
 						csroute = false;
 					}
@@ -1043,7 +1038,7 @@ void CQnetGateway::ProcessAudio(const CDSVT *packet)
 
 				if (0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) && Flag_is_ok(dsvt.hdr.flag[0])) {
 
-					if (dsvt.hdr.rpt1[7] == cfgdata.cModule) {
+					if (dsvt.hdr.rpt1[7] == pCFGData->cModule) {
                         vPacketCount = 0;
                         Index = -1;
 
@@ -1117,13 +1112,13 @@ void CQnetGateway::ProcessAudio(const CDSVT *packet)
 					std::string user, rptr, gate, addr;
 					if ( dsvt.hdr.urcall[0]=='/' &&							// repeater routing!
 							0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&	// rpt1 this repeater
-							(dsvt.hdr.rpt1[7]==cfgdata.cModule) &&					// with a valid module
+							(dsvt.hdr.rpt1[7]==pCFGData->cModule) &&					// with a valid module
 							0==memcmp(dsvt.hdr.rpt2, OWNER.c_str(), 7) && 	// rpt2 is this repeater
 							dsvt.hdr.rpt2[7]=='G' &&						// local Gateway
 							Flag_is_ok(dsvt.hdr.flag[0]) )
 					{
 						if (memcmp(dsvt.hdr.urcall+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
-							if (dsvt.hdr.rpt1[7] == cfgdata.cModule) {
+							if (dsvt.hdr.rpt1[7] == pCFGData->cModule) {
 								/* one radio user on a repeater module at a time */
 								if (to_remote_g2.toDstar.AddressIsZero()) {
 									/* YRCALL=/repeater + mod */
@@ -1138,7 +1133,7 @@ void CQnetGateway::ProcessAudio(const CDSVT *packet)
 									Index = get_yrcall_rptr(user, rptr, gate, addr, 'R');
 									if (Index--) { /* it is a repeater */
 										//std::string from = OWNER.substr(0, 7);
-										//from.append(1, cfgdata.cModule);
+										//from.append(1, pCFGData->cModule);
 										//ii[Index]->sendPing(user, from);
 										to_remote_g2.streamid = dsvt.streamid;
 										if (addr.npos == addr.find(':') && af_family[Index] == AF_INET6)
@@ -1178,14 +1173,14 @@ void CQnetGateway::ProcessAudio(const CDSVT *packet)
 					}
 					else if (memcmp(dsvt.hdr.urcall, OWNER.c_str(), 7) &&		// urcall is not this repeater
 							0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&		// rpt1 is this repeater
-							(dsvt.hdr.rpt1[7]==cfgdata.cModule) &&						// mod is proper
+							(dsvt.hdr.rpt1[7]==pCFGData->cModule) &&						// mod is proper
 							0==memcmp(dsvt.hdr.rpt2, OWNER.c_str(), 7) &&		// rpt2 is this repeater
 							dsvt.hdr.rpt2[7]=='G' &&							// local Gateway
 							Flag_is_ok(dsvt.hdr.flag[0])) {
 
 						user.assign((const char *)dsvt.hdr.urcall, 8);
 
-                        if (dsvt.hdr.rpt1[7] == cfgdata.cModule) {
+                        if (dsvt.hdr.rpt1[7] == pCFGData->cModule) {
 						    Index = get_yrcall_rptr(user, rptr, gate, addr, 'U');
                             if (Index--) {
                                 /* destination is a remote system */
@@ -1196,7 +1191,7 @@ void CQnetGateway::ProcessAudio(const CDSVT *packet)
 										if (std::regex_match(user, preg)) {
 											// don't send a ping to a routing group
 											std::string from = OWNER.substr(0, 7);
-											from.append(1, cfgdata.cModule);
+											from.append(1, pCFGData->cModule);
 											ii[Index]->sendPing(gate, from);
 										}
 										/* set the destination */
@@ -1609,11 +1604,9 @@ void CQnetGateway::APRSBeaconThread()
 
 void CQnetGateway::qrgs_and_maps()
 {
-	CFGDATA data;
-	cfg.CopyTo(data);
 	std::string rptrcall = OWNER;
 	rptrcall.resize(CALL_SIZE-1);
-	rptrcall.append(1, data.cModule);
+	rptrcall.append(1, pCFGData->cModule);
 	for (int j=0; j<2; j++) {
 		if (ii[j]) {
 			if (Rptr.mod.latitude || Rptr.mod.longitude || Rptr.mod.desc1.length() || Rptr.mod.url.length())
@@ -1624,8 +1617,9 @@ void CQnetGateway::qrgs_and_maps()
 	}
 }
 
-bool CQnetGateway::Init()
+bool CQnetGateway::Init(CFGDATA *pData)
 {
+	pCFGData = pData;
 	keep_running = true;
 	// unix sockets
 	Gate2AM.SetUp("gate2am");
@@ -1672,12 +1666,10 @@ bool CQnetGateway::Init()
 	}
 
 	// open the database
-	std::string fname;
-	if (GetCfgDirectory(fname))
-		return true;
+	std::string fname(CFG_DIR);
 	fname.append("qn.db");
 	if (qnDB.Open(fname.c_str()))
-		return;
+		return true;
 
 	playNotInCache = false;
 
@@ -1689,7 +1681,7 @@ bool CQnetGateway::Init()
 	Rptr.mod.call.resize(n);
 
 	Rptr.mod.call += '-';
-	Rptr.mod.call += cfgdata.cModule;
+	Rptr.mod.call += pCFGData->cModule;
 	Rptr.mod.band = "DV";
 	SendLog("Repeater callsign: [%s]\n", Rptr.mod.call.c_str());
 
@@ -1808,7 +1800,6 @@ CQnetGateway::CQnetGateway()
 {
 	keep_running = false;
 	ii[0] = ii[1] = NULL;
-	cfg.CopyTo(cfgdata);
 }
 
 CQnetGateway::~CQnetGateway()
