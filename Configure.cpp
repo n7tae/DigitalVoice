@@ -262,3 +262,8 @@ bool CConfigure::IsOkay()
 	bool audio = (data.sAudioIn.size()>0 && data.sAudioOut.size()>0);
 	return (station && module && call && audio);
 }
+
+const CFGDATA *CConfigure::GetData()
+{
+	return &data;
+}

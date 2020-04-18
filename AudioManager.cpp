@@ -95,11 +95,11 @@ void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned cha
 	// this also makes the scrambled text message and header for streaming into the slow data
 	// only the 1-byte header need to be interleaved before and between each 5 byte set
 	const unsigned char scramble[5] = { 0x4FU, 0x93U, 0x70U, 0x4FU, 0x93U };
-	CFGDATA cfgdata;
-	pMainWindow->cfg.CopyTo(cfgdata);
-	cfgdata.sMessage.resize(20, ' ');
+	auto cfgdata = pMainWindow->cfg.GetData();
+	std::string msg(cfgdata->sMessage);
+	msg.resize(20, ' ');
 	for (int i=0; i<20; i++) {
-		ut[i] = scramble[i%5] ^ cfgdata.sMessage.at(i);
+		ut[i] = scramble[i%5] ^ msg.at(i);
 	}
 	memset(c.title, 0, sizeof(CDSVT));
 	memcpy(c.title, "DSVT", 4);
@@ -109,13 +109,13 @@ void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned cha
 	c.streamid = htons(random.NewStreamID());
 	c.ctrl = 0x80U;
 	memset(c.hdr.flag+3, ' ', 36);
-	memcpy(c.hdr.rpt1, cfgdata.sStation.c_str(), cfgdata.sStation.size());
+	memcpy(c.hdr.rpt1, cfgdata->sStation.c_str(), cfgdata->sStation.size());
 	memcpy(c.hdr.rpt2, c.hdr.rpt1, 8);
-	c.hdr.rpt1[7] = cfgdata.cModule;
+	c.hdr.rpt1[7] = cfgdata->cModule;
 	c.hdr.rpt2[7] = 'G';
 	memcpy(c.hdr.urcall, urcall.c_str(), urcall.size());
-	memcpy(c.hdr.mycall, cfgdata.sCallsign.c_str(), cfgdata.sCallsign.size());
-	memcpy(c.hdr.sfx, cfgdata.sName.c_str(), cfgdata.sName.size());
+	memcpy(c.hdr.mycall, cfgdata->sCallsign.c_str(), cfgdata->sCallsign.size());
+	memcpy(c.hdr.sfx, cfgdata->sName.c_str(), cfgdata->sName.size());
 	calcPFCS(c.hdr.flag, c.hdr.pfcs);
 	for (int i=0; i<41; i++) {
 		uh[i] = scramble[i%5] ^ *(c.hdr.flag + i);
@@ -295,11 +295,10 @@ void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, cons
 
 void CAudioManager::microphone2audioqueue()
 {
-	CFGDATA data;
-	pMainWindow->cfg.CopyTo(data);
+	auto data = pMainWindow->cfg.GetData();
 	// Open PCM device for recording (capture).
 	snd_pcm_t *handle;
-	int rc = snd_pcm_open(&handle, data.sAudioIn.c_str(), SND_PCM_STREAM_CAPTURE, 0);
+	int rc = snd_pcm_open(&handle, data->sAudioIn.c_str(), SND_PCM_STREAM_CAPTURE, 0);
 	if (rc < 0) {
 		std::cerr << "unable to open pcm device: " << snd_strerror(rc) << std::endl;
 		return;
@@ -543,13 +542,12 @@ void CAudioManager::ambedevice2audioqueue()
 
 void CAudioManager::play_audio_queue()
 {
-	CFGDATA data;
-	pMainWindow->cfg.CopyTo(data);
+	auto data = pMainWindow->cfg.GetData();
 	//int count = 0;
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	// Open PCM device for playback.
 	snd_pcm_t *handle;
-	int rc = snd_pcm_open(&handle, data.sAudioOut.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
+	int rc = snd_pcm_open(&handle, data->sAudioOut.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
 	if (rc < 0) {
 		std::cerr << "unable to open pcm device: " << snd_strerror(rc) << std::endl;
 		return;
@@ -691,10 +689,9 @@ void CAudioManager::PlayFile(const char *filetoplay)
 		return;
 	}
 	play_file = true;
-	CFGDATA cfgdata;
-	pMainWindow->cfg.CopyTo(cfgdata);
+	auto cfgdata = pMainWindow->cfg.GetData();
 	std::string msg(filetoplay);
-	if (cfgdata.cModule != msg.at(0)) {
+	if (cfgdata->cModule != msg.at(0)) {
 		std::cerr << "Improper module in msg " << msg << std::endl;
 		play_file = false;
 		return;
@@ -724,7 +721,7 @@ void CAudioManager::PlayFile(const char *filetoplay)
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-	std::cout << "sending File:" << path << " mod:" << cfgdata.cModule << " RADIO_ID=" << message << std::endl;
+	std::cout << "sending File:" << path << " mod:" << cfgdata->cModule << " RADIO_ID=" << message << std::endl;
 
 	struct stat sbuf;
 	if (stat(path.c_str(), &sbuf)) {

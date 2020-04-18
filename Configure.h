@@ -46,6 +46,7 @@ public:
 	void CopyFrom(const CFGDATA &);
 	void CopyTo(CFGDATA &);
 	bool IsOkay();
+	const CFGDATA *GetData();
 
 private:
 	// data

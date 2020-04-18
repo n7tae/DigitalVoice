@@ -33,10 +33,11 @@
 *.lib
 
 # host files
+gwys.txt
 XLX_Hosts.txt
 DExtra_Hosts.txt
 DPlus_Hosts.txt
 DCS_Hosts.txt
 
-# Executables
+# Executable
 qdv
