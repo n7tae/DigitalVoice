@@ -246,10 +246,10 @@ bool CQnetGateway::Configure()
 	//PrintCallsigns("findRoutes", findRoute);
 
 	// APRS
-	APRS_ENABLE = false;
-	Rptr.aprs.ip.assign("rotate.aprs2.net");
-	Rptr.aprs.port = 14580;
-	Rptr.aprs_interval = 40;
+	APRS_ENABLE = pCFGData->bAPRSEnable;
+	Rptr.aprs.ip.assign(pCFGData->sAPRSServer);
+	Rptr.aprs.port = pCFGData->usAPRSPort;
+	Rptr.aprs_interval = pCFGData->iAPRSInterval;
 	Rptr.aprs_filter.clear();
 
 	// log
