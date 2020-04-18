@@ -30,26 +30,33 @@
 
 void CConfigure::SetDefaultValues()
 {
+	// mode and module
+	data.eMode = EMode::routing;
+	data.eNetType = EQuadNetType::ipv4only;
+	data.cModule = 'A';
+	// station
+	data.bUseMyCall = false;
 	data.sCallsign.clear();
 	data.sName.clear();
 	data.sStation.clear();
 	data.sMessage.clear();
 	data.sLocation[0].clear();
-	data.sLocation[2].clear();
-	data.sLinkAtStart.clear();
-	data.sURL.assign("https://github.com/n7tae/DigitalVoice");
-	data.bUseMyCall = false;
-	data.bDPlusEnable  = false;
-	data.eMode = EMode::routing;
-	data.iBaudRate = 460800;
+	data.sLocation[1].clear();
 	data.dLatitude = data.dLongitude = 0.0;
-	data.cModule = 'A';
+	data.sURL.assign("https://github.com/n7tae/DigitalVoice");
+	// linking
+	data.bDPlusEnable  = false;
+	data.sLinkAtStart.clear();
+	// audio
+	data.iBaudRate = 460800;
 	data.sAudioIn.assign("default");
 	data.sAudioOut.assign("default");
+	// aprs
 	data.bAPRSEnable = true;
 	data.sAPRSServer.assign("rotate.aprs2.net");
 	data.usAPRSPort = 14580U;
 	data.iAPRSInterval = 40;
+	// gps
 	data.bGPSDEnable = false;
 	data.sGPSDServer.assign("localhost");
 	data.usGPSDPort = 2947U;
@@ -159,12 +166,8 @@ void CConfigure::WriteData()
 		return;
 	}
 	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
-	file << "MyCall=" << data.sCallsign << std::endl;
-	file << "MyName=" << data.sName << std::endl;
-	file << "StationCall=" << data.sStation << std::endl;
-	file << "Module=" << data.cModule << std::endl;
-	file << "UseMyCall=" << (data.bUseMyCall ? "true" : "false") << std::endl;
-	file << "Message='" << data.sMessage << "'" << std::endl;
+	// mode and module
+	file << "Mode=" << ((data.eMode == EMode::routing) ? "Route" : "Link") << std::endl;
 	file << "QuadNetType=";
 	if (data.eNetType == EQuadNetType::ipv6only)
 		file << "IPv6";
@@ -175,20 +178,30 @@ void CConfigure::WriteData()
 	else
 		file << "IPv4";
 	file << std::endl;
-	file << "Mode=" << ((data.eMode == EMode::routing) ? "Route" : "Link") << std::endl;
-	file << "DPlusEnable=" << (data.bDPlusEnable ? "true" : "false") << std::endl;
-	file << "LinkAtStart='" << data.sLinkAtStart << "'" << std::endl;
-	file << "BaudRate=" << data.iBaudRate << std::endl;
+	file << "Module=" << data.cModule << std::endl;
+	// station
+	file << "UseMyCall=" << (data.bUseMyCall ? "true" : "false") << std::endl;
+	file << "MyCall=" << data.sCallsign << std::endl;
+	file << "MyName=" << data.sName << std::endl;
+	file << "StationCall=" << data.sStation << std::endl;
+	file << "Message='" << data.sMessage << "'" << std::endl;
 	file << "Latitude=" << std::setprecision(9) << data.dLatitude << std::endl;
 	file << "Longitude=" << std::setprecision(9) << data.dLongitude << std::endl;
 	file << "Location1='" << data.sLocation[0] << "'" << std::endl;
 	file << "Location2='" << data.sLocation[1] << "'" << std::endl;
+	// linking
+	file << "DPlusEnable=" << (data.bDPlusEnable ? "true" : "false") << std::endl;
+	file << "LinkAtStart='" << data.sLinkAtStart << "'" << std::endl;
+	// audio
+	file << "BaudRate=" << data.iBaudRate << std::endl;
 	file << "AudioInput='" << data.sAudioIn << "'" << std::endl;
 	file << "AudioOutput='" << data.sAudioOut << "'" << std::endl;
+	// aprs
 	file << "APRSEnable=" << (data.bAPRSEnable ? "true" : "false") << std::endl;
 	file << "APRSServer='" << data.sAPRSServer << "'" << std::endl;
 	file << "APRSPort=" << data.usAPRSPort << std::endl;
 	file << "APRSInterval=" << data.iAPRSInterval << std::endl;
+	// gps
 	file << "GPSDEnable=" << (data.bGPSDEnable ? "true" : "false") << std::endl;
 	file << "GPSDServer=" << data.sGPSDServer << std::endl;
 	file << "GPSDPort=" << data.usGPSDPort << std::endl;
@@ -198,28 +211,34 @@ void CConfigure::WriteData()
 
 void CConfigure::CopyFrom(const CFGDATA &from)
 {
+	// mode and module
+	data.eMode = from.eMode;
+	data.eNetType = from.eNetType;
+	data.cModule = from.cModule;
+	// station
+	data.bUseMyCall = from.bUseMyCall;
 	data.sCallsign.assign(from.sCallsign);
 	data.sLocation[0].assign(from.sLocation[0]);
 	data.sLocation[1].assign(from.sLocation[1]);
 	data.sMessage.assign(from.sMessage);
 	data.sName.assign(from.sName);
 	data.sStation.assign(from.sStation);
-	data.cModule = from.cModule;
 	data.sURL.assign(from.sURL);
-	data.bDPlusEnable = from.bDPlusEnable;
-	data.sLinkAtStart.assign(from.sLinkAtStart);
-	data.bUseMyCall = from.bUseMyCall;
-	data.iBaudRate = from.iBaudRate;
-	data.eNetType = from.eNetType;
-	data.eMode = from.eMode;
 	data.dLatitude = from.dLatitude;
 	data.dLongitude = from.dLongitude;
+	// linking
+	data.bDPlusEnable = from.bDPlusEnable;
+	data.sLinkAtStart.assign(from.sLinkAtStart);
+	// audio
+	data.iBaudRate = from.iBaudRate;
 	data.sAudioIn.assign(from.sAudioIn);
 	data.sAudioOut.assign(from.sAudioOut);
+	// aprs
 	data.bAPRSEnable = from.bAPRSEnable;
 	data.sAPRSServer.assign(from.sAPRSServer);
 	data.usAPRSPort = from.usAPRSPort;
 	data.iAPRSInterval = from.iAPRSInterval;
+	// gps
 	data.bGPSDEnable = from.bGPSDEnable;
 	data.sGPSDServer.assign(from.sGPSDServer);
 	data.usGPSDPort = from.usGPSDPort;
@@ -227,28 +246,34 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 
 void CConfigure::CopyTo(CFGDATA &to)
 {
+	// mode and module
+	to.eMode = data.eMode;
+	to.eNetType = data.eNetType;
+	to.cModule = data.cModule;
+	// station
+	to.bUseMyCall = data.bUseMyCall;
 	to.sCallsign.assign(data.sCallsign);
 	to.sLocation[0].assign(data.sLocation[0]);
 	to.sLocation[1].assign(data.sLocation[1]);
 	to.sMessage.assign(data.sMessage);
 	to.sName.assign(data.sName);
 	to.sStation.assign(data.sStation);
-	to.cModule = data.cModule;
 	to.sURL.assign(data.sURL);
-	to.bDPlusEnable = data.bDPlusEnable;
-	to.sLinkAtStart.assign(data.sLinkAtStart);
-	to.bUseMyCall = data.bUseMyCall;
-	to.iBaudRate = data.iBaudRate;
-	to.eNetType = data.eNetType;
-	to.eMode = data.eMode;
 	to.dLatitude = data.dLatitude;
 	to.dLongitude = data.dLongitude;
+	// linking
+	to.bDPlusEnable = data.bDPlusEnable;
+	to.sLinkAtStart.assign(data.sLinkAtStart);
+	// audio
+	to.iBaudRate = data.iBaudRate;
 	to.sAudioIn.assign(data.sAudioIn);
 	to.sAudioOut.assign(data.sAudioOut);
+	// aprs
 	to.bAPRSEnable = data.bAPRSEnable;
 	to.sAPRSServer.assign(data.sAPRSServer);
 	to.usAPRSPort = data.usAPRSPort;
 	to.iAPRSInterval = data.iAPRSInterval;
+	// gps
 	to.bGPSDEnable = data.bGPSDEnable;
 	to.sGPSDServer.assign(data.sGPSDServer);
 	to.usGPSDPort = data.usGPSDPort;
