@@ -523,7 +523,7 @@ void CQnetGateway::ProcessTimeouts()
 			if ((t_now - to_remote_g2.last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				SendLog("Inactivity from local rptr mod %c, removing stream id %04x\n", pCFGData->cModule, ntohs(to_remote_g2.streamid));
 
-				to_remote_g2.toDstar.Initialize(AF_UNSPEC);
+				to_remote_g2.toDstar.Clear();
 				to_remote_g2.streamid = 0;
 				to_remote_g2.last_time = 0;
 			}
@@ -1310,7 +1310,7 @@ void CQnetGateway::ProcessAudio(const CDSVT *packet)
 
 					/* Is this the end-of-stream */
 					if (dsvt.ctrl & 0x40) {
-						to_remote_g2.toDstar.Initialize(AF_UNSPEC);
+						to_remote_g2.toDstar.Clear();
 						to_remote_g2.streamid = 0;
 						to_remote_g2.last_time = 0;
 					}
@@ -1767,10 +1767,10 @@ bool CQnetGateway::Init(CFGDATA *pData)
 
 	// the repeater modules run on these ports
 	memset(toRptr.saved_hdr.title, 0, 56);
-	toRptr.saved_addr.Initialize(AF_UNSPEC);
+	toRptr.saved_addr.Clear();
 
 	toRptr.streamid = 0;
-	toRptr.addr.Initialize(AF_UNSPEC);
+	toRptr.addr.Clear();
 
 	toRptr.last_time = 0;
 
@@ -1785,7 +1785,7 @@ bool CQnetGateway::Init(CFGDATA *pData)
 	end_of_audio.id = end_of_audio.config = 0x20U;
 
 	/* to remote systems */
-	to_remote_g2.toDstar.Initialize(AF_UNSPEC);
+	to_remote_g2.toDstar.Clear();
 	to_remote_g2.streamid = 0;
 	to_remote_g2.last_time = 0;
 
