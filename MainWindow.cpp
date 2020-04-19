@@ -46,7 +46,6 @@ CMainWindow::CMainWindow() :
 	pLink(nullptr)
 {
 	cfg.CopyTo(cfgdata);
-	RebuildGateways(cfgdata.bDPlusEnable);
 	if (! AudioManager.AMBEDevice.IsOpen()) {
 		AudioManager.AMBEDevice.FindandOpen(cfgdata.iBaudRate, DSTAR_TYPE);
 	}
@@ -120,6 +119,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	dbname.append("qn.db");
 	if (qnDB.Open(dbname.c_str()) || qnDB.Init())
 		return true;
+	RebuildGateways(cfgdata.bDPlusEnable);
 
 	if (Gate2AM.Open("gate2am"))
 		return true;
@@ -282,14 +282,10 @@ void CMainWindow::ReadRoutes()
 		return;
 	}
 
-	routeset.insert("DSTAR3");
-	routeset.insert("DSTAR3 T");
-	routeset.insert("DSTAR2");
-	routeset.insert("DSTAR2 T");
-	routeset.insert("DSTAR4");
-	routeset.insert("DSTAR4 T");
 	routeset.insert("DSTAR1");
 	routeset.insert("DSTAR1 T");
+	routeset.insert("DSTAR2");
+	routeset.insert("DSTAR2 T");
 	routeset.insert("QNET20 C");
 	routeset.insert("QNET20 Z");
 	for (auto it=routeset.begin(); it!=routeset.end(); it++)
