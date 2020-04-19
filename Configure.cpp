@@ -31,7 +31,7 @@
 void CConfigure::SetDefaultValues()
 {
 	// mode and module
-	data.eMode = EMode::routing;
+	data.eMode = EMode::linking;
 	data.eNetType = EQuadNetType::ipv4only;
 	data.cModule = 'A';
 	// station

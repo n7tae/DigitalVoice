@@ -524,7 +524,7 @@ void CMainWindow::RebuildGateways(bool includelegacy)
 		hostfile.close();
 	}
 
-	if (includelegacy) {
+	if (includelegacy && ! cfgdata.sStation.empty()) {
 		const std::string website("auth.dstargateway.org");
 		CDPlusAuthenticator auth(cfgdata.sStation, website);
 		int dplus = auth.Process(qnDB, true, false);
