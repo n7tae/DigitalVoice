@@ -531,7 +531,7 @@ void CMainWindow::RebuildGateways(bool includelegacy)
 	if (includelegacy) {
 		const std::string website("auth.dstargateway.org");
 		CDPlusAuthenticator auth(cfgdata.sStation, website);
-		int dplus = auth.Process(qnDB, true, true);
+		int dplus = auth.Process(qnDB, true, false);
 		if (0 == dplus) {
 			fprintf(stdout, "DPlus Authorization failed.\n");
 			printf("# of Gateways: %s=%d\n", filename.c_str(), count);
