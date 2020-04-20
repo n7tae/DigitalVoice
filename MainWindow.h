@@ -50,7 +50,6 @@ private:
 	Gtk::Window *pWin;
 	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton;
 	Gtk::ComboBoxText *pRouteComboBox;
-	Gtk::RadioButton *pRouteRadioButton, *pLinkRadioButton;
 	Gtk::Entry *pLinkEntry, *pRouteEntry;
 	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
 	Glib::RefPtr<Gtk::TextBuffer> pLogTextBuffer;
@@ -84,7 +83,6 @@ private:
 	void on_LinkButton_clicked();
 	void on_UnlinkButton_clicked();
 	void on_LinkEntry_changed();
-	void on_ModeGroup_clicked();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
 	bool GetLogInput(Glib::IOCondition condition);

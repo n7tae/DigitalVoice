@@ -3,9 +3,9 @@ CFGDIR = $(HOME)/etc/
 BINDIR = $(HOME)/bin/
 
 # choose this if you want debugging help
-CPPFLAGS=-g -ggdb -W -Wall -Wno-deprecated-declarations -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
+#CPPFLAGS=-g -ggdb -W -Wall -Wno-deprecated-declarations -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
 # or, you can choose this for a much smaller executable without debugging help
-#CPPFLAGS=-W -Wall -Wno-deprecated-declarations -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
+CPPFLAGS=-W -Wall -Wno-deprecated-declarations -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
 
 
 SRCS = $(wildcard *.cpp) $(wildcard ircddb/*.cpp)

@@ -31,7 +31,7 @@
 void CConfigure::SetDefaultValues()
 {
 	// mode and module
-	data.eMode = EMode::linking;
+	data.bLinkEnable = data.bRouteEnable = true;
 	data.eNetType = EQuadNetType::ipv4only;
 	data.cModule = 'A';
 	// station
@@ -88,7 +88,11 @@ void CConfigure::ReadData()
 		if (! val)
 			continue;
 
-		if (0 == strcmp(key, "MyCall")) {
+		if (0 == strcmp(key, "RouteEnalbe"))
+			data.bRouteEnable = IS_TRUE(*val);
+		else if (0 == strcmp(key, "LinkEnable"))
+			data.bLinkEnable = IS_TRUE(*val);
+		else if (0 == strcmp(key, "MyCall")) {
 			data.sCallsign.assign(val);
 		} else if (0 == strcmp(key, "MyName")) {
 			data.sName.assign(val);
@@ -103,19 +107,12 @@ void CConfigure::ReadData()
 		} else if (0 == strcmp(key, "BaudRate")) {
 			data.iBaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
 		} else if (0 == strcmp(key, "QuadNetType")) {
-			if (0 == strcmp(val, "None"))
-				data.eNetType = EQuadNetType::norouting;
-			else if (0 == strcmp(val, "IPv6"))
+			if (0 == strcmp(val, "IPv6"))
 				data.eNetType = EQuadNetType::ipv6only;
 			else if (0 == strcmp(val, "Dual"))
 				data.eNetType = EQuadNetType::dualstack;
 			else
 				data.eNetType = EQuadNetType::ipv4only;
-		} else if (0 == strcmp(key, "Mode")) {
-			if (0 == strcmp(val, "Route"))
-				data.eMode = EMode::routing;
-			else
-				data.eMode = EMode::linking;
 		} else if (0 == strcmp(key, "Latitude")) {
 			data.dLatitude = std::stod(val);
 		} else if (0 == strcmp(key, "Longitude")) {
@@ -167,14 +164,13 @@ void CConfigure::WriteData()
 	}
 	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
 	// mode and module
-	file << "Mode=" << ((data.eMode == EMode::routing) ? "Route" : "Link") << std::endl;
+	file << "RouteEnable=" << (data.bRouteEnable ? "true" : "false") << std::endl;
+	file << "LinkEnbale=" << (data.bLinkEnable ? "true" : "false") << std::endl;
 	file << "QuadNetType=";
 	if (data.eNetType == EQuadNetType::ipv6only)
 		file << "IPv6";
 	else if (data.eNetType == EQuadNetType::dualstack)
 		file << "Dual";
-	else if (data.eNetType == EQuadNetType::norouting)
-		file << "None";
 	else
 		file << "IPv4";
 	file << std::endl;
@@ -212,7 +208,8 @@ void CConfigure::WriteData()
 void CConfigure::CopyFrom(const CFGDATA &from)
 {
 	// mode and module
-	data.eMode = from.eMode;
+	data.bRouteEnable = from.bRouteEnable;
+	data.bLinkEnable = from.bLinkEnable;
 	data.eNetType = from.eNetType;
 	data.cModule = from.cModule;
 	// station
@@ -247,7 +244,8 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 void CConfigure::CopyTo(CFGDATA &to)
 {
 	// mode and module
-	to.eMode = data.eMode;
+	to.bRouteEnable = data.bRouteEnable;
+	to.bLinkEnable = data.bLinkEnable;
 	to.eNetType = data.eNetType;
 	to.cModule = data.cModule;
 	// station

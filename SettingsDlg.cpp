@@ -67,6 +67,9 @@ CFGDATA *CSettingsDlg::Show()
 
 void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 {
+	// modes
+	d.bRouteEnable = pRoutingCheckbutton->get_active();
+	d.bLinkEnable = pLinkingCheckButton->get_active();
 	// station
 	d.sCallsign.assign(pMyCallsignEntry->get_text());
 	d.sName.assign(pMyNameEntry->get_text());
@@ -80,10 +83,12 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 	d.sLocation[1].assign(pLocationEntry[1]->get_text());
 	d.dLatitude = std::stod(pLatitudeEntry->get_text());
 	d.dLongitude = std::stod(pLongitudeEntry->get_text());
+	// aprs
 	d.bAPRSEnable = pAPRSEnableCheckButton->get_active();
 	d.sAPRSServer.assign(pAPRSServerEntry->get_text());
 	d.usAPRSPort = std::stoul(pAPRSPortEntry->get_text());
 	d.iAPRSInterval = std::stoi(pAPRSIntervalEntry->get_text());
+	// gps
 	d.bGPSDEnable = pGPSDEnableCheckButton->get_active();
 	d.sGPSDServer.assign(pGPSDServerEntry->get_text());
 	d.usGPSDPort = std::stoul(pGPSDPortEntry->get_text());
@@ -95,8 +100,6 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 		d.eNetType = EQuadNetType::ipv6only;
 	else if (pDualStackRadioButton->get_active())
 		d.eNetType = EQuadNetType::dualstack;
-	else if (pNoRoutingRadioButton->get_active())
-		d.eNetType = EQuadNetType::norouting;
 	else
 		d.eNetType = EQuadNetType::ipv4only;
 	// device
@@ -114,6 +117,9 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 
 void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 {
+	// mode
+	pLinkingCheckButton->set_active(d.bLinkEnable);
+	pRoutingCheckbutton->set_active(d.bRouteEnable);
 	// station
 	pMyCallsignEntry->set_text(d.sCallsign);
 	pMyNameEntry->set_text(d.sName);
@@ -126,10 +132,12 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 	pLocationEntry[1]->set_text(d.sLocation[1]);
 	pLatitudeEntry->set_text(std::to_string(d.dLatitude));
 	pLongitudeEntry->set_text(std::to_string(d.dLongitude));
+	// aprs
 	pAPRSEnableCheckButton->set_active(d.bAPRSEnable);
 	pAPRSIntervalEntry->set_text(std::to_string(d.iAPRSInterval));
 	pAPRSServerEntry->set_text(d.sAPRSServer);
 	pAPRSPortEntry->set_text(std::to_string(d.usAPRSPort));
+	// gps
 	pGPSDEnableCheckButton->set_active(d.bGPSDEnable);
 	pGPSDServerEntry->set_text(d.sGPSDServer);
 	pGPSDPortEntry->set_text(std::to_string(d.usGPSDPort));
@@ -144,9 +152,6 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 			break;
 		case EQuadNetType::dualstack:
 			pDualStackRadioButton->set_active();
-			break;
-		case EQuadNetType::norouting:
-			pNoRoutingRadioButton->set_active();
 			break;
 		default:
 			pIPv4OnlyRadioButton->set_active();
@@ -486,10 +491,20 @@ void CSettingsDlg::on_QuadNet_Group_clicked()
 		data.eNetType = EQuadNetType::ipv6only;
 	else if (pDualStackRadioButton->get_active())
 		data.eNetType = EQuadNetType::dualstack;
-	else if (pNoRoutingRadioButton->get_active())
-		data.eNetType = EQuadNetType::norouting;
 	else
 		data.eNetType = EQuadNetType::ipv4only;
+}
+
+void CSettingsDlg::on_LinkingCheckButton_toggled()
+{
+	if (! pLinkingCheckButton->get_active() && ! pRoutingCheckbutton->get_active())
+		pRoutingCheckbutton->set_active(true);
+}
+
+void CSettingsDlg::on_RoutingCheckButton_toggled()
+{
+	if (! pRoutingCheckbutton->get_active() && ! pLinkingCheckButton->get_active())
+		pLinkingCheckButton->set_active(true);
 }
 
 void CSettingsDlg::on_AudioInputComboBox_changed()

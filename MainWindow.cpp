@@ -85,31 +85,53 @@ void CMainWindow::RunGate()
 
 void CMainWindow::SetState(const CFGDATA &data)
 {
-	if (data.eNetType == EQuadNetType::norouting) {
-		pRouteRadioButton->set_sensitive(false);
-		if (! pLinkRadioButton->get_active()) {
-			pLinkRadioButton->set_active();
-			return;
+	if (data.bRouteEnable) {
+		if (nullptr == pGate && cfg.IsOkay())
+			futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
+		pRouteComboBox->set_sensitive(true);
+		pRouteActionButton->set_sensitive(true);
+	} else {
+		if (nullptr != pGate) {
+			pGate->keep_running = false;
+			futGate.get();
+		}
+		pRouteEntry->set_text("CQCQCQ");
+		pRouteEntry->set_sensitive(false);
+		pRouteComboBox->set_sensitive(false);
+		pRouteActionButton->set_sensitive(false);
+	}
+	if (data.bLinkEnable) {
+		if (nullptr == pLink)
+			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+		std::list<CLink> linklist;
+		if (qnDB.FindLS(cfgdata.cModule, linklist)) {
+			std::cerr << "MainWindow::SetSet FindLS failed!" << std::endl;
+		} else {
+			if (linklist.size()) {
+				auto link = linklist.front();
+				pLinkEntry->set_text(link.callsign.c_str());
+				pLinkEntry->set_sensitive(false);
+				pLinkButton->set_sensitive(false);
+				pUnlinkButton->set_sensitive(true);
+			} else {
+				pLinkEntry->set_sensitive(true);
+				pUnlinkButton->set_sensitive(false);
+				const std::string entry(pLinkEntry->get_text().c_str());
+				if (8==entry.size() && qnDB.FindGW(entry.substr(0, 6).c_str()) && isalpha(entry.at(7)))
+					pLinkButton->set_sensitive(true);
+				else
+					pLinkButton->set_sensitive(false);
+
+			}
 		}
 	} else {
-		pRouteRadioButton->set_sensitive(true);
-		if (pRouteRadioButton->get_active()) {
-			if (nullptr != pLink) {
-				pLink->keep_running = false;
-				futLink.get();
-			}
-			if (nullptr==pGate && cfg.IsOkay()) {
-				futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
-			}
-		} else {
-			if (nullptr != pGate) {
-				pGate->keep_running = false;
-				futGate.get();
-			}
-			if (nullptr==pLink && cfg.IsOkay()) {
-				futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
-			}
+		if (nullptr != pLink) {
+			pLink->keep_running = false;
+			futLink.get();
 		}
+		pLinkButton->set_sensitive(false);
+		pLinkEntry->set_sensitive(false);
+		pLinkButton->set_sensitive(false);
 	}
 }
 
@@ -170,8 +192,6 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("RouteActionButton", pRouteActionButton);
 	builder->get_widget("RouteComboBox", pRouteComboBox);
 	builder->get_widget("RouteEntry", pRouteEntry);
-	builder->get_widget("RouteRadioButton", pRouteRadioButton);
-	builder->get_widget("LinkRadioButton", pLinkRadioButton);
 	builder->get_widget("LinkEntry", pLinkEntry);
 	builder->get_widget("EchoTestButton", pEchoTestButton);
 	builder->get_widget("PTTButton", pPTTButton);
@@ -179,11 +199,6 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("ScrolledWindow", pScrolledWindow);
 	builder->get_widget("LogTextView", pLogTextView);
 	pLogTextBuffer = pLogTextView->get_buffer();
-	if (cfgdata.eMode == EMode::routing) {
-		pRouteRadioButton->set_active();
-	} else {
-		pLinkRadioButton->set_active();
-	}
 
 	// events
 	pSettingsButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
@@ -197,8 +212,6 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pLinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkButton_clicked));
 	pUnlinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_UnlinkButton_clicked));
 	pLinkEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkEntry_changed));
-	pLinkRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_ModeGroup_clicked));
-	pRouteRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_ModeGroup_clicked));
 	ReadRoutes();
 	SetState(cfgdata);
 
@@ -207,7 +220,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::GetLogInput), LogInput.GetFD(), Glib::IO_IN);
 	// idle processing
-	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 100);
+	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 1000);
 
 	return false;
 }
@@ -231,17 +244,30 @@ void CMainWindow::on_SettingsButton_clicked()
 			if (nullptr != pGate) {
 				pGate->keep_running = false;
 				futGate.get();
+				pGate = nullptr;
 			}
 			if (nullptr != pLink) {
 				pLink->keep_running = false;
 				futLink.get();
+				pLink = nullptr;
 			}
 		}
 		else if (newdata->eNetType != cfgdata.eNetType) {
 			if (nullptr != pGate) {
 				pGate->keep_running = false;
 				futGate.get();
+				pGate = nullptr;
 			}
+		}
+		if (! newdata->bLinkEnable && nullptr!=pLink) {
+			pLink->keep_running = false;
+			futLink.get();
+			pLink = nullptr;
+		}
+		if (! newdata->bRouteEnable && nullptr!=pGate) {
+			pGate->keep_running = false;
+			futGate.get();
+			pGate = nullptr;
 		}
 		SetState(*newdata);
 		cfg.CopyTo(cfgdata);
@@ -282,6 +308,7 @@ void CMainWindow::ReadRoutes()
 		return;
 	}
 
+	routeset.insert("CQCQCQ");
 	routeset.insert("DSTAR1");
 	routeset.insert("DSTAR1 T");
 	routeset.insert("DSTAR2");
@@ -360,22 +387,23 @@ void CMainWindow::Receive(bool is_rx)
 
 void CMainWindow::on_PTTButton_toggled()
 {
-	bool is_link = pLinkRadioButton->get_active();
-	if (pPTTButton->get_active()) {
-		if (is_link)
-			AudioManager.RecordMicThread(E_PTT_Type::link, "CQCQCQ  ");
-		else
-			AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
-	} else
-		AudioManager.KeyOff();
+	const std::string urcall(pRouteEntry->get_text().c_str());
+	bool is_cqcqcq = (0 == urcall.compare(0, 6, "CQCQCQ"));
+
+	if ((! is_cqcqcq && cfgdata.bRouteEnable) || (is_cqcqcq && cfgdata.bLinkEnable)) {
+		if (pPTTButton->get_active()) {
+			if (is_cqcqcq)
+				AudioManager.RecordMicThread(E_PTT_Type::link, "CQCQCQ");
+			else
+				AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
+		} else
+			AudioManager.KeyOff();
+	}
 }
 
 void CMainWindow::on_QuickKeyButton_clicked()
 {
-	std::string urcall("CQCQCQ  ");
-	if (pRouteRadioButton->get_active())
-		urcall.assign(pRouteEntry->get_text().c_str());
-	AudioManager.QuickKey(urcall.c_str());
+	AudioManager.QuickKey(pRouteEntry->get_text().c_str());
 }
 
 bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
@@ -434,18 +462,14 @@ bool CMainWindow::TimeoutProcess()
 		call.assign(ls.callsign);
 	}
 
-	if (call.compare(pLinkEntry->get_text().c_str())) {	// we only need to do something if the returned link status is different from the entry widget
-		if (8 == call.size()) {
-			pLinkEntry->set_text(call.c_str());
-			pLinkEntry->set_sensitive(false);
-			pLinkButton->set_sensitive(false);
-			pUnlinkButton->set_sensitive(true);
-		} else {
-			//pLinkEntry->set_text("");
-			pLinkEntry->set_sensitive(true);
-			pLinkButton->set_sensitive(false);
-			pUnlinkButton->set_sensitive(false);
-		}
+	if (call.empty()) {
+		pLinkEntry->set_sensitive(true);
+		pUnlinkButton->set_sensitive(false);
+		on_LinkEntry_changed();
+	} else {
+		pLinkEntry->set_sensitive(false);
+		pLinkButton->set_sensitive(false);
+		pUnlinkButton->set_sensitive(true);
 	}
 	return true;
 }
@@ -464,11 +488,9 @@ void CMainWindow::on_LinkEntry_changed()
 	pLinkEntry->set_text(n);
 	pLinkEntry->set_position(pos);
 	std::string str(n.c_str());
-	str.resize(7, ' ');
-	str.append(1, ' ');
+	str.resize(6, ' ');
 	if (8==n.size() && isalpha(n.at(7)) && qnDB.FindGW(str.c_str())) {
-		if (pLinkEntry->get_sensitive())
-			pLinkButton->set_sensitive(true);
+		pLinkButton->set_sensitive(true);
 	} else
 		pLinkButton->set_sensitive(false);
 }
@@ -488,15 +510,6 @@ void CMainWindow::on_UnlinkButton_clicked()
 		std::string cmd("LINK");
 		AudioManager.Link(cmd);
 	}
-}
-
-void CMainWindow::on_ModeGroup_clicked()
-{
-	CWaitCursor wait;
-	cfgdata.eMode = (pRouteRadioButton->get_active()) ? EMode::routing : EMode::linking;
-	cfg.CopyFrom(cfgdata);
-	SetState(cfgdata);
-	cfg.WriteData();
 }
 
 void CMainWindow::RebuildGateways(bool includelegacy)

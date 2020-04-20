@@ -60,11 +60,13 @@ private:
 	// widgets
 	Gtk::Button *pAMBERescanButton, *pOkayButton, *pAudioRescanButton;
 	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
-	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton;
+	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton, *pLinkingCheckButton, *pRoutingCheckbutton;
 	Gtk::Entry *pStationCallsignEntry, *pMyCallsignEntry, *pMyNameEntry, *pMessageEntry, *pLocationEntry[2], *pURLEntry, *pLatitudeEntry, *pLongitudeEntry, *pLinkAtStartEntry, *pAPRSServerEntry, *pAPRSPortEntry, *pAPRSIntervalEntry, *pGPSDServerEntry, *pGPSDPortEntry;
 	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton, *pNoRoutingRadioButton;
 	Gtk::Label *pDevicePathLabel, *pProductIDLabel, *pVersionLabel, *pInputDescLabel, *pOutputDescLabel;
 	// events
+	void on_LinkingCheckButton_toggled();
+	void on_RoutingCheckButton_toggled();
 	void on_UseMyCallsignCheckButton_toggled();
 	void on_AudioRescanButton_clicked();
 	void on_MyCallsignEntry_changed();
