@@ -31,6 +31,7 @@
 #include "WaitCursor.h"
 #include "DPlusAuthenticator.h"
 #include "Utilities.h"
+#include "TemplateClasses.h"
 
 #ifndef CFG_DIR
 #define CFG_DIR "/tmp/"
@@ -131,7 +132,7 @@ void CMainWindow::SetState(const CFGDATA &data)
 		}
 		pLinkButton->set_sensitive(false);
 		pLinkEntry->set_sensitive(false);
-		pLinkButton->set_sensitive(false);
+		pUnlinkButton->set_sensitive(false);
 	}
 }
 
@@ -232,6 +233,18 @@ void CMainWindow::Run()
 
 void CMainWindow::on_QuitButton_clicked()
 {
+	if (nullptr != pGate) {
+		pGate->keep_running = false;
+		futGate.get();
+		pGate = nullptr;
+	}
+
+	if (nullptr != pLink) {
+		pLink->keep_running = false;
+		futLink.get();
+		pLink = nullptr;
+	}
+
 	if (pWin)
 		pWin->hide();
 }
@@ -490,14 +503,18 @@ void CMainWindow::on_LinkEntry_changed()
 	std::string str(n.c_str());
 	str.resize(6, ' ');
 	if (8==n.size() && isalpha(n.at(7)) && qnDB.FindGW(str.c_str())) {
+		pLinkEntry->set_icon_from_icon_name("gtk-ok");
 		pLinkButton->set_sensitive(true);
-	} else
+	} else {
+	 	pLinkEntry->set_icon_from_icon_name("gtk-cancel");
 		pLinkButton->set_sensitive(false);
+	}
 }
 
 void CMainWindow::on_LinkButton_clicked()
 {
 	if (pLink) {
+		std::cout << "Pushed the Link button for " << pLinkEntry->get_text().c_str() << '.' << std::endl;
 		std::string cmd("LINK");
 		cmd.append(pLinkEntry->get_text().c_str());
 		AudioManager.Link(cmd);
@@ -516,6 +533,7 @@ void CMainWindow::RebuildGateways(bool includelegacy)
 {
 	CWaitCursor WaitCursor;
 	qnDB.ClearGW();
+	CHostQueue qhost;
 
 	std::string filename(CFG_DIR);	// now open the gateways text file
 	filename.append("gwys.txt");
@@ -527,14 +545,16 @@ void CMainWindow::RebuildGateways(bool includelegacy)
 			trim(line);
 			if (! line.empty() && ('#' != line.at(0))) {
 				std::istringstream iss(line);
-				std::string host, address;
+				std::string name, addr;
 				unsigned short port;
-				iss >> host >> address >> port;
-				qnDB.UpdateGW(host.c_str(), address.c_str(), port);
+				iss >> name >> addr >> port;
+				CHost host(name, addr, port);
+				qhost.Push(host);
 				count++;
 			}
 		}
 		hostfile.close();
+		qnDB.UpdateGW(qhost);
 	}
 
 	if (includelegacy && ! cfgdata.sStation.empty()) {

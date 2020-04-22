@@ -88,7 +88,7 @@ void CConfigure::ReadData()
 		if (! val)
 			continue;
 
-		if (0 == strcmp(key, "RouteEnalbe"))
+		if (0 == strcmp(key, "RouteEnable"))
 			data.bRouteEnable = IS_TRUE(*val);
 		else if (0 == strcmp(key, "LinkEnable"))
 			data.bLinkEnable = IS_TRUE(*val);
@@ -165,7 +165,7 @@ void CConfigure::WriteData()
 	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
 	// mode and module
 	file << "RouteEnable=" << (data.bRouteEnable ? "true" : "false") << std::endl;
-	file << "LinkEnbale=" << (data.bLinkEnable ? "true" : "false") << std::endl;
+	file << "LinkEnable=" << (data.bLinkEnable ? "true" : "false") << std::endl;
 	file << "QuadNetType=";
 	if (data.eNetType == EQuadNetType::ipv6only)
 		file << "IPv6";

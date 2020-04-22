@@ -478,6 +478,13 @@ void CQnetGateway::ProcessTimeouts()
 				// Let the repeater re-initialize
 				end_of_audio.streamid = toRptr.streamid;
 				end_of_audio.ctrl = toRptr.sequence | 0x40;
+				if (toRptr.sequence) {
+					const unsigned char silence[3] = { 0x70U, 0x4FU, 0x93U };
+					memcpy(end_of_audio.vasd.text, silence, 3U);
+				} else {
+					const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+					memcpy(end_of_audio.vasd.text, sync, 12U);
+				}
 
 				Gate2AM.Write(end_of_audio.title, 27);
 
@@ -861,11 +868,11 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 	}
 }
 
-void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
+void CQnetGateway::ProcessG2(const ssize_t g2buflen, CDSVT &g2buf)
 {
 	static std::string lhcallsign, lhsfx;
 	static bool csroute = false;
-	static unsigned char lastctrl = 20U;
+	static unsigned char nextctrl = 0U;
 	static std::string superframe;
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
@@ -891,7 +898,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 					}
 
 					Gate2AM.Write(g2buf.title, 56);
-					lastctrl = 20U;
+					nextctrl = 0U;
 
 					// save the header
 					memcpy(toRptr.saved_hdr.title, g2buf.title, 56);
@@ -913,7 +920,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 			/* streamid match ? */
 			if (toRptr.streamid == g2buf.streamid && toRptr.addr == fromDstar) {
 				if (LOG_DEBUG) {
-					const unsigned int ctrl = g2buf.ctrl & 0x3FU;
+					const unsigned int ctrl = g2buf.ctrl & 0x1FU;
 					if (VoicePacketIsSync(g2buf.vasd.text)) {
 						if (superframe.size() > 65U) {
 							SendLog("Frame[%c]: %s\n", pCFGData->cModule, superframe.c_str());
@@ -927,38 +934,50 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const CDSVT &g2buf)
 					}
 				}
 
-				int diff = int(0x3FU & g2buf.ctrl) - int(lastctrl);
-				if (diff < 0)
-					diff += 21;
-				if (diff > 1 && diff < 6) {	// fill up to 5 missing voice frames
-					if (LOG_DEBUG)
-						fprintf(stderr, "Inserting %d missing voice frame(s)\n", diff - 1);
-					CDSVT dsvt;
-					memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
-					while (--diff > 0) {
-						lastctrl = (lastctrl + 1U) % 21U;
-						dsvt.ctrl = lastctrl;
-						if (dsvt.ctrl) {
-							const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
-							memcpy(dsvt.vasd.voice, silence, 12U);
-						} else {
-							const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-							memcpy(dsvt.vasd.voice, sync, 12U);
+				int diff = int(0x1FU & g2buf.ctrl) - int(nextctrl);
+				if (diff) {
+					if (diff < 0)
+						diff += 21;
+					if (diff < 6) {	// fill up to 5 missing voice frames
+						if (LOG_DEBUG)
+							printf("Inserting %d missing voice frame(s)\n", diff - 1);
+						CDSVT dsvt;
+						memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
+						const unsigned char silence[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+						memcpy(dsvt.vasd.voice, silence, 9U);
+						while (diff-- > 0) {
+							dsvt.ctrl = nextctrl++;
+							nextctrl %= 21U;
+							if (dsvt.ctrl) {
+								const unsigned char text[3] = { 0x70U, 0x4FU, 0x93U };
+								memcpy(dsvt.vasd.text, text, 3U);
+							} else {
+								const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+								memcpy(dsvt.vasd.text, sync, 3U);
+							}
+							Gate2AM.Write(dsvt.title, 27);
 						}
-						Gate2AM.Write(dsvt.title, 27);
+					} else {
+						printf("Missing %d packets from the voice stream, resetting\n", diff);
+						nextctrl = g2buf.ctrl;
 					}
 				}
 
-				if (((lastctrl + 1U) % 21U == (0x3FU & g2buf.ctrl)) || (0x40U & g2buf.ctrl)) {
+				if ((nextctrl == (0x1FU & g2buf.ctrl)) || (0x40U & g2buf.ctrl)) {
 					// no matter what, we will send this on if it is the closing frame
-					lastctrl = (0x3FU & g2buf.ctrl);
+					if (0x40U & g2buf.ctrl) {
+						g2buf.ctrl = (nextctrl | 0x40U);
+					} else {
+						g2buf.ctrl = nextctrl;
+						nextctrl = (nextctrl + 1U) % 21U;
+					}
 					Gate2AM.Write(g2buf.title, 27);
 					std::string smartgroup;
 					if (ProcessG2Msg(g2buf.vasd.text, smartgroup))
 						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), pCFGData->cModule, smartgroup.c_str());
 				} else {
 					if (LOG_DEBUG)
-						fprintf(stderr, "Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);
+						fprintf(stderr, "Ignoring packet because its ctrl=0x%02xU and nextctrl=0x%02xU\n", g2buf.ctrl, nextctrl);
 				}
 
 				/* timeit */
@@ -1783,6 +1802,8 @@ bool CQnetGateway::Init(CFGDATA *pData)
 	memset(end_of_audio.title, 0U, 27U);
 	memcpy(end_of_audio.title, "DSVT", 4U);
 	end_of_audio.id = end_of_audio.config = 0x20U;
+	const unsigned char silence[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+	memcpy(end_of_audio.vasd.voice, silence, 9U);
 
 	/* to remote systems */
 	to_remote_g2.toDstar.Clear();

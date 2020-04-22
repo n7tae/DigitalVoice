@@ -62,7 +62,7 @@ private:
 	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
 	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton, *pLinkingCheckButton, *pRoutingCheckbutton;
 	Gtk::Entry *pStationCallsignEntry, *pMyCallsignEntry, *pMyNameEntry, *pMessageEntry, *pLocationEntry[2], *pURLEntry, *pLatitudeEntry, *pLongitudeEntry, *pLinkAtStartEntry, *pAPRSServerEntry, *pAPRSPortEntry, *pAPRSIntervalEntry, *pGPSDServerEntry, *pGPSDPortEntry;
-	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton, *pNoRoutingRadioButton;
+	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton;
 	Gtk::Label *pDevicePathLabel, *pProductIDLabel, *pVersionLabel, *pInputDescLabel, *pOutputDescLabel;
 	// events
 	void on_LinkingCheckButton_toggled();

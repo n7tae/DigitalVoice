@@ -32,10 +32,10 @@ hostfile :
 	wget http://www.pistar.uk/downloads/DCS_Hosts.txt
 	/bin/rm -f gwys.txt
 	echo "# Downloaded from www.pistar.uk and xlxapi.rlx.lu `date`" > gwys.txt
-	awk '$$1 ~ /^XLX[0-9]+$$/ { gsub("\r", ""); printf "%s %s 30001\n", $$1, $$2 }' XLX_Hosts.txt >> gwys.txt
-	awk '$$1 ~ /^XRF[0-9]+$$/ { printf "%s %s 30001\n", $$1, $$2 }' DExtra_Hosts.txt >> gwys.txt
 	awk '$$1 ~ /^DCS[0-9]+$$/ { printf "%s %s 30051\n", $$1, $$2 }' DCS_Hosts.txt >> gwys.txt
 	awk '$$1 ~ /^REF[0-9]+$$/ { printf "%s %s 20001\n", $$1, $$2 }' DPlus_Hosts.txt >> gwys.txt
+	awk '$$1 ~ /^XLX[0-9]+$$/ { gsub("\r", ""); printf "%s %s 30001\n", $$1, $$2 }' XLX_Hosts.txt >> gwys.txt
+	awk '$$1 ~ /^XRF[0-9]+$$/ { printf "%s %s 30001\n", $$1, $$2 }' DExtra_Hosts.txt >> gwys.txt
 	/bin/rm *_Hosts.txt
 
 install : qdv

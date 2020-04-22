@@ -178,6 +178,10 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pOkayButton = pDlg->add_button("Okay", Gtk::RESPONSE_OK);
 	pOkayButton->set_sensitive(false);
 
+	// modes
+	builder->get_widget("LinkingCheckButton", pLinkingCheckButton);
+	builder->get_widget("RoutingCheckButton", pRoutingCheckbutton);
+
 	// station
 	builder->get_widget("MyCallsignEntry", pMyCallsignEntry);
 	builder->get_widget("MyNameEntry", pMyNameEntry);
@@ -211,7 +215,6 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	builder->get_widget("IPV4_RadioButton", pIPv4OnlyRadioButton);
 	builder->get_widget("IPV6_RadioButton", pIPv6OnlyRadioButton);
 	builder->get_widget("Dual_Stack_RadioButton", pDualStackRadioButton);
-	builder->get_widget("No_Routing_RadioButton", pNoRoutingRadioButton);
 	// Audio
 	builder->get_widget("AudioInputComboBox", pAudioInputComboBox);
 	refAudioInListModel = Gtk::ListStore::create(audio_columns);
@@ -249,7 +252,6 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pIPv4OnlyRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pIPv6OnlyRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pDualStackRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pNoRoutingRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
 	pAMBERescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AMBERescanButton_clicked));
 	pAudioRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioRescanButton_clicked));
 	pLinkAtStartEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LinkAtStartEntry_changed));

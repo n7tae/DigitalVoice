@@ -19,6 +19,39 @@
 #pragma once
 
 #include <queue>
+#include <string>
+
+class CHost {
+public:
+	CHost() {}
+
+	~CHost() {}
+
+	CHost(const CHost &from)
+	{
+		name.assign(from.name);
+		addr.assign(from.addr);
+		port = from.port;
+	}
+
+	CHost(const std::string n, const std::string a, unsigned short p)
+	{
+		name.assign(n);
+		addr.assign(a);
+		port = p;
+	}
+
+	CHost &operator=(const CHost &from)
+	{
+		name.assign(from.name);
+		addr.assign(from.addr);
+		port = from.port;
+		return *this;
+	}
+
+	std::string name, addr;
+	unsigned short port;
+};
 
 template <class T, int N> class CTFrame
 {
@@ -111,3 +144,4 @@ using CAMBEQueue = CTQueue<CAMBEFrame>;
 using CAudioFrame = CTFrame<short int, 160>;
 using CAudioQueue = CTQueue<CAudioFrame>;
 using CSequenceQueue = CTQueue<unsigned char>;
+using CHostQueue = CTQueue<CHost>;

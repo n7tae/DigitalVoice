@@ -52,6 +52,11 @@ using STOREMOTE = struct link_to_remote_g2_tag {
     unsigned short out_streamid; // outgoing to remote systems
 };
 
+using STRACING = struct tracing_tag {
+	unsigned short streamid;
+	time_t last_time;
+};
+
 class CQnetLink {
 public:
 	// functions
@@ -81,17 +86,13 @@ private:
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
     int delay_before;
 	std::string link_at_startup;
-	int rf_inactivity_timer;
 	const unsigned char REF_ACK[3] = { 3, 96, 0 };
 
 	char notify_msg[64];
 
 	STOREMOTE to_remote_g2;
 
-	struct tracing_tag {
-		unsigned short streamid;
-		time_t last_time;	// last time RF user talked
-	} tracing;
+	STRACING tracing;
 
 	// input from remote
 	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
@@ -100,9 +101,6 @@ private:
 	// unix socket to the audio unit
 	CUnixDgramReader AM2Link;
 	CUnixDgramWriter Link2AM, LogInput;
-
-	// input from our own local repeater
-	struct sockaddr_in fromRptr;
 
 	fd_set fdset;
 	struct timeval tv;

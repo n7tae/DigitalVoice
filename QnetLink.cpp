@@ -177,7 +177,6 @@ bool CQnetLink::Configure()
 	owner.assign(pCFGData->sStation);
 	owner.resize(CALL_SIZE, ' ');
 
-	rf_inactivity_timer = 0;
 	link_at_startup.assign(pCFGData->sLinkAtStart);
 
 	my_g2_link_ip.assign("0.0.0.0");
@@ -311,7 +310,7 @@ void CQnetLink::srv_close()
 void CQnetLink::Link(const char *call, const char to_mod)
 {
 	char link_request[519];
-
+	printf("Link request to %s to module %c\n", call, to_mod);
 	memset(link_request, 0, sizeof(link_request));
 
     to_remote_g2.addr.Clear();
@@ -369,7 +368,7 @@ void CQnetLink::Link(const char *call, const char to_mod)
 		SendLog("Sending link request from mod %c to link with: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
 
 		for (int j=0; j<5; j++)
-			sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+			sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 	} else if (port == rmt_dcs_port) {
 		strcpy(link_request, owner.c_str());
 		link_request[8] = pCFGData->cModule;
@@ -379,7 +378,7 @@ void CQnetLink::Link(const char *call, const char to_mod)
 		strcpy(link_request + 19, "<table border=\"0\" width=\"95%\"><tr><td width=\"4%\"><img border=\"0\" src=g2ircddb.jpg></td><td width=\"96%\"><font size=\"2\"><b>REPEATER</b> QnetGateway v1.0+</font></td></tr></table>");
 
 		SendLog("Sending link request from mod %c to link with: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
-		sendto(dcs_g2_sock, link_request, 519, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+		sendto(dcs_g2_sock, link_request, 519, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 	} else if (port == rmt_ref_port) {
 		SendLog("Sending link command from mod %c to: [%s] mod %c\n", to_remote_g2.from_mod, to_remote_g2.to_call, to_remote_g2.to_mod);
 
@@ -389,7 +388,7 @@ void CQnetLink::Link(const char *call, const char to_mod)
 		queryCommand[3] = 0;
 		queryCommand[4] = 1;
 
-		sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+		sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 	}
 }
 
@@ -405,7 +404,7 @@ void CQnetLink::Unlink()
 			queryCommand[2] = 24;
 			queryCommand[3] = 0;
 			queryCommand[4] = 0;
-			sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+			sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 		} else if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
 			strcpy(unlink_request, owner.c_str());
 			unlink_request[8] = to_remote_g2.from_mod;
@@ -413,7 +412,7 @@ void CQnetLink::Unlink()
 			unlink_request[10] = '\0';
 
 			for (int j=0; j<5; j++)
-				sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 		} else {
 			strcpy(cmd_2_dcs, owner.c_str());
 			cmd_2_dcs[8] = to_remote_g2.from_mod;
@@ -422,7 +421,7 @@ void CQnetLink::Unlink()
 			memcpy(cmd_2_dcs + 11, to_remote_g2.to_call, 8);
 
 			for (int j=0; j<5; j++)
-				sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 		}
 
 		SendLog("Unlinked from [%s] mod %c\n", to_remote_g2.to_call, to_remote_g2.to_mod);
@@ -448,7 +447,6 @@ void CQnetLink::Process()
 
 	char *space_p = 0;
 	char linked_remote_system[CALL_SIZE + 1];
-	char unlink_request[CALL_SIZE + 3];
 
 	int max_nfds = 0;
 
@@ -461,16 +459,19 @@ void CQnetLink::Process()
 
 	char cmd_2_dcs[23];
 	unsigned char dcs_seq = 0U;
-	struct {
+	struct rptr_2_dcs_tag {
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
 	} rptr_2_dcs = {"        ", "    ", 0};
-	struct {
-		char mycall[9];
-		char sfx[5];
-		unsigned int dcs_rptr_seq;
-	} ref_2_dcs = {"        ", "    ", 0};
+
+	struct silent_tag {
+		time_t lasttime;
+		unsigned char ctrl;
+		CDSVT dsvt;
+	} silent;
+
+	memset(&silent, 0, sizeof(silent));
 
 	char source_stn[9];
 
@@ -503,7 +504,7 @@ void CQnetLink::Process()
 
 			/* send heartbeat to linked XRF repeaters/reflectors */
 			if (to_remote_g2.addr.GetPort() == rmt_xrf_port)
-				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 
 			/* send heartbeat to linked DCS reflectors */
 			if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
@@ -511,12 +512,12 @@ void CQnetLink::Process()
 				cmd_2_dcs[7] = to_remote_g2.from_mod;
 				memcpy(cmd_2_dcs + 9, to_remote_g2.to_call, 8);
 				cmd_2_dcs[16] = to_remote_g2.to_mod;
-				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 			}
 
 			/* send heartbeat to linked REF reflectors */
 			if (to_remote_g2.is_connected && to_remote_g2.addr.GetPort()==rmt_ref_port)
-				sendto(ref_g2_sock, REF_ACK, 3, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(ref_g2_sock, REF_ACK, 3, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 
 			/* check for timeouts from remote */
 			if (to_remote_g2.to_call[0] != '\0') {
@@ -539,48 +540,19 @@ void CQnetLink::Process()
 				}
 			}
 
-				/*** check for RF inactivity ***/
-			if (to_remote_g2.is_connected) {
-				if (((tnow - tracing.last_time) > rf_inactivity_timer) && (rf_inactivity_timer > 0)) {
-					tracing.last_time = 0;
-
-					printf("Unlinked from [%s] mod %c, local RF inactivity...\n", to_remote_g2.to_call, to_remote_g2.to_mod);
-
-					if (to_remote_g2.addr.GetPort() == rmt_ref_port) {
-						queryCommand[0] = 5;
-						queryCommand[1] = 0;
-						queryCommand[2] = 24;
-						queryCommand[3] = 0;
-						queryCommand[4] = 0;
-						sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-					} else if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
-						strcpy(unlink_request, owner.c_str());
-						unlink_request[8] = to_remote_g2.from_mod;
-						unlink_request[9] = ' ';
-						unlink_request[10] = '\0';
-
-						for (int j=0; j<5; j++)
-							sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-					} else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
-						strcpy(cmd_2_dcs, owner.c_str());
-						cmd_2_dcs[8] = to_remote_g2.from_mod;
-						cmd_2_dcs[9] = ' ';
-						cmd_2_dcs[10] = '\0';
-						memcpy(cmd_2_dcs + 11, to_remote_g2.to_call, 8);
-
-						for (int j=0; j<2; j++)
-							sendto(dcs_g2_sock, cmd_2_dcs, 19 ,0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-					}
-
-					sprintf(notify_msg, "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2.from_mod);
-					qnDB.DeleteLS(to_remote_g2.addr.GetAddress());
-					to_remote_g2.to_call[0] = '\0';
-					to_remote_g2.addr.Clear();
-					to_remote_g2.from_mod = to_remote_g2.to_mod = ' ';
-					to_remote_g2.countdown = 0;
-					to_remote_g2.is_connected = false;
-					to_remote_g2.in_streamid = 0x0;
+			// check for packet stream timeout
+			if (silent.lasttime && ((silent.lasttime - tnow) > 2)) {
+				printf("VoiceStream timeout detected from linked system, closing stream!\n");
+				if (silent.ctrl) {
+					const unsigned char silence[3] = { 0x70U, 0x4FU, 0x93U };
+					memcpy(silent.dsvt.vasd.text, silence, 3U);
+				} else {
+					const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+					memcpy(silent.dsvt.vasd.voice, sync, 3U);
 				}
+				Link2AM.Write(silent.dsvt.title, 27);
+				to_remote_g2.in_streamid = old_sid = 0U;
+				silent.lasttime = 0;
 			}
 			time(&hb);
 		}
@@ -616,6 +588,9 @@ void CQnetLink::Process()
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000;
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
+
+		bool is_packet = false;
+		CDSVT dsvt;
 
 		if (keep_running && FD_ISSET(xrf_g2_sock, &fdset)) {
 			socklen_t fromlen = sizeof(struct sockaddr_in);
@@ -692,7 +667,6 @@ void CQnetLink::Process()
 					found = true;
 				}
 
-				CDSVT dsvt;
 				memcpy(dsvt.title, buf, length);	// copy to struct
 
 				/* process header */
@@ -743,7 +717,8 @@ void CQnetLink::Process()
 						}
 
 						/* relay header to the audio manager */
-						Link2AM.Write(dsvt.title, 56);
+						//Link2AM.Write(dsvt.title, 56);
+						is_packet = true;
 
 					}
 				} else if (found) {	// length is 27
@@ -756,16 +731,17 @@ void CQnetLink::Process()
 					}
 
 					/* relay data to the audio manager */
-					Link2AM.Write(dsvt.title, 27);
+					//Link2AM.Write(dsvt.title, 27);
+					is_packet = true;
 				}
 			}
 			FD_CLR (xrf_g2_sock,&fdset);
 		}
 
 		if (keep_running && FD_ISSET(ref_g2_sock, &fdset)) {
-			socklen_t fromlen = sizeof(struct sockaddr_in);
+			socklen_t fromlen = sizeof(struct sockaddr_storage);
 			unsigned char buf[100];
-			int length = recvfrom(ref_g2_sock, buf, 100, 0, (struct sockaddr *)&fromDst4,&fromlen);
+			int length = recvfrom(ref_g2_sock, buf, 100, 0, fromDst4.GetPointer(), &fromlen);
 
 			strncpy(ip, fromDst4.GetAddress(), INET6_ADDRSTRLEN+1);
 			ip[INET_ADDRSTRLEN] = '\0';
@@ -793,7 +769,7 @@ void CQnetLink::Process()
 
 					// ATTENTION: I should ONLY send once for each distinct
 					// remote IP, so  get out of the loop immediately
-					sendto(ref_g2_sock, queryCommand, 28, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+					sendto(ref_g2_sock, queryCommand, 28, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 				}
 				else if (length==8 && buf[0]==8 && buf[1]==192 && buf[2]==4 && buf[3]==0) {
 					if (buf[4]== 79 && buf[5]==75 && buf[6]==82) {
@@ -849,16 +825,15 @@ void CQnetLink::Process()
 					found = true;
 				}
 
-				CREFDSVT rdvst;
-				memcpy(rdvst.head, buf, length);	// copy to struct
+				memcpy(dsvt.title, buf+2, length);	// copy to struct
 
 				if (length==58 && found) {
 					memset(source_stn, ' ', 9);
 					source_stn[8] = '\0';
 
 					/* some bad hotspot programs out there using INCORRECT flag */
-					if (rdvst.dsvt.hdr.flag[0]==0x40U || rdvst.dsvt.hdr.flag[0]==0x48U || rdvst.dsvt.hdr.flag[0]==0x60U || rdvst.dsvt.hdr.flag[0]==0x68U)
-						rdvst.dsvt.hdr.flag[0] -= 0x40U;
+					if (dsvt.hdr.flag[0]==0x40U || dsvt.hdr.flag[0]==0x48U || dsvt.hdr.flag[0]==0x60U || dsvt.hdr.flag[0]==0x68U)
+						dsvt.hdr.flag[0] -= 0x40U;
 
 					/* A reflector will send to us its own RPT1 */
 					/* A repeater will send to us its own RPT1 */
@@ -867,12 +842,12 @@ void CQnetLink::Process()
 					/* It is from a repeater-reflector, correct rpt1, rpt2 and re-compute pfcs */
 					if (fromDst4==to_remote_g2.addr && to_remote_g2.addr.GetPort()==rmt_ref_port &&
 							(
-								(0==memcmp(rdvst.dsvt.hdr.rpt1, to_remote_g2.to_call, 7) && rdvst.dsvt.hdr.rpt1[7]==to_remote_g2.to_mod)  ||
-								(0==memcmp(rdvst.dsvt.hdr.rpt2, to_remote_g2.to_call, 7) && rdvst.dsvt.hdr.rpt2[7]==to_remote_g2.to_mod)
+								(0==memcmp(dsvt.hdr.rpt1, to_remote_g2.to_call, 7) && dsvt.hdr.rpt1[7]==to_remote_g2.to_mod)  ||
+								(0==memcmp(dsvt.hdr.rpt2, to_remote_g2.to_call, 7) && dsvt.hdr.rpt2[7]==to_remote_g2.to_mod)
 							)) {
-						memcpy(rdvst.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
-						rdvst.dsvt.hdr.rpt1[7] = to_remote_g2.from_mod;
-						memcpy(rdvst.dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
+						memcpy(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
+						dsvt.hdr.rpt1[7] = to_remote_g2.from_mod;
+						memcpy(dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
 
 						memcpy(source_stn, to_remote_g2.to_call, CALL_SIZE);
 						source_stn[7] = to_remote_g2.to_mod;
@@ -881,120 +856,49 @@ void CQnetLink::Process()
 
 					/* somebody's crazy idea of having a personal callsign in RPT2 */
 					/* we must set it to our gateway callsign */
-					memcpy(rdvst.dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
-					rdvst.dsvt.hdr.rpt2[7] = 'G';
-					calcPFCS(rdvst.dsvt.title, 56);
+					memcpy(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
+					dsvt.hdr.rpt2[7] = 'G';
+					calcPFCS(dsvt.title, 56);
 
 					/* At this point, all data have our RPT1 and RPT2 */
 					/* are we sure that RPT1 is our system? */
-					if (0==memcmp(rdvst.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE-1) && (rdvst.dsvt.hdr.rpt1[7]==pCFGData->cModule)) {
+					if (0==memcmp(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE-1) && (dsvt.hdr.rpt1[7]==pCFGData->cModule)) {
 						/* Last Heard */
-						if (old_sid != rdvst.dsvt.streamid) {
+						if (old_sid != dsvt.streamid) {
 							if (qso_details) {
-								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(rdvst.dsvt.streamid), rdvst.dsvt.hdr.flag[0], rdvst.dsvt.hdr.flag[1], rdvst.dsvt.hdr.flag[2], rdvst.dsvt.hdr.mycall, rdvst.dsvt.hdr.sfx, rdvst.dsvt.hdr.urcall, rdvst.dsvt.hdr.rpt1, rdvst.dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
+								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
 							}
 							// put user into tmp1
-							memcpy(tmp1, rdvst.dsvt.hdr.mycall, 8);
+							memcpy(tmp1, dsvt.hdr.mycall, 8);
 							tmp1[8] = '\0';
-							old_sid = rdvst.dsvt.streamid;
+							old_sid = dsvt.streamid;
 						}
 
 						/* send the data to the audio manager */
-						Link2AM.Write(rdvst.dsvt.title, 56);
-
-						if ((! (to_remote_g2.addr==fromDst4)) && to_remote_g2.is_connected) {
-							if ( /*** (memcmp(readBuffer2 + 44, owner, 8) != 0) && ***/         /* block repeater announcements */
-							    0==memcmp(rdvst.dsvt.hdr.urcall, "CQCQCQ", 6) &&	/* CQ calls only */
-							    (rdvst.dsvt.hdr.flag[0]==0x00 ||	/* normal */
-							     rdvst.dsvt.hdr.flag[0]==0x08 ||	/* EMR */
-							     rdvst.dsvt.hdr.flag[0]==0x20 ||	/* BK */
-							     rdvst.dsvt.hdr.flag[7]==0x28) &&	/* EMR + BK */
-							    0==memcmp(rdvst.dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE-1) &&         /* rpt2 must be us */
-							    rdvst.dsvt.hdr.rpt2[7] == 'G') {
-								to_remote_g2.in_streamid = rdvst.dsvt.streamid;
-
-								if (to_remote_g2.addr.GetPort()==rmt_xrf_port || to_remote_g2.addr.GetPort()==rmt_ref_port) {
-									memcpy(rdvst.dsvt.hdr.rpt1, to_remote_g2.to_call, CALL_SIZE);
-									rdvst.dsvt.hdr.rpt1[7] = to_remote_g2.to_mod;
-									memcpy(rdvst.dsvt.hdr.rpt2, to_remote_g2.to_call, CALL_SIZE);
-									rdvst.dsvt.hdr.rpt2[7] = 'G';
-									calcPFCS(rdvst.dsvt.title, 56);
-
-									if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
-										/* inform XRF about the source */
-										rdvst.dsvt.flagb[2] = to_remote_g2.from_mod;
-										sendto(xrf_g2_sock, rdvst.dsvt.title, 56, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-									} else
-										sendto(ref_g2_sock, rdvst.head, 58, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-								} else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
-									memcpy(ref_2_dcs.mycall, rdvst.dsvt.hdr.mycall, 8);
-									memcpy(ref_2_dcs.sfx, rdvst.dsvt.hdr.sfx, 4);
-									ref_2_dcs.dcs_rptr_seq = 0;
-								}
-							}
-						}
+						//Link2AM.Write(rdvst.dsvt.title, 56);
+						is_packet = true;
 					}
 				} else if (found) {
-					if (rdvst.dsvt.ctrl & 0x40U) {
-						if (old_sid == rdvst.dsvt.streamid) {
+					if (dsvt.ctrl & 0x40U) {
+						if (old_sid == dsvt.streamid) {
 							if (qso_details)
-								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdvst.dsvt.streamid), length, fromDst4.GetAddress());
+								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
 
 							old_sid = 0U;
 						}
 					}
 
 					/* send the data to the audio mgr */
-					Link2AM.Write(rdvst.dsvt.title, 27);
-
-					if (to_remote_g2.is_connected && (! (to_remote_g2.addr==fromDst4)) && to_remote_g2.in_streamid==rdvst.dsvt.streamid) {
-						if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
-							/* inform XRF about the source */
-							rdvst.dsvt.flagb[2] = to_remote_g2.from_mod;
-							sendto(xrf_g2_sock, rdvst.dsvt.title, 27, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-						} else if (to_remote_g2.addr.GetPort() == rmt_ref_port)
-							sendto(ref_g2_sock, rdvst.head, 29,  0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-						else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
-							memset(dcs_buf, 0x00, 600);
-							dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
-							dcs_buf[3] = '1';
-							dcs_buf[4] = dcs_buf[5] = dcs_buf[6] = 0x0;
-							memcpy(dcs_buf + 7, to_remote_g2.to_call, 8);
-							dcs_buf[14] = to_remote_g2.to_mod;
-							memcpy(dcs_buf + 15, owner.c_str(), CALL_SIZE);
-							dcs_buf[22] = to_remote_g2.from_mod;
-							memcpy(dcs_buf + 23, "CQCQCQ  ", 8);
-							memcpy(dcs_buf + 31, ref_2_dcs.mycall, 8);
-							memcpy(dcs_buf + 39, ref_2_dcs.sfx, 4);
-							dcs_buf[43] = buf[14];  /* streamid0 */
-							dcs_buf[44] = buf[15];  /* streamid1 */
-							dcs_buf[45] = buf[16];  /* cycle sequence */
-							memcpy(dcs_buf + 46, rdvst.dsvt.vasd.voice, 12);
-
-							dcs_buf[58] = (ref_2_dcs.dcs_rptr_seq >> 0)  & 0xff;
-							dcs_buf[59] = (ref_2_dcs.dcs_rptr_seq >> 8)  & 0xff;
-							dcs_buf[60] = (ref_2_dcs.dcs_rptr_seq >> 16) & 0xff;
-
-							ref_2_dcs.dcs_rptr_seq++;
-
-							dcs_buf[61] = 0x01;
-							dcs_buf[62] = 0x00;
-
-							sendto(dcs_g2_sock, dcs_buf, 100, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
-						}
-
-						if (rdvst.dsvt.ctrl & 0x40) {
-							to_remote_g2.in_streamid = 0x0;
-						}
-					}
+					// Link2AM.Write(rdvst.dsvt.title, 27);
+					is_packet = true;
 				}
 			}
 			FD_CLR (ref_g2_sock,&fdset);
 		}
 
 		if (keep_running && FD_ISSET(dcs_g2_sock, &fdset)) {
-			socklen_t fromlen = sizeof(struct sockaddr_in);
-			int length = recvfrom(dcs_g2_sock, dcs_buf, 1000, 0, (struct sockaddr *)&fromDst4, &fromlen);
+			socklen_t fromlen = sizeof(struct sockaddr_storage);
+			int length = recvfrom(dcs_g2_sock, dcs_buf, 1000, 0, fromDst4.GetPointer(), &fromlen);
 
 			strncpy(ip, fromDst4.GetAddress(), INET6_ADDRSTRLEN);
 			ip[INET6_ADDRSTRLEN] = '\0';
@@ -1024,68 +928,59 @@ void CQnetLink::Process()
 							dcs_seq = 0xff;
 
 							/* generate our header */
-							CREFDSVT rdvst;
-							rdvst.head[0] = (unsigned char)(58 & 0xFF);
-							rdvst.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-							rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
-							memcpy(rdvst.dsvt.title, "DSVT", 4);
-							rdvst.dsvt.config = 0x10;
-							rdvst.dsvt.flaga[0] = rdvst.dsvt.flaga[1] = rdvst.dsvt.flaga[2] = 0x00;
-							rdvst.dsvt.id = 0x20;
-							rdvst.dsvt.flagb[0] = 0x00;
-							rdvst.dsvt.flagb[1] = 0x01;
+							memcpy(dsvt.title, "DSVT", 4);
+							dsvt.config = 0x10;
+							dsvt.flaga[0] = dsvt.flaga[1] = dsvt.flaga[2] = 0x00;
+							dsvt.id = 0x20;
+							dsvt.flagb[0] = 0x00;
+							dsvt.flagb[1] = 0x01;
 							if (to_remote_g2.from_mod == 'A')
-								rdvst.dsvt.flagb[2] = 0x03;
+								dsvt.flagb[2] = 0x03;
 							else if (to_remote_g2.from_mod == 'B')
-								rdvst.dsvt.flagb[2] = 0x01;
+								dsvt.flagb[2] = 0x01;
 							else
-								rdvst.dsvt.flagb[2] = 0x02;
-							memcpy(&rdvst.dsvt.streamid, dcs_buf+43, 2);
-							rdvst.dsvt.ctrl = 0x80;
-							rdvst.dsvt.hdr.flag[0] = rdvst.dsvt.hdr.flag[1] = rdvst.dsvt.hdr.flag[2] = 0x00;
-							memcpy(rdvst.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
-							rdvst.dsvt.hdr.rpt1[7] = to_remote_g2.from_mod;
-							memcpy(rdvst.dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
-							rdvst.dsvt.hdr.rpt2[7] = 'G';
-							memcpy(rdvst.dsvt.hdr.urcall, "CQCQCQ  ", 8);
-							memcpy(rdvst.dsvt.hdr.mycall, dcs_buf + 31, 8);
-							memcpy(rdvst.dsvt.hdr.sfx, dcs_buf + 39, 4);
-							calcPFCS(rdvst.dsvt.title, 56);
+								dsvt.flagb[2] = 0x02;
+							memcpy(&dsvt.streamid, dcs_buf+43, 2);
+							dsvt.ctrl = 0x80;
+							dsvt.hdr.flag[0] = dsvt.hdr.flag[1] = dsvt.hdr.flag[2] = 0x00;
+							memcpy(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
+							dsvt.hdr.rpt1[7] = to_remote_g2.from_mod;
+							memcpy(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
+							dsvt.hdr.rpt2[7] = 'G';
+							memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
+							memcpy(dsvt.hdr.mycall, dcs_buf + 31, 8);
+							memcpy(dsvt.hdr.sfx, dcs_buf + 39, 4);
+							calcPFCS(dsvt.title, 56);
 
 							/* send the header to the audio mgr */
-							Link2AM.Write(rdvst.dsvt.title, 56);
-						}
-
-						if (0==memcmp(&to_remote_g2.in_streamid, dcs_buf+43, 2) && dcs_seq!=dcs_buf[45]) {
-							dcs_seq = dcs_buf[45];
-							CREFDSVT rdvst;
-							rdvst.head[0] = (unsigned char)(29 & 0xFF);
-							rdvst.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-							rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
-							memcpy(rdvst.dsvt.title, "DSVT", 4);
-							rdvst.dsvt.config = 0x20;
-							rdvst.dsvt.flaga[0] = rdvst.dsvt.flaga[1] = rdvst.dsvt.flaga[2] = 0x00;
-							rdvst.dsvt.id = 0x20;
-							rdvst.dsvt.flagb[0] = 0x00;
-							rdvst.dsvt.flagb[1] = 0x01;
+							//Link2AM.Write(dsvt.title, 56);
+							is_packet = true;
+						} else if (dcs_seq!=dcs_buf[45]) {
+							memcpy(dsvt.title, "DSVT", 4);
+							dsvt.config = 0x20;
+							dsvt.flaga[0] = dsvt.flaga[1] = dsvt.flaga[2] = 0x00;
+							dsvt.id = 0x20;
+							dsvt.flagb[0] = 0x00;
+							dsvt.flagb[1] = 0x01;
 							if (to_remote_g2.from_mod == 'A')
-								rdvst.dsvt.flagb[2] = 0x03;
+								dsvt.flagb[2] = 0x03;
 							else if (to_remote_g2.from_mod == 'B')
-								rdvst.dsvt.flagb[2] = 0x01;
+								dsvt.flagb[2] = 0x01;
 							else
-								rdvst.dsvt.flagb[2] = 0x02;
-							memcpy(&rdvst.dsvt.streamid, dcs_buf+43, 2);
-							rdvst.dsvt.ctrl = dcs_buf[45];
-							memcpy(rdvst.dsvt.vasd.voice, dcs_buf+46, 12);
+								dsvt.flagb[2] = 0x02;
+							memcpy(&dsvt.streamid, dcs_buf+43, 2);
+							dsvt.ctrl = dcs_buf[45];
+							memcpy(dsvt.vasd.voice, dcs_buf+46, 12);
 
 							/* send the data to the audio mgr */
-							Link2AM.Write(rdvst.dsvt.title, 27);
+							//Link2AM.Write(rdvst.dsvt.title, 27);
+							is_packet = true;
 
 							if ((dcs_buf[45] & 0x40) != 0) {
 								old_sid = 0x0;
 
 								if (qso_details)
-									printf("END from dcs: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdvst.dsvt.streamid), length, fromDst4.GetAddress());
+									printf("END from dcs: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
 
 								to_remote_g2.in_streamid = 0x0;
 								dcs_seq = 0xff;
@@ -1216,10 +1111,10 @@ void CQnetLink::Process()
 										rdvst.dsvt.flagb[2] = to_remote_g2.from_mod;
 										calcPFCS(rdvst.dsvt.title, 56);
 										for (int j=0; j<5; j++)
-											sendto(xrf_g2_sock, rdvst.dsvt.title, 56, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+											sendto(xrf_g2_sock, rdvst.dsvt.title, 56, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 									} else {
 										for (int j=0; j<5; j++)
-											sendto(ref_g2_sock, rdvst.head, 58, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+											sendto(ref_g2_sock, rdvst.head, 58, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 									}
 								} else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
 									memcpy(rptr_2_dcs.mycall, dsvt.hdr.mycall, CALL_SIZE);
@@ -1245,9 +1140,9 @@ void CQnetLink::Process()
 								/* inform XRF about the source */
 								rdvst.dsvt.flagb[2] = to_remote_g2.from_mod;
 
-								sendto(xrf_g2_sock, rdvst.dsvt.title, 27, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+								sendto(xrf_g2_sock, rdvst.dsvt.title, 27, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 							} else if (to_remote_g2.addr.GetPort() == rmt_ref_port)
-								sendto(ref_g2_sock, rdvst.head, 29, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+								sendto(ref_g2_sock, rdvst.head, 29, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 						} else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
 							memset(dcs_buf, 0x0, 600);
 							dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
@@ -1273,7 +1168,7 @@ void CQnetLink::Process()
 							dcs_buf[61] = 0x01;
 							dcs_buf[62] = 0x00;
 
-							sendto(dcs_g2_sock, dcs_buf, 100, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+							sendto(dcs_g2_sock, dcs_buf, 100, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 						}
 
 						if (dsvt.ctrl & 0x40U) {
@@ -1294,6 +1189,64 @@ void CQnetLink::Process()
 				}
 			}
 			FD_CLR (AM2Link.GetFD(), &fdset);
+		}
+
+		if (keep_running && is_packet) {
+			if (0x10U == dsvt.config) {			// a header packet
+
+				memcpy(silent.dsvt.title, dsvt.title, 14); // make a silent packet, just in case it's needed.
+				silent.dsvt.config = 0x20U;
+				silent.ctrl = 0U;
+				const unsigned char silence[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+				memcpy(dsvt.vasd.voice, silence, 9);
+
+				silent.ctrl = 0U;	// the expected ctrl value for the first voice packet
+
+				Link2AM.Write(dsvt.title, 56);	// send the header
+				time(&silent.lasttime);			// and start the voicestream timeout clock
+			} else if (0x20U == dsvt.config) {	// a voice packet
+				int diff = int(0x1FU & dsvt.ctrl) - int(silent.ctrl);
+				if (diff) {	// maybe add some silent frames
+					if (diff < 0)
+						diff += 21;
+					if (diff < 6) {
+						if (log_debug)
+							printf("Filling in %d silent frames...\n", diff);
+						while (diff-- > 0) {
+							silent.dsvt.ctrl = silent.ctrl++;
+							silent.ctrl %= 21U;
+							if (silent.dsvt.ctrl) {
+								const unsigned char silence[3] = { 0x70U, 0x4FU, 0x93U };
+								memcpy(dsvt.vasd.text, silence, 3U);
+							} else {
+								const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+								memcpy(silent.dsvt.vasd.text, sync, 12U);
+							}
+							Link2AM.Write(silent.dsvt.title, 27);
+							time(&silent.lasttime);	// update the timecout clock
+						}
+					} else {
+						if (log_debug)
+							printf("Missing %d packets in the voice stream sequence, resetting.\n", diff);
+						silent.ctrl = dsvt.ctrl;
+					}
+				}
+				if ((silent.ctrl == (0x1FU & dsvt.ctrl)) || (0x40U & dsvt.ctrl)) {	// only send the packet if it's the correct sequence
+																					// or it's the terminating packet
+					if (0x40U & dsvt.ctrl) {
+						dsvt.ctrl = (silent.ctrl | 0x40U);
+						silent.lasttime = 0;	// stop the timeout clock
+					} else {
+						dsvt.ctrl = silent.ctrl;
+						silent.ctrl = (silent.ctrl + 1U) % 21U;
+						time(&silent.lasttime);	// update the timecout clock
+					}
+					Link2AM.Write(dsvt.title, 27);
+				} else {
+					if (log_debug)
+						printf("ignorning packet with ctrl=0x%02x, should be 0x%02x\n", dsvt.ctrl, silent.ctrl);
+				}
+			}
 		}
 
 		if (keep_running && notify_msg[0] && 0x0U == tracing.streamid) {
@@ -1371,14 +1324,14 @@ void CQnetLink::Shutdown()
 	queryCommand[4] = 0;
 	if (to_remote_g2.to_call[0] != '\0') {
 		if (to_remote_g2.addr.GetPort() == rmt_ref_port)
-			sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+			sendto(ref_g2_sock, queryCommand, 5, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 		else if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
 			strcpy(unlink_request, owner.c_str());
 			unlink_request[8] = to_remote_g2.from_mod;
 			unlink_request[9] = ' ';
 			unlink_request[10] = '\0';
 			for (int j=0; j<5; j++)
-				sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 		} else {
 			strcpy(cmd_2_dcs, owner.c_str());
 			cmd_2_dcs[8] = to_remote_g2.from_mod;
@@ -1387,7 +1340,7 @@ void CQnetLink::Shutdown()
 			memcpy(cmd_2_dcs + 11, to_remote_g2.to_call, 8);
 
 			for (int j=0; j<5; j++)
-				sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, to_remote_g2.addr.GetPointer(), to_remote_g2.addr.GetSize());
+				sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 		}
 	}
 	to_remote_g2.to_call[0] = '\0';

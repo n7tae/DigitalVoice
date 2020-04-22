@@ -78,6 +78,7 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 
 	int ret = client.ReadExact(buffer, 2U);
 	unsigned int rval = 0;
+	CHostQueue hqueue;
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
@@ -106,13 +107,17 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 
 			// An empty name or IP address or an inactive gateway/reflector is not added
 			if (address.size()>0U && name.size()>0U && active) {
-				rval++;
-				if (reflectors && 0==name.compare(0, 3, "REF"))
-					db.UpdateGW(name.c_str(), address.c_str(), 20001);
-				else if (repeaters && name.compare(0, 3, "REF"))
-					db.UpdateGW(name.c_str(), address.c_str(), 20001);
+				if (reflectors && 0==name.compare(0, 3, "REF")) {
+					rval++;
+					hqueue.Push(CHost(name.c_str(), address.c_str(), 20001));
+				} else if (repeaters && name.compare(0, 3, "REF")) {
+					rval++;
+					hqueue.Push(CHost(name.c_str(), address.c_str(), 20001));
+				}
 			}
 		}
+		if (! hqueue.Empty())
+			db.UpdateGW(hqueue);
 
 		ret = client.ReadExact(buffer, 2U);
 	}
