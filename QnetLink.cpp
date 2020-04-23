@@ -710,7 +710,7 @@ void CQnetLink::Process()
 						/* Last Heard */
 						if (old_sid != dsvt.streamid) {
 							if (qso_details) {
-								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, r1=%.8s, r2=%.8s, %d bytes IP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
+								SendLog("START from xrf: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, r1=%.8s, r2=%.8s, %d bytes IP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
 							}
 
 							old_sid = dsvt.streamid;
@@ -725,7 +725,7 @@ void CQnetLink::Process()
 					if ((dsvt.ctrl & 0x40) != 0) {
 						if (old_sid == dsvt.streamid) {
 							if (qso_details)
-								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
+								SendLog("END   from xrf: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
 							old_sid = 0x0;
 						}
 					}
@@ -866,7 +866,7 @@ void CQnetLink::Process()
 						/* Last Heard */
 						if (old_sid != dsvt.streamid) {
 							if (qso_details) {
-								SendLog("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
+								SendLog("START from ref: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, fromDst4.GetAddress(), source_stn);
 							}
 							// put user into tmp1
 							memcpy(tmp1, dsvt.hdr.mycall, 8);
@@ -882,7 +882,7 @@ void CQnetLink::Process()
 					if (dsvt.ctrl & 0x40U) {
 						if (old_sid == dsvt.streamid) {
 							if (qso_details)
-								SendLog("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
+								SendLog("END   from ref: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
 
 							old_sid = 0U;
 						}
@@ -955,7 +955,9 @@ void CQnetLink::Process()
 							/* send the header to the audio mgr */
 							//Link2AM.Write(dsvt.title, 56);
 							is_packet = true;
-						} else if (dcs_seq!=dcs_buf[45]) {
+						}
+
+						if (0==memcmp(&to_remote_g2.in_streamid, dcs_buf+43, 2) && dcs_seq!=dcs_buf[45]) {
 							memcpy(dsvt.title, "DSVT", 4);
 							dsvt.config = 0x20;
 							dsvt.flaga[0] = dsvt.flaga[1] = dsvt.flaga[2] = 0x00;
@@ -980,7 +982,7 @@ void CQnetLink::Process()
 								old_sid = 0x0;
 
 								if (qso_details)
-									printf("END from dcs: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
+									printf("END   from dcs: streamID=%04x, %d bytes from IP=%s\n", ntohs(dsvt.streamid), length, fromDst4.GetAddress());
 
 								to_remote_g2.in_streamid = 0x0;
 								dcs_seq = 0xff;
@@ -1074,7 +1076,7 @@ void CQnetLink::Process()
 
 				if (length==56) {
 					if (qso_details)
-						printf("START from local g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s/%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+						printf("START from local: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s/%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 					// save mycall
 					memcpy(call, dsvt.hdr.mycall, 8);
@@ -1182,7 +1184,7 @@ void CQnetLink::Process()
 
 						if (dsvt.ctrl & 0x40U) {
 							if (qso_details)
-								printf("END from local g2: streamID=%04x\n", ntohs(dsvt.streamid));
+								printf("END   from local: streamID=%04x\n", ntohs(dsvt.streamid));
 							tracing.streamid = 0x0;
 						}
 					}

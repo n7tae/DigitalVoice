@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "TemplateClasses.h"
 #include "QnetDB.h"
 
 bool CQnetDB::Open(const char *name)
@@ -175,7 +174,7 @@ bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short por
 	return false;
 }
 
-bool CQnetDB::UpdateGW(CHostQueue hqueue)
+bool CQnetDB::UpdateGW(CHostQueue &hqueue)
 {
 	if (NULL == db)
 		return true;
