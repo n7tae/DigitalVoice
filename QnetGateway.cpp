@@ -958,7 +958,9 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, CDSVT &g2buf)
 							Gate2AM.Write(dsvt.title, 27);
 						}
 					} else {
-						printf("Missing %d packets from the voice stream, resetting\n", diff);
+					    if (LOG_DEBUG) {
+        					printf("Missing %d packets from the voice stream, resetting\n", diff);
+						}
 						nextctrl = g2buf.ctrl;
 					}
 				}

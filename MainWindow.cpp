@@ -101,31 +101,8 @@ void CMainWindow::SetState(const CFGDATA &data)
 		pRouteComboBox->set_sensitive(false);
 		pRouteActionButton->set_sensitive(false);
 	}
-	if (data.bLinkEnable) {
-		if (nullptr == pLink)
-			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
-		std::list<CLink> linklist;
-		if (qnDB.FindLS(cfgdata.cModule, linklist)) {
-			std::cerr << "MainWindow::SetSet FindLS failed!" << std::endl;
-		} else {
-			if (linklist.size()) {
-				auto link = linklist.front();
-				pLinkEntry->set_text(link.callsign.c_str());
-				pLinkEntry->set_sensitive(false);
-				pLinkButton->set_sensitive(false);
-				pUnlinkButton->set_sensitive(true);
-			} else {
-				pLinkEntry->set_sensitive(true);
-				pUnlinkButton->set_sensitive(false);
-				const std::string entry(pLinkEntry->get_text().c_str());
-				if (8==entry.size() && qnDB.FindGW(entry.substr(0, 6).c_str()) && isalpha(entry.at(7)))
-					pLinkButton->set_sensitive(true);
-				else
-					pLinkButton->set_sensitive(false);
 
-			}
-		}
-	} else {
+	if (! data.bLinkEnable) { // if data.bLinkEnable==true, then the TimeoutProcess() will handle the link frame widgets
 		if (nullptr != pLink) {
 			pLink->keep_running = false;
 			futLink.get();
@@ -133,6 +110,7 @@ void CMainWindow::SetState(const CFGDATA &data)
 		pLinkButton->set_sensitive(false);
 		pLinkEntry->set_sensitive(false);
 		pUnlinkButton->set_sensitive(false);
+		pLinkEntry->set_text("");
 	}
 }
 
@@ -465,12 +443,17 @@ bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 
 bool CMainWindow::TimeoutProcess()
 {
+	// this is all about syncing the LinkFrame widgets to the actual link state of the module
+	// so if pLink is not up, then we don't need to do anything
+	if ((! cfgdata.bLinkEnable) || (nullptr == pLink))
+		return true;
+
 	std::list<CLink> linkstatus;
 	if (qnDB.FindLS(cfgdata.cModule, linkstatus))	// get the link status list of our module (there should only be one, or none if it's not linked)
 		return true;
 
 	std::string call;
-	if (linkstatus.size()) {	// extract it from the returned list, no list means our module is not linked!
+	if (linkstatus.size()) {	// extract the linked module from the returned list, if the list is empty, it means our module is not linked!
 		CLink ls(linkstatus.front());
 		call.assign(ls.callsign);
 	}
@@ -478,7 +461,8 @@ bool CMainWindow::TimeoutProcess()
 	if (call.empty()) {
 		pLinkEntry->set_sensitive(true);
 		pUnlinkButton->set_sensitive(false);
-		on_LinkEntry_changed();
+		std::string s(pLinkEntry->get_text().c_str());
+		pLinkButton->set_sensitive((8==s.size() && isalpha(s.at(7)) && qnDB.FindGW(s.c_str())) ? true : false);
 	} else {
 		pLinkEntry->set_sensitive(false);
 		pLinkButton->set_sensitive(false);
@@ -500,9 +484,7 @@ void CMainWindow::on_LinkEntry_changed()
 	}
 	pLinkEntry->set_text(n);
 	pLinkEntry->set_position(pos);
-	std::string str(n.c_str());
-	str.resize(6, ' ');
-	if (8==n.size() && isalpha(n.at(7)) && qnDB.FindGW(str.c_str())) {
+	if (8==n.size() && isalpha(n.at(7)) && qnDB.FindGW(n.c_str())) {
 		pLinkEntry->set_icon_from_icon_name("gtk-ok");
 		pLinkButton->set_sensitive(true);
 	} else {
