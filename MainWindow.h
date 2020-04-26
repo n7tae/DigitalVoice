@@ -69,6 +69,8 @@ private:
 	void SetState(const CFGDATA &data);
 	void RunLink();
 	void RunGate();
+	void StopLink();
+	void StopGate();
 	CUnixDgramReader Gate2AM, Link2AM, LogInput;
 
 	// events

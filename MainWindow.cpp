@@ -56,14 +56,8 @@ CMainWindow::~CMainWindow()
 {
 	if (pWin)
 		delete pWin;
-	if (nullptr != pLink) {
-		pLink->keep_running = false;
-		futLink.get();
-	}
-	if (nullptr != pGate) {
-		pGate->keep_running = false;
-		futGate.get();
-	}
+	StopLink();
+	StopGate();
 }
 
 void CMainWindow::RunLink()
@@ -92,21 +86,18 @@ void CMainWindow::SetState(const CFGDATA &data)
 		pRouteComboBox->set_sensitive(true);
 		pRouteActionButton->set_sensitive(true);
 	} else {
-		if (nullptr != pGate) {
-			pGate->keep_running = false;
-			futGate.get();
-		}
+		StopGate();
 		pRouteEntry->set_text("CQCQCQ");
 		pRouteEntry->set_sensitive(false);
 		pRouteComboBox->set_sensitive(false);
 		pRouteActionButton->set_sensitive(false);
 	}
 
-	if (! data.bLinkEnable) { // if data.bLinkEnable==true, then the TimeoutProcess() will handle the link frame widgets
-		if (nullptr != pLink) {
-			pLink->keep_running = false;
-			futLink.get();
-		}
+	if (data.bLinkEnable) { // if data.bLinkEnable==true, then the TimeoutProcess() will handle the link frame widgets
+		if (nullptr == pGate && cfg.IsOkay())
+			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+	} else {
+		StopLink();
 		pLinkButton->set_sensitive(false);
 		pLinkEntry->set_sensitive(false);
 		pUnlinkButton->set_sensitive(false);
@@ -211,17 +202,8 @@ void CMainWindow::Run()
 
 void CMainWindow::on_QuitButton_clicked()
 {
-	if (nullptr != pGate) {
-		pGate->keep_running = false;
-		futGate.get();
-		pGate = nullptr;
-	}
-
-	if (nullptr != pLink) {
-		pLink->keep_running = false;
-		futLink.get();
-		pLink = nullptr;
-	}
+	StopGate();
+	StopLink();
 
 	if (pWin)
 		pWin->hide();
@@ -232,34 +214,18 @@ void CMainWindow::on_SettingsButton_clicked()
 	auto newdata = SettingsDlg.Show();
 	if (newdata) {	// the user clicked okay so we need to see if anything changed. We'll shut things down and let SetState start things up again
 		if (newdata->sStation.compare(cfgdata.sCallsign) || newdata->cModule!=cfgdata.cModule) {	// the station callsign has changed
-			if (nullptr != pGate) {
-				pGate->keep_running = false;
-				futGate.get();
-				pGate = nullptr;
-			}
-			if (nullptr != pLink) {
-				pLink->keep_running = false;
-				futLink.get();
-				pLink = nullptr;
-			}
+			StopGate();
+			StopLink();
+		} else if (newdata->eNetType != cfgdata.eNetType) {
+			StopGate();
 		}
-		else if (newdata->eNetType != cfgdata.eNetType) {
-			if (nullptr != pGate) {
-				pGate->keep_running = false;
-				futGate.get();
-				pGate = nullptr;
-			}
-		}
-		if (! newdata->bLinkEnable && nullptr!=pLink) {
-			pLink->keep_running = false;
-			futLink.get();
-			pLink = nullptr;
-		}
-		if (! newdata->bRouteEnable && nullptr!=pGate) {
-			pGate->keep_running = false;
-			futGate.get();
-			pGate = nullptr;
-		}
+
+		if (! newdata->bLinkEnable)
+			StopLink();
+
+		if (! newdata->bRouteEnable)
+			StopGate();
+
 		SetState(*newdata);
 		cfg.CopyTo(cfgdata);
 	}
@@ -589,4 +555,22 @@ int main (int argc, char **argv)
 	MainWindow.Run();
 
 	return 0;
+}
+
+void CMainWindow::StopLink()
+{
+	if (nullptr != pLink) {
+		pLink->keep_running = false;
+		futLink.get();
+		pLink = nullptr;
+	}
+}
+
+void CMainWindow::StopGate()
+{
+	if(nullptr != pGate) {
+		pGate->keep_running = false;
+		futGate.get();
+		pGate = nullptr;
+	}
 }
