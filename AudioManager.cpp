@@ -33,6 +33,7 @@
 
 CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0U), link_sid_in(0U)
 {
+	link_open = true;
 }
 
 bool CAudioManager::Init(CMainWindow *pMain)
@@ -431,7 +432,13 @@ void CAudioManager::PlayAMBEDataThread()
 
 void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 {
-	if (AMBEDevice.IsOpen() && 0U==gate_sid_in && ! play_file) {	// don't do anythings if the gateway is currently providing audio
+	l2am_mutex.lock();
+	l2am(dsvt, false);
+	l2am_mutex.unlock();
+}
+
+void CAudioManager::l2am(const CDSVT &dsvt, const bool shutoff) {
+	if (link_open && AMBEDevice.IsOpen() && 0U==gate_sid_in && ! play_file) {	// don't do anythings if the gateway is currently providing audio
 
 		if (0U==link_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
 			// here comes a new stream
@@ -451,6 +458,8 @@ void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
+		if (shutoff)
+			link_open = false;	// slam the door shut. it will open again when pLink is relinked.
 		if (dsvt.ctrl & 0x40U) {
 			p1.get();	// we're done, get the finished threads and reset the current stream id
 			p2.get();
@@ -670,16 +679,34 @@ void CAudioManager::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 
 void CAudioManager::KeyOff()
 {
-	hot_mic = false;
-	r1.get();
-	r2.get();
-	r3.get();
-	r4.get();
+	if (hot_mic) {
+		hot_mic = false;
+		r1.get();
+		r2.get();
+		r3.get();
+		r4.get();
+	}
 }
 
 void CAudioManager::Link(const std::string &linkcmd)
 {
 	AM2Link.Write(linkcmd.c_str(), linkcmd.size() + 1);
+	if (linkcmd.size() < 5) {
+		// ON UNLINK: if there is an open link stream, push a closing ambe frame onto the stream
+		if (link_sid_in) {
+			l2am_mutex.lock();
+			const unsigned char quiet[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+			CDSVT dsvt;		// we only need to set up a few things to keep l2am() happy
+			dsvt.config = 0x20U;				// it's a voice packet
+			dsvt.ctrl = 0x40U;					// it's the last packet
+			dsvt.streamid = link_sid_in;		// it has the correct streamid
+			memcpy(dsvt.vasd.voice, quiet, 9);	// it noiseless
+			l2am(dsvt, true);
+			l2am_mutex.unlock();
+		}
+	} else {
+		link_open = true;
+	}
 }
 
 void CAudioManager::PlayFile(const char *filetoplay)

@@ -63,11 +63,13 @@ private:
 	CAMBEQueue ambe_queue;
 	PacketQueue gateway_queue, link_queue;
 	CSequenceQueue a2d_queue, d2a_queue;
-	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex;
+	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
+	bool link_open;
 	// helpers
 	CMainWindow *pMainWindow;
 	CRandom random;
+	void l2am(const CDSVT &dsvt, const bool shutoff);
 	std::vector<unsigned long> speak;
 	// Unix sockets
 	CUnixDgramWriter AM2Gate, AM2Link, LogInput;

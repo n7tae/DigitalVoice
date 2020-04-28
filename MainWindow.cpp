@@ -202,6 +202,8 @@ void CMainWindow::Run()
 
 void CMainWindow::on_QuitButton_clicked()
 {
+	CWaitCursor wait;
+	AudioManager.KeyOff();
 	StopGate();
 	StopLink();
 
@@ -213,6 +215,7 @@ void CMainWindow::on_SettingsButton_clicked()
 {
 	auto newdata = SettingsDlg.Show();
 	if (newdata) {	// the user clicked okay so we need to see if anything changed. We'll shut things down and let SetState start things up again
+		CWaitCursor wait;
 		if (newdata->sStation.compare(cfgdata.sCallsign) || newdata->cModule!=cfgdata.cModule) {	// the station callsign has changed
 			StopGate();
 			StopLink();
