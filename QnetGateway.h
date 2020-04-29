@@ -93,12 +93,6 @@ private:
     int link_family = AF_UNSPEC;
 	// network type
 	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
-	// text stuff
-	bool new_group = true;
-	unsigned char header_type = 0;
-	short to_print = 0;
-	bool ABC_grp = false;
-	bool C_seen = false;
     int Index = -1;
 
 	CQnetDB qnDB;
@@ -164,7 +158,6 @@ private:
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
-	void ProcessSlowData(unsigned char *data, unsigned short sid);
 	bool ProcessG2Msg(const unsigned char *data, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, CDSVT &g2buf);
 	void ProcessAudio(const CDSVT *packet);

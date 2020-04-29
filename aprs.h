@@ -48,8 +48,6 @@ using SRPTR = struct aprs_info {
 	std::string aprs_filter;
 	int aprs_hash;
 	int aprs_interval;
-
-	/* 0=A, 1=B, 2=C */
 	SMOD mod;
 };
 
