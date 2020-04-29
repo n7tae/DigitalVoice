@@ -26,7 +26,7 @@
 #include <atomic>
 #include <netinet/in.h>
 
-#include "QnetTypeDefs.h"
+#include "DSVT.h"
 #include "Random.h"
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"

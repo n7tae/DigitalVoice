@@ -21,13 +21,14 @@
 #include <regex>
 
 #include "IRCDDB.h"
-#include "QnetTypeDefs.h"
-#include "aprs.h"
+#include "DSVT.h"
+#include "TypeDefs.h"
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"
 #include "Configure.h"
 #include "QnetDB.h"
 #include "DStarDecode.h"
+#include "QnetLog.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -50,34 +51,6 @@ using STOREPEATER = struct torepeater_tag {
 	unsigned char sequence;
 };
 
-using SBANDTXT = struct band_txt_tag {
-	unsigned short streamID;
-	unsigned char flags[3];
-	char lh_mycall[CALL_SIZE + 1];
-	char lh_sfx[5];
-	char lh_yrcall[CALL_SIZE + 1];
-	char lh_rpt1[CALL_SIZE + 1];
-	char lh_rpt2[CALL_SIZE + 1];
-	time_t last_time;
-	char txt[64];   // Only 20 are used
-	unsigned short txt_cnt;
-	bool sent_key_on_msg;
-
-	std::string dest_rptr;
-
-	// try to process GPS mode: GPRMC and ID
-	char temp_line[256];
-	unsigned short temp_line_cnt;
-	char gprmc[256];
-	char gpid[256];
-	bool is_gps_sent;
-	time_t gps_last_time;
-
-	int num_dv_frames;
-	int num_dv_silent_frames;
-	int num_bit_errors;
-};
-
 class CQnetGateway {
 public:
 	CQnetGateway();
@@ -98,13 +71,13 @@ private:
 	CQnetDB qnDB;
 	CDStarDecode decode;
 	CUnixDgramReader AM2Gate;
-	CUnixDgramWriter Gate2AM, LogInput;
+	CUnixDgramWriter Gate2AM;
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
 	std::string OWNER, owner, IRCDDB_PASSWORD[2];
 
-	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
+	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, playNotInCache;
 	bool LOG_DEBUG, LOG_IRC, LOG_QSO;
 
 	int TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR;
@@ -137,8 +110,9 @@ private:
 
 	// for talking with the irc server
 	CIRCDDB *ii[2];
-	// for handling APRS stuff
-	CAPRS *aprs;
+
+	// logging
+	CQnetLog log;
 
 	// text coming from local repeater bands
 	SBANDTXT band_txt;
@@ -155,8 +129,6 @@ private:
 	void GetIRCDataThread(const int i);
 	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	int get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
-	void compute_aprs_hash();
-	void APRSBeaconThread();
 	void ProcessTimeouts();
 	bool ProcessG2Msg(const unsigned char *data, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, CDSVT &g2buf);
@@ -165,18 +137,11 @@ private:
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
     int FindIndex() const;
-	void SendLog(const char *fmt, ...);
 
 	// read configuration file
 	bool Configure();
 
-/* aprs functions, borrowed from my retired IRLP node 4201 */
-	void gps_send();
-	bool verify_gps_csum(char *gps_text, char *csum_text);
-	void build_aprs_from_gps_and_send();
-
 	void qrgs_and_maps();
 
 	void set_dest_rptr(std::string &call);
-	bool validate_csum(SBANDTXT &bt, bool is_gps);
 };

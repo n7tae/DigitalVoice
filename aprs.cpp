@@ -16,18 +16,42 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
- #include <string.h>
- #include <fcntl.h>
- #include <unistd.h>
- #include <sys/types.h>
- #include <sys/socket.h>
- #include <netdb.h>
- #include <netinet/tcp.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/tcp.h>
 
- #include <thread>
- #include <chrono>
+#include <thread>
+#include <chrono>
+#include <future>
+#include <cmath>
 
- #include "aprs.h"
+#include "aprs.h"
+
+void CAPRS::StartThread()
+{
+	if (APRS_ENABLE) {	// start the beacon thread
+		try {
+			aprs_future = std::async(std::launch::async, &CAPRS::APRSBeaconThread, this);
+		} catch (const std::exception &e) {
+			fprintf(stderr, "Failed to start the APRSBeaconThread. Exception: %s\n", e.what());
+		}
+		if (aprs_future.valid())
+			log.SendLog("APRS beacon thread started\n");
+	}
+}
+
+void CAPRS::FinishThread()
+{
+	// thread clean-up
+	if (APRS_ENABLE) {
+		if (aprs_future.valid())
+			aprs_future.get();
+	}
+}
 
 // This is called when header comes in from repeater
 void CAPRS::SelectBand(unsigned short streamID)
@@ -138,7 +162,8 @@ void CAPRS::Init()
 		aprs_streamID.last_time = 0;
 	}
 
-	return;
+	compute_aprs_hash();
+
 }
 
 bool CAPRS::WriteData(unsigned char *data)
@@ -356,17 +381,407 @@ unsigned int CAPRS::CalcCRC(unsigned char* buf, unsigned int len)
 	return (~my_crc & 0xffff);
 }
 
-CAPRS::CAPRS(SRPTR *prptr)
+CAPRS::CAPRS() : keep_running(true)
 {
-	m_rptr = prptr;
 }
 
 CAPRS::~CAPRS()
 {
-    aprs_sock.Close();
+    CloseSock();
 }
 
 void CAPRS::CloseSock()
 {
-    aprs_sock.Close();
+	if (APRS_ENABLE) {
+		if (aprs_sock.GetFD() != -1) {
+			aprs_sock.Close();
+			log.SendLog("Closed APRS\n");
+		}
+	}
+}
+
+void CAPRS::APRSBeaconThread()
+{
+	char snd_buf[512];
+	char rcv_buf[512];
+	time_t tnow = 0;
+
+//	struct sigaction act;
+
+	/*
+	   Every 20 seconds, the remote APRS host sends a KEEPALIVE packet-comment
+	   on the TCP/APRS port.
+	   If we have not received any KEEPALIVE packet-comment after 5 minutes
+	   we must assume that the remote APRS host is down or disappeared
+	   or has dropped the connection. In these cases, we must re-connect.
+	   There are 3 keepalive packets in one minute, or every 20 seconds.
+	   In 5 minutes, we should have received a total of 15 keepalive packets.
+	*/
+	short THRESHOLD_COUNTDOWN = 15;
+
+	time_t last_keepalive_time;
+	time(&last_keepalive_time);
+
+	time_t last_beacon_time = 0;
+	/* This thread is also saying to the APRS_HOST that we are ALIVE */
+	while (keep_running) {
+		if (aprs_sock.GetFD() == -1) {
+			Open(OWNER);
+			if (aprs_sock.GetFD() == -1)
+				sleep(1);
+			else
+				THRESHOLD_COUNTDOWN = 15;
+		}
+
+		time(&tnow);
+		if ((tnow - last_beacon_time) > (aprs_interval * 60)) {
+			if (Rptr.mod.desc1[0] != '\0') {
+				float tmp_lat = fabs(Rptr.mod.latitude);
+				float tmp_lon = fabs(Rptr.mod.longitude);
+				float lat = floor(tmp_lat);
+				float lon = floor(tmp_lon);
+				lat = (tmp_lat - lat) * 60.0F + lat  * 100.0F;
+				lon = (tmp_lon - lon) * 60.0F + lon  * 100.0F;
+
+				char lat_s[15], lon_s[15];
+				if (lat >= 1000.0F)
+					sprintf(lat_s, "%.2f", lat);
+				else if (lat >= 100.0F)
+					sprintf(lat_s, "0%.2f", lat);
+				else if (lat >= 10.0F)
+					sprintf(lat_s, "00%.2f", lat);
+				else
+					sprintf(lat_s, "000%.2f", lat);
+
+				if (lon >= 10000.0F)
+					sprintf(lon_s, "%.2f", lon);
+				else if (lon >= 1000.0F)
+					sprintf(lon_s, "0%.2f", lon);
+				else if (lon >= 100.0F)
+					sprintf(lon_s, "00%.2f", lon);
+				else if (lon >= 10.0F)
+					sprintf(lon_s, "000%.2f", lon);
+				else
+					sprintf(lon_s, "0000%.2f", lon);
+
+				/* send to aprs */
+				sprintf(snd_buf, "%s>APJI23,TCPIP*,qAC,%sS:!%s%cD%s%c&RNG%04u %s %s",
+						Rptr.mod.call.c_str(),  Rptr.mod.call.c_str(),
+						lat_s,  (Rptr.mod.latitude < 0.0)  ? 'S' : 'N',
+						lon_s,  (Rptr.mod.longitude < 0.0) ? 'W' : 'E',
+						(unsigned int)Rptr.mod.range, Rptr.mod.band.c_str(), Rptr.mod.desc1.c_str());
+
+				// printf("APRS Beacon =[%s]\n", snd_buf);
+				strcat(snd_buf, "\r\n");
+
+				while (keep_running) {
+					if (aprs_sock.GetFD() == -1) {
+						Open(OWNER);
+						if (aprs_sock.GetFD() == -1)
+							sleep(1);
+						else
+							THRESHOLD_COUNTDOWN = 15;
+					} else {
+						int rc = aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
+						if (rc < 0) {
+							if ((errno == EPIPE) ||
+									(errno == ECONNRESET) ||
+									(errno == ETIMEDOUT) ||
+									(errno == ECONNABORTED) ||
+									(errno == ESHUTDOWN) ||
+									(errno == EHOSTUNREACH) ||
+									(errno == ENETRESET) ||
+									(errno == ENETDOWN) ||
+									(errno == ENETUNREACH) ||
+									(errno == EHOSTDOWN) ||
+									(errno == ENOTCONN)) {
+								fprintf(stderr, "send_aprs_beacon: APRS_HOST closed connection,error=%d\n", errno);
+								aprs_sock.Close();
+							} else if (errno == EWOULDBLOCK) {
+								std::this_thread::sleep_for(std::chrono::milliseconds(100));
+							} else {
+								/* Cant do nothing about it */
+								fprintf(stderr, "send_aprs_beacon failed, error=%d\n", errno);
+								break;
+							}
+						} else {
+							// printf("APRS beacon sent\n");
+							break;
+						}
+					}
+					int rc = aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+					if (rc > 0)
+						THRESHOLD_COUNTDOWN = 15;
+				}
+			}
+			int rc = aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+			if (rc > 0)
+				THRESHOLD_COUNTDOWN = 15;
+			time(&last_beacon_time);
+		}
+		/*
+		   Are we still receiving from APRS host ?
+		*/
+		int rc = aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+		if (rc < 0) {
+			if ((errno == EPIPE) ||
+			        (errno == ECONNRESET) ||
+			        (errno == ETIMEDOUT) ||
+			        (errno == ECONNABORTED) ||
+			        (errno == ESHUTDOWN) ||
+			        (errno == EHOSTUNREACH) ||
+			        (errno == ENETRESET) ||
+			        (errno == ENETDOWN) ||
+			        (errno == ENETUNREACH) ||
+			        (errno == EHOSTDOWN) ||
+			        (errno == ENOTCONN)) {
+				fprintf(stderr, "send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n", errno);
+				aprs_sock.Close();
+			}
+		} else if (rc == 0) {
+			printf("send_aprs_beacon: recv: APRS shutdown\n");
+			aprs_sock.Close();
+		} else
+			THRESHOLD_COUNTDOWN = 15;
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		/* 20 seconds passed already ? */
+		time(&tnow);
+		if ((tnow - last_keepalive_time) > 20) {
+			/* we should be receving keepalive packets ONLY if the connection is alive */
+			if (aprs_sock.GetFD() >= 0) {
+				if (THRESHOLD_COUNTDOWN > 0)
+					THRESHOLD_COUNTDOWN--;
+
+				if (THRESHOLD_COUNTDOWN == 0) {
+					fprintf(stderr, "APRS host keepalive timeout\n");
+					aprs_sock.Close();
+				}
+			}
+			/* reset timer */
+			time(&last_keepalive_time);
+		}
+	}
+	log.SendLog("APRS beacon thread exiting...\n");
+}
+
+void CAPRS::compute_aprs_hash()
+{
+	short hash = 0x73e2;
+	char rptr_sign[9];
+
+	strcpy(rptr_sign, OWNER.c_str());
+	char *p = strchr(rptr_sign, ' ');
+	if (!p) {
+		fprintf(stderr, "Failed to build repeater callsign for aprs hash\n");
+		return;
+	}
+	*p = '\0';
+	p = rptr_sign;
+	short int len = strlen(rptr_sign);
+
+	for (short int i=0; i < len; i+=2) {
+		hash ^= (*p++) << 8;
+		hash ^= (*p++);
+	}
+	printf("aprs hash code=[%d] for %s\n", hash, OWNER.c_str());
+	Rptr.aprs_hash = hash;
+}
+
+void CAPRS::gps_send()
+{
+	time_t tnow = time(NULL);
+	if ((tnow - band_txt.gps_last_time) < 31)
+		return;
+
+	static char old_mycall[9] = { "        " };
+
+	if (band_txt.gprmc[0] == '\0') {
+		band_txt.gpid[0] = '\0';
+		fprintf(stderr, "missing GPS ID\n");
+		return;
+	}
+	if (band_txt.gpid[0] == '\0') {
+		band_txt.gprmc[0] = '\0';
+		fprintf(stderr, "Missing GPSRMC\n");
+		return;
+	}
+	if (memcmp(band_txt.gpid, band_txt.lh_mycall, 8) != 0) {
+		fprintf(stderr, "MYCALL [%s] does not match first 8 characters of GPS ID [%.8s]\n", band_txt.lh_mycall, band_txt.gpid);
+		band_txt.gprmc[0] = '\0';
+		band_txt.gpid[0] = '\0';
+		return;
+	}
+
+	/* if new station, reset last time */
+	if (strcmp(old_mycall, band_txt.lh_mycall) != 0) {
+		strcpy(old_mycall, band_txt.lh_mycall);
+		band_txt.gps_last_time = 0;
+	}
+
+	/* do NOT process often */
+	time(&tnow);
+
+	printf("GPRMC=[%s]\n", band_txt.gprmc);
+	printf("GPS id=[%s]\n",band_txt.gpid);
+
+	if (validate_csum(band_txt, false))	// || validate_csum(band_txt, true))
+		return;
+
+	/* now convert GPS into APRS and send it */
+	build_aprs_from_gps_and_send();
+
+	band_txt.gps_last_time = tnow;
+}
+
+void CAPRS::build_aprs_from_gps_and_send()
+{
+	char buf[512];
+	const char *delim = ",";
+
+	char *saveptr = NULL;
+
+	/*** dont care about the rest */
+
+	strcpy(buf, band_txt.lh_mycall);
+	char *p = strchr(buf, ' ');
+	if (p) {
+		if (band_txt.lh_mycall[7] != ' ') {
+			*p = '-';
+			*(p + 1) = band_txt.lh_mycall[7];
+			*(p + 2) = '>';
+			*(p + 3) = '\0';
+		} else {
+			*p = '>';
+			*(p + 1) = '\0';
+		}
+	} else
+		strcat(buf, ">");
+
+	strcat(buf, "APDPRS,DSTAR*,qAR,");
+	strcat(buf, Rptr.mod.call.c_str());
+	strcat(buf, ":!");
+
+	//GPRMC =
+	strtok_r(band_txt.gprmc, delim, &saveptr);
+	//time_utc =
+	strtok_r(NULL, delim, &saveptr);
+	//nav =
+	strtok_r(NULL, delim, &saveptr);
+	char *lat_str = strtok_r(NULL, delim, &saveptr);
+	char *lat_NS = strtok_r(NULL, delim, &saveptr);
+	char *lon_str = strtok_r(NULL, delim, &saveptr);
+	char *lon_EW = strtok_r(NULL, delim, &saveptr);
+
+	if (lat_str && lat_NS) {
+		if ((*lat_NS != 'N') && (*lat_NS != 'S')) {
+			fprintf(stderr, "Invalid North or South indicator in latitude\n");
+			return;
+		}
+		if (strlen(lat_str) > 9) {
+			fprintf(stderr, "Invalid latitude\n");
+			return;
+		}
+		if (lat_str[4] != '.') {
+			fprintf(stderr, "Invalid latitude\n");
+			return;
+		}
+		lat_str[7] = '\0';
+		strcat(buf, lat_str);
+		strcat(buf, lat_NS);
+	} else {
+		fprintf(stderr, "Invalid latitude\n");
+		return;
+	}
+	/* secondary table */
+	strcat(buf, "/");
+
+	if (lon_str && lon_EW) {
+		if ((*lon_EW != 'E') && (*lon_EW != 'W')) {
+			fprintf(stderr, "Invalid East or West indicator in longitude\n");
+			return;
+		}
+		if (strlen(lon_str) > 10) {
+			fprintf(stderr, "Invalid longitude\n");
+			return;
+		}
+		if (lon_str[5] != '.') {
+			fprintf(stderr, "Invalid longitude\n");
+			return;
+		}
+		lon_str[8] = '\0';
+		strcat(buf, lon_str);
+		strcat(buf, lon_EW);
+	} else {
+		fprintf(stderr, "Invalid longitude\n");
+		return;
+	}
+
+	/* Just this symbolcode only */
+	strcat(buf, "/");
+	strncat(buf, band_txt.gpid + 13, 32);
+
+	// printf("Built APRS from old GPS mode=[%s]\n", buf);
+	strcat(buf, "\r\n");
+
+	if (aprs_sock.Write((unsigned char *)buf, strlen(buf))) {
+		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) ||
+		    (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) ||
+		    (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
+			fprintf(stderr, "build_aprs_from_gps_and_send: APRS_HOST closed connection, error=%d\n", errno);
+			aprs_sock.Close();
+		} else
+			fprintf(stderr, "build_aprs_from_gps_and_send: send error=%d\n", errno);
+	}
+	return;
+}
+
+bool CAPRS::verify_gps_csum(char *gps_text, char *csum_text)
+{
+	short computed_csum = 0;
+	char computed_csum_text[16];
+
+	short int len = strlen(gps_text);
+	for (short int i=0; i<len; i++) {
+		char c = gps_text[i];
+		if (computed_csum == 0)
+			computed_csum = (char)c;
+		else
+			computed_csum = computed_csum ^ ((char)c);
+	}
+	sprintf(computed_csum_text, "%02X", computed_csum);
+	// printf("computed_csum_text=[%s]\n", computed_csum_text);
+
+	char *p = strchr(csum_text, ' ');
+	if (p)
+		*p = '\0';
+
+	if (strcmp(computed_csum_text, csum_text) == 0)
+		return true;
+	else
+		return false;
+}
+
+bool CAPRS::validate_csum(SBANDTXT &bt, bool is_gps)
+{
+	const char *name = is_gps ? "GPS" : "GPRMC";
+	char *s = is_gps ? bt.gpid : bt.gprmc;
+	char *p = strrchr(s, '*');
+	if (!p) {
+		// BAD news, something went wrong
+		fprintf(stderr, "Missing asterisk before checksum in %s\n", name);
+		bt.gprmc[0] = bt.gpid[0] = '\0';
+		return true;
+	} else {
+		*p = '\0';
+		// verify csum in GPRMC
+		bool ok = verify_gps_csum(s + 1, p + 1);
+		if (!ok) {
+			fprintf(stderr, "csum in %s not good\n", name);
+			bt.gprmc[0] = bt.gpid[0] = '\0';
+			return true;
+		}
+	}
+	return false;
 }

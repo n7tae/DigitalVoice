@@ -26,7 +26,7 @@
 
 #include "DV3000U.h"
 #include "TemplateClasses.h"
-#include "QnetTypeDefs.h"
+#include "DSVT.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
 
