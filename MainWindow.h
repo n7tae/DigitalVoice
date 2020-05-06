@@ -27,6 +27,7 @@
 #include "QnetDB.h"
 #include "SettingsDlg.h"
 #include "AudioManager.h"
+#include "aprs.h"
 
 class CMainWindow
 {
@@ -72,6 +73,7 @@ private:
 	void StopLink();
 	void StopGate();
 	CUnixDgramReader Gate2AM, Link2AM, LogInput;
+	CAPRS aprs;
 
 	// events
 	void on_QuitButton_clicked();

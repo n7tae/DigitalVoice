@@ -143,6 +143,9 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 		return true;
 	}
 
+	if (cfgdata.bAPRSEnable)
+		aprs.Init();
+
 	//setup our css context and provider
 	Glib::RefPtr<Gtk::CssProvider> css = Gtk::CssProvider::create();
 	Glib::RefPtr<Gtk::StyleContext> style = Gtk::StyleContext::create();
@@ -352,10 +355,13 @@ void CMainWindow::on_PTTButton_toggled()
 
 	if ((! is_cqcqcq && cfgdata.bRouteEnable) || (is_cqcqcq && cfgdata.bLinkEnable)) {
 		if (pPTTButton->get_active()) {
-			if (is_cqcqcq)
+			if (is_cqcqcq) {
 				AudioManager.RecordMicThread(E_PTT_Type::link, "CQCQCQ");
-			else
+			} else {
 				AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
+			}
+			if (cfgdata.bAPRSEnable)
+				aprs.UpdateUser();
 		} else
 			AudioManager.KeyOff();
 	}

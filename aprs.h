@@ -25,69 +25,34 @@
 #include "TypeDefs.h"
 #include "TCPReaderWriterClient.h"
 #include "QnetLog.h"
-
-enum aprs_level { al_none, al_$1, al_$2, al_c1, al_r1, al_c2, al_csum1, al_csum2, al_csum3, al_csum4, al_data, al_end };
-
-enum slow_level { sl_first, sl_second };
+#include "Configure.h"
 
 class CAPRS {
 public:
 	// functions
 	CAPRS();
 	~CAPRS();
-	std::atomic<bool> keep_running;
-	SRPTR *m_rptr;
-	void SelectBand(unsigned short streamID);
-	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf);
-	void Open(const std::string OWNER);
+	void UpdateUser();
 	void Init();
-	void CloseSock();
-	void StartThread();
-	void FinishThread();
-	void APRSBeaconThread();
-
-	// classes
-	CTCPReaderWriterClient aprs_sock;
-
-	// data
-	bool APRS_ENABLE;
-
+	void Close();
 
 private:
 	// data
-	struct {
-		aprs_level al;
-		unsigned char data[300];
-		unsigned int len;
-		unsigned char buf[6];
-		slow_level sl;
-		bool is_sent;
-	} aprs_pack;
+	CFGDATA cfgdata;
  	std::future<void> aprs_future;
-	// lock down a stream per band
-	struct {
-		unsigned short streamID;
-		time_t last_time;
-	} aprs_streamID;
-	int aprs_interval;
-	std::string OWNER;
-	SRPTR Rptr;
-	SBANDTXT band_txt;
+	time_t last_time;
+	std::string station;
+	std::atomic<bool> keep_running;
 
 	// classes
 	CQnetLog log;
+	CConfigure cfg;
+	CTCPReaderWriterClient aprs_sock;
 
 	// functions
-	bool WriteData(unsigned char *data);
-	void SyncIt();
-	void Reset();
-	unsigned int GetData(unsigned char *data, unsigned int len);
-	bool AddData(unsigned char *data);
-	bool CheckData();
-	unsigned int CalcCRC(unsigned char* buf, unsigned int len);
-	void compute_aprs_hash();
-	void gps_send();
-	bool verify_gps_csum(char *gps_text, char *csum_text);
-	void build_aprs_from_gps_and_send();
-	bool validate_csum(SBANDTXT &bt, bool is_gps);
+	int compute_aprs_hash();
+	void APRSBeaconThread();
+	void Open();
+	void CloseSock();
+	void FinishThread();
 };

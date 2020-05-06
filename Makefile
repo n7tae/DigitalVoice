@@ -1,6 +1,8 @@
 # Copyright (c) 2019 by Thomas A. Early N7TAE
-CFGDIR = $(HOME)/etc/
-BINDIR = $(HOME)/bin/
+CFGDIR = /usr/local/etc
+BINDIR = /usr/local/bin
+WWWDIR = /usr/local/www
+SYSDIR = /lib/systemd/system
 
 # choose this if you want debugging help
 #CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
@@ -46,9 +48,31 @@ install : qdv
 	mkdir -p $(BINDIR)
 	/bin/cp -f qdv $(BINDIR)
 
+installdash : index.php
+	/usr/bin/apt update
+	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
+	mkdir -p $(WWWDIR)
+	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
+	/bin/cp -f system/qdvdash.service $(SYSDIR)
+	systemctl enable qdvdash.service
+	systemctl daemon-reload
+	systemctl start qdvdash.service
+
 uninstall :
-	/bin/rm -rf $(CFGDIR)
-	/bin/rm -f $(BINDIR)qdv
+	/bin/rm -rf $(CFGDIR)/announce
+	/bin/rm -f $(CFGDIR)/DigitalVoice.glade
+	/bin/rm -f $(CFGDIR)/gwys.txt
+	/bin/rm -f $(CFGDIR)/qdv.cfg
+	/bin/rm -f $(CFGDIR)/qn.db
+	/bin/rm -f $(BINDIR)/qdv
+
+uninstalldash :
+	systemctl stop qdvdash.service
+	systemctl disable qdvdash.service
+	/bin/rm -f $(SYSDIR)/qdvdash.service
+	systemctl daemon-reload
+	/bin/rm -f $(WWWDIR)/index.php
+	/bin/rm -f $(CFGDIR)/qn.db
 
 #interactive :
 #	GTK_DEBUG=interactive ./qdv

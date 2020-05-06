@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   Copyright (C) 2020 by Thomas A. Early N7TAE
  *

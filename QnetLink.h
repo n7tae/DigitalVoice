@@ -32,6 +32,7 @@
 #include "UnixDgramSocket.h"
 #include "Configure.h"
 #include "QnetDB.h"
+#include "QnetLog.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -77,7 +78,6 @@ private:
 	void PlayAudioNotifyThread(char *msg);
 	void Link(const char *call, const char to_mod);
 	void Unlink();
-	void SendLog(const char *fmt, ...);
 
 	/* configuration data */
 	const CFGDATA *pCFGData;
@@ -93,6 +93,8 @@ private:
 	STOREMOTE to_remote_g2;
 
 	STRACING tracing;
+
+	CQnetLog log;
 
 	// input from remote
 	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
