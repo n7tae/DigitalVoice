@@ -1,8 +1,8 @@
-# Copyright (c) 2019 by Thomas A. Early N7TAE
-CFGDIR = $(HOME)/etc
-BINDIR = $(HOME)/bin
-WWWDIR = $(HOME)/www
-SYSDIR = /lib/systemd/system
+# Copyright (c) 2019-2020 by Thomas A. Early N7TAE
+CFGDIR = $(HOME)/etc/
+BINDIR = $(HOME)/bin/
+WWWDIR = $(HOME)/www/
+SYSDIR = /lib/systemd/system/
 
 # choose this if you want debugging help
 #CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
@@ -62,22 +62,22 @@ installdash :
 	systemctl start qdvdash.service
 
 uninstall :
-	/bin/rm -rf $(CFGDIR)/announce
-	/bin/rm -f $(CFGDIR)/DigitalVoice.glade
-	/bin/rm -f $(CFGDIR)/gwys.txt
-	/bin/rm -f $(CFGDIR)/qdv.cfg
-	/bin/rm -f $(CFGDIR)/qn.db
-	/bin/rm -f $(BINDIR)/qdv
-	/bin/rm -f $(WINDIR)/index.php
+	/bin/rm -rf $(CFGDIR)announce
+	/bin/rm -f $(CFGDIR)DigitalVoice.glade
+	/bin/rm -f $(CFGDIR)gwys.txt
+	/bin/rm -f $(CFGDIR)qdv.cfg
+	/bin/rm -f $(CFGDIR)qn.db
+	/bin/rm -f $(BINDIR)qdv
+	/bin/rm -f $(WINDIR)index.php
 	/bin/rm qdvdash.service
 
 uninstalldash :
 	systemctl stop qdvdash.service
 	systemctl disable qdvdash.service
-	/bin/rm -f $(SYSDIR)/qdvdash.service
+	/bin/rm -f $(SYSDIR)qdvdash.service
 	systemctl daemon-reload
-	/bin/rm -f $(WWWDIR)/index.php
-	/bin/rm -f $(CFGDIR)/qn.db
+	/bin/rm -f $(WWWDIR)index.php
+	/bin/rm -f $(CFGDIR)qn.db
 
 #interactive :
 #	GTK_DEBUG=interactive ./qdv
