@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <?php
-$cfgdir = '/usr/local/etc';
+$cfgdir = 'HHHH';
 
 $cfg = array();
 

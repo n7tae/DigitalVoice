@@ -1,7 +1,7 @@
 # Copyright (c) 2019 by Thomas A. Early N7TAE
-CFGDIR = /usr/local/etc
-BINDIR = /usr/local/bin
-WWWDIR = /usr/local/www
+CFGDIR = $(HOME)/etc
+BINDIR = $(HOME)/bin
+WWWDIR = $(HOME)/www
 SYSDIR = /lib/systemd/system
 
 # choose this if you want debugging help
@@ -40,20 +40,23 @@ hostfile :
 	awk '$$1 ~ /^XRF[0-9]+$$/ { printf "%s %s 30001\n", $$1, $$2 }' DExtra_Hosts.txt >> gwys.txt
 	/bin/rm *_Hosts.txt
 
-install : qdv
+qdvdash.service : qdvdash.txt
+	sed -e "s/HHHH/$(WWWDIR)/" qdvdash.txt > qdvdash.service
+
+install : qdv qdvdash.service
 	mkdir -p $(CFGDIR)
 	/bin/cp -rf $(shell pwd)/announce $(CFGDIR)
 	/bin/ln -f $(shell pwd)/DigitalVoice.glade $(CFGDIR)
 	/bin/ln -f -s $(shell pwd)/gwys.txt $(CFGDIR)
 	mkdir -p $(BINDIR)
 	/bin/cp -f qdv $(BINDIR)
+	mkdir -p $(WWWDIR)
+	sed -e "s/HHHH/$(CFGDIR)/" index.php > $(WWWDIR)/index.php
 
-installdash : index.php
+installdash :
 	/usr/bin/apt update
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
-	mkdir -p $(WWWDIR)
-	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
-	/bin/cp -f system/qdvdash.service $(SYSDIR)
+	/bin/cp -f dsvdash.service $(SYSDIR)
 	systemctl enable qdvdash.service
 	systemctl daemon-reload
 	systemctl start qdvdash.service
@@ -65,6 +68,7 @@ uninstall :
 	/bin/rm -f $(CFGDIR)/qdv.cfg
 	/bin/rm -f $(CFGDIR)/qn.db
 	/bin/rm -f $(BINDIR)/qdv
+	/bin/rm -f $(WINDIR)/index.php
 
 uninstalldash :
 	systemctl stop qdvdash.service

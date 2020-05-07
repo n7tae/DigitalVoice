@@ -32,6 +32,9 @@
 *.a
 *.lib
 
+# intermediate files
+qdvdash.service
+
 # host files
 gwys.txt
 XLX_Hosts.txt
