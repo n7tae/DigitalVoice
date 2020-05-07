@@ -206,6 +206,7 @@ void CMainWindow::Run()
 void CMainWindow::on_QuitButton_clicked()
 {
 	CWaitCursor wait;
+	aprs.Close();
 	AudioManager.KeyOff();
 	StopGate();
 	StopLink();
