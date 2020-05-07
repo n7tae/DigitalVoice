@@ -41,7 +41,7 @@ hostfile :
 	/bin/rm *_Hosts.txt
 
 qdvdash.service : qdvdash.txt
-	sed -e "s/HHHH/$(WWWDIR)/" qdvdash.txt > qdvdash.service
+	sed -e "s|HHHH|$(WWWDIR)|" qdvdash.txt > qdvdash.service
 
 install : qdv qdvdash.service
 	mkdir -p $(CFGDIR)
@@ -51,7 +51,7 @@ install : qdv qdvdash.service
 	mkdir -p $(BINDIR)
 	/bin/cp -f qdv $(BINDIR)
 	mkdir -p $(WWWDIR)
-	sed -e "s/HHHH/$(CFGDIR)/" index.php > $(WWWDIR)/index.php
+	sed -e "s|HHHH|$(CFGDIR)|" index.php > $(WWWDIR)/index.php
 
 installdash :
 	/usr/bin/apt update
@@ -69,6 +69,7 @@ uninstall :
 	/bin/rm -f $(CFGDIR)/qn.db
 	/bin/rm -f $(BINDIR)/qdv
 	/bin/rm -f $(WINDIR)/index.php
+	/bin/rm qdvdash.service
 
 uninstalldash :
 	systemctl stop qdvdash.service
