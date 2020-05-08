@@ -158,6 +158,9 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	if (SettingsDlg.Init(builder, "SettingsDialog", pWin, this))
 		return true;
 
+	if (AboutDlg.Init(builder, pWin))
+		return true;
+
 	builder->get_widget("QuitButton", pQuitButton);
 	builder->get_widget("SettingsButton", pSettingsButton);
 	builder->get_widget("LinkButton", pLinkButton);
@@ -171,6 +174,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("QuickKeyButton", pQuickKeyButton);
 	builder->get_widget("ScrolledWindow", pScrolledWindow);
 	builder->get_widget("LogTextView", pLogTextView);
+	builder->get_widget("AboutMenuItem", pAboutMenuItem);
 	pLogTextBuffer = pLogTextView->get_buffer();
 
 	// events
@@ -185,6 +189,8 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pLinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkButton_clicked));
 	pUnlinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_UnlinkButton_clicked));
 	pLinkEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_LinkEntry_changed));
+	pAboutMenuItem->signal_activate().connect(sigc::mem_fun(*this, &CMainWindow::on_AboutMenuItem_activate));
+
 	ReadRoutes();
 	SetState(cfgdata);
 
@@ -213,6 +219,11 @@ void CMainWindow::on_QuitButton_clicked()
 
 	if (pWin)
 		pWin->hide();
+}
+
+void CMainWindow::on_AboutMenuItem_activate()
+{
+	AboutDlg.Show();
 }
 
 void CMainWindow::on_SettingsButton_clicked()

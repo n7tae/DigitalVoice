@@ -26,6 +26,7 @@
 #include "QnetLink.h"
 #include "QnetDB.h"
 #include "SettingsDlg.h"
+#include "AboutDlg.h"
 #include "AudioManager.h"
 #include "aprs.h"
 
@@ -45,6 +46,7 @@ public:
 private:
 	// classes
 	CSettingsDlg SettingsDlg;
+	CAboutDlg AboutDlg;
 	CQnetDB qnDB;
 
 	// widgets
@@ -53,6 +55,7 @@ private:
 	Gtk::ComboBoxText *pRouteComboBox;
 	Gtk::Entry *pLinkEntry, *pRouteEntry;
 	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
+	Gtk::MenuItem *pAboutMenuItem;
 	Glib::RefPtr<Gtk::TextBuffer> pLogTextBuffer;
 	Gtk::ScrolledWindow *pScrolledWindow;
 	Gtk::TextView *pLogTextView;
@@ -87,6 +90,7 @@ private:
 	void on_LinkButton_clicked();
 	void on_UnlinkButton_clicked();
 	void on_LinkEntry_changed();
+	void on_AboutMenuItem_activate();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
 	bool GetLogInput(Glib::IOCondition condition);
