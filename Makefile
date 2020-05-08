@@ -56,7 +56,7 @@ install : qdv qdvdash.service
 installdash :
 	/usr/bin/apt update
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
-	/bin/cp -f dsvdash.service $(SYSDIR)
+	/bin/cp -f qdvdash.service $(SYSDIR)
 	systemctl enable qdvdash.service
 	systemctl daemon-reload
 	systemctl start qdvdash.service
