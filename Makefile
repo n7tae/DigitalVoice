@@ -27,7 +27,7 @@ clean :
 
 -include $(DEPS)
 
-hostfile :
+hostfiles :
 	wget -O XLX_Hosts.txt http://xlxapi.rlx.lu/api.php?do=GetXLXDMRMaster
 	wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
 	wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
