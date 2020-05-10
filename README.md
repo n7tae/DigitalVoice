@@ -37,8 +37,14 @@ All the configuration files are located in ~/etc and the qdv executable is in ~/
 
 If you are planning on doing linking, you need host files. So do a:
 ```
-make hostfiles
+make hostfile
 ```
+If you want to override or provide another linking host definition provided by the Makefile, create a file called My_Hosts.txt. It will be append to the end of the gwys.txt file. The format for this file is each line contains the 6-character hostname, the IP address and the port number, separated by white space:
+```
+# comments begin with a hash mark
+Q0XYZ 44.45.46.47 20001
+```
+If you have legacy D-Plus enabled, it is possible that an REF??? definition in you My_Hosts.txt file will be overwritten by the authorization process.
 
 ## Dashboard
 DigitalVoice includes a web-based dashboard that uses the php mini-server. To start the mini-server:
