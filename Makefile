@@ -17,7 +17,7 @@ DEPS = $(SRCS:.cpp=.d)
 qdv :  $(OBJS)
 	g++ $(CPPFLAGS) -o $@ $^ `pkg-config --libs gtkmm-3.0` -lasound -lsqlite3 -pthread
 
-%.o : %.cpp DigitalVoice.glade
+%.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
 
 .PHONY : clean
@@ -44,7 +44,7 @@ hostfile :
 qdvdash.service : qdvdash.txt
 	sed -e "s|HHHH|$(WWWDIR)|" qdvdash.txt > qdvdash.service
 
-install : qdv qdvdash.service
+install : qdv qdvdash.service DigitalVoice.glade
 	mkdir -p $(CFGDIR)
 	/bin/cp -rf $(shell pwd)/announce $(CFGDIR)
 	/bin/ln -f $(shell pwd)/DigitalVoice.glade $(CFGDIR)
@@ -52,7 +52,7 @@ install : qdv qdvdash.service
 	mkdir -p $(BINDIR)
 	/bin/cp -f qdv $(BINDIR)
 	mkdir -p $(WWWDIR)
-	sed -e "s|HHHH|$(CFGDIR)|" index.php > $(WWWDIR)/index.php
+	sed -e "s|HHHH|$(CFGDIR)|" index.php > $(WWWDIR)index.php
 
 installdash :
 	/usr/bin/apt update

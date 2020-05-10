@@ -91,7 +91,7 @@ Author: Thomas A. Early, N7TAE
             <property name="can_focus">True</property>
             <property name="window_placement">top-right</property>
             <property name="shadow_type">in</property>
-            <property name="min_content_height">400</property>
+            <property name="min_content_height">160</property>
             <child>
               <object class="GtkTextView" id="LogTextView">
                 <property name="visible">True</property>
