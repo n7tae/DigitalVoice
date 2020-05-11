@@ -21,59 +21,73 @@
 #include <queue>
 #include <string>
 
-#include "HostQueue.h"
-
-template <class T, int N> class CTFrame
-{
+class CHost {
 public:
-	CTFrame()
+	CHost() {}
+
+	~CHost() {}
+
+	CHost(const CHost &from)
 	{
-		memset(data, 0, N * sizeof(T));
-		sequence = 0U;
+		name.assign(from.name);
+		addr.assign(from.addr);
+		port = from.port;
 	}
 
-	CTFrame(const T *from)
+	CHost(const std::string n, const std::string a, unsigned short p)
 	{
-		memcpy(data, from, N * sizeof(T));
-		sequence = 0U;
+		name.assign(n);
+		addr.assign(a);
+		port = p;
 	}
 
-	CTFrame(const CTFrame<T, N> &from)
+	CHost &operator=(const CHost &from)
 	{
-		memcpy(data, from.GetData(), N *sizeof(T));
-		sequence = from.GetSequence();
-	}
-
-	CTFrame<T, N> &operator=(const CTFrame<T, N> &from)
-	{
-		memcpy(data, from.GetData(), N * sizeof(T));
-		sequence = from.GetSequence();
+		name.assign(from.name);
+		addr.assign(from.addr);
+		port = from.port;
 		return *this;
 	}
 
-	const T *GetData() const
-	{
-		return data;
-	}
-
-	unsigned char GetSequence() const
-	{
-		return sequence;
-	}
-
-	void SetSequence(unsigned char s)
-	{
-		sequence = s;
-	}
-
-	~CTFrame() {}
-private:
-	T data[N];
-	unsigned char sequence;
+	std::string name, addr;
+	unsigned short port;
 };
 
-using CAMBEFrame = CTFrame<unsigned char, 9>;
-using CAMBEQueue = CTQueue<CAMBEFrame>;
-using CAudioFrame = CTFrame<short int, 160>;
-using CAudioQueue = CTQueue<CAudioFrame>;
-using CSequenceQueue = CTQueue<unsigned char>;
+template <class T> class CTQueue
+{
+public:
+	CTQueue() {}
+
+	~CTQueue()
+	{
+		Clear();
+	}
+
+	void Push(T item)
+	{
+		queue.push(item);
+	}
+
+	T Pop()
+	{
+		T item = queue.front();
+		queue.pop();
+		return item;
+	}
+
+	bool Empty()
+	{
+		return queue.empty();
+	}
+
+	void Clear()
+	{
+		while (queue.size())
+			queue.pop();
+	}
+
+private:
+	std::queue<T> queue;
+};
+
+using CHostQueue = CTQueue<CHost>;

@@ -17,36 +17,31 @@
  */
 
 #include <string>
+#include <thread>
 
 #include "QnetDB.h"
 
 bool CQnetDB::Open(const char *name)
 {
-	if (sqlite3_open(name, &db)) {
+	if (sqlite3_open_v2(name, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL)) {
 		fprintf(stderr, "CQnetDB::Open: can't open %s\n", name);
 		return true;
-	} else
-		return false;
+	}
+
+	return Init();
 }
 
 bool CQnetDB::Init()
 {
-	std::string sql("DROP TABLE IF EXISTS LHEARD;");
-
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LHEARD error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
-	}
 
-	sql.assign("CREATE TABLE LHEARD("
-				"callsign	TEXT PRIMARY KEY, "
-				"sfx		TEXT, "
-				"module		TEXT, "
-				"reflector	TEXT, "
-				"lasttime	INT NOT NULL"
-			") WITHOUT ROWID;");
+	std::string sql("CREATE TABLE IF NOT EXISTS LHEARD("
+						"callsign	TEXT PRIMARY KEY, "
+						"sfx		TEXT, "
+						"module		TEXT, "
+						"reflector	TEXT, "
+						"lasttime	INT NOT NULL"
+					") WITHOUT ROWID;");
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
 		fprintf(stderr, "CQnetDB::Open create table LHEARD error: %s\n", eMsg);
@@ -54,21 +49,13 @@ bool CQnetDB::Init()
 		return true;
 	}
 
-	sql.assign("DROP TABLE IF EXISTS LINKSTATUS;");
-
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
-	}
-
-	sql.assign("CREATE TABLE LINKSTATUS("
-				"ip_address		TEXT PRIMARY KEY, "
-				"from_mod		TEXT NOT NULL, "
-				"to_callsign    TEXT NOT NULL, "
-				"to_mod			TEXT NOT NULL, "
-				"linked_time	INT NOT NULL"
-			") WITHOUT ROWID;");
+	sql.assign("CREATE TABLE IF NOT EXISTS LINKSTATUS("
+					"ip_address		TEXT PRIMARY KEY, "
+					"from_mod		TEXT NOT NULL, "
+					"to_callsign    TEXT NOT NULL, "
+					"to_mod			TEXT NOT NULL, "
+					"linked_time	INT NOT NULL"
+				") WITHOUT ROWID;");
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
 		fprintf(stderr, "CQnetDB::Open create table LINKSTATUS error: %s\n", eMsg);
@@ -76,26 +63,17 @@ bool CQnetDB::Init()
 		return true;
 	}
 
-	sql.assign("DROP TABLE IF EXISTS GATEWAYS;");
-
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
-	}
-
-	sql.assign("CREATE TABLE GATEWAYS("
-				"name		TEXT PRIMARY KEY, "
-				"address	TEXT NOT NULL, "
-				"port		INT NOT NULL"
-			") WITHOUT ROWID;");
+	sql.assign("CREATE TABLE IF NOT EXISTS GATEWAYS("
+					"name		TEXT PRIMARY KEY, "
+					"address	TEXT NOT NULL, "
+					"port		INT NOT NULL"
+				") WITHOUT ROWID;");
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
 		fprintf(stderr, "CQnetDB::Open create table GATEWAYS error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
-
 	return false;
 }
 
@@ -177,7 +155,7 @@ bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short por
 bool CQnetDB::UpdateGW(CHostQueue &hqueue)
 {
 	if (NULL == db)
-		return true;
+		return false;
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, 0, &eMsg)) {
@@ -192,7 +170,7 @@ bool CQnetDB::UpdateGW(CHostQueue &hqueue)
 	}
 
 	if (SQLITE_OK != sqlite3_exec(db, "COMMIT TRANSACTION;", NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdateGW END TRANSACTION error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateGW COMMIT TRANSACTION error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -302,15 +280,40 @@ bool CQnetDB::FindGW(const char *name)
 	}
 }
 
+void CQnetDB::ClearLH()
+{
+	if (NULL == db)
+		return;
+
+	char *eMsg;
+
+	if (SQLITE_OK != sqlite3_exec(db, "DELETE FROM LHEARD;", NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::ClearLH error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+	}
+}
+
+void CQnetDB::ClearLS()
+{
+	if (NULL == db)
+		return;
+
+	char *eMsg;
+
+	if (SQLITE_OK != sqlite3_exec(db, "DELETE FROM LINKSTATUS;", NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::ClearLS error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+	}
+}
+
 void CQnetDB::ClearGW()
 {
 	if (NULL == db)
 		return;
 
-	std::string sql("DELETE FROM GATEWAYS;");
 	char *eMsg;
 
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+	if (SQLITE_OK != sqlite3_exec(db, "DELETE FROM GATEWAYS;", NULL, 0, &eMsg)) {
 		fprintf(stderr, "CQnetDB::ClearGW error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 	}

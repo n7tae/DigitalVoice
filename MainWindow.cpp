@@ -109,8 +109,11 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 {
 	std::string dbname(CFG_DIR);
 	dbname.append("qn.db");
-	if (qnDB.Open(dbname.c_str()) || qnDB.Init())
+	if (qnDB.Open(dbname.c_str()))
 		return true;
+	qnDB.ClearGW();
+	qnDB.ClearLH();
+	qnDB.ClearLS();
 	RebuildGateways(cfgdata.bDPlusEnable);
 
 	if (Gate2AM.Open("gate2am"))
