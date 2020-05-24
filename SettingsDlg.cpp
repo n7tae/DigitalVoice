@@ -269,7 +269,7 @@ void CSettingsDlg::on_AMBERescanButton_clicked()
 	if (pMainWindow->AudioManager.AMBEDevice.IsOpen())
 		pMainWindow->AudioManager.AMBEDevice.CloseDevice();
 
-	pMainWindow->AudioManager.AMBEDevice.FindandOpen(data.iBaudRate, DSTAR_TYPE);
+	pMainWindow->AudioManager.AMBEDevice.FindandOpen(data.iBaudRate, Encoding::dstar);
 	if (pMainWindow->AudioManager.AMBEDevice.IsOpen()) {
 		const Glib::ustring path(pMainWindow->AudioManager.AMBEDevice.GetDevicePath());
 		pDevicePathLabel->set_text(path);

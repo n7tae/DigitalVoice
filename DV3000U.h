@@ -37,41 +37,41 @@
 
 #pragma pack(push, 1)
 struct dv3k_packet {
-    unsigned char start_byte;
-    struct {
-        unsigned short payload_length;
-        unsigned char packet_type;
-    } header;
-    unsigned char field_id;
-    union {
-        struct {
-            union {
-                char prodid[16];
-                unsigned char ratep[12];
-                char version[48];
-                short chanfmt;
-            } data;
-        } ctrl;
-        struct {
-           unsigned char num_samples;
-            short samples[160];
-        } audio;
-        struct {
-            unsigned char num_bits;
-            unsigned char data[9];
-         } ambe;
-    } payload;
+	unsigned char start_byte;
+	struct {
+		unsigned short payload_length;
+		unsigned char packet_type;
+	} header;
+	unsigned char field_id;
+	union {
+		struct {
+			union {
+				char prodid[16];
+				unsigned char ratep[12];
+				char version[48];
+				short chanfmt;
+			} data;
+		} ctrl;
+		struct {
+			unsigned char num_samples;
+			short samples[160];
+		} audio;
+		struct {
+			unsigned char num_bits;
+			unsigned char data[9];
+		} ambe;
+	} payload;
 };
 #pragma pack(pop)
 
 typedef struct dv3k_packet DV3K_PACKET, *PDV3K_PACKET;
-typedef enum { DSTAR_TYPE, DMR_TYPE } Eencoding;
+enum class Encoding { dstar, dmr };
 
 class CDV3000U {
 public:
 	CDV3000U();
 	~CDV3000U();
-	void FindandOpen(int baudrate, Eencoding type);
+	void FindandOpen(int baudrate, Encoding type);
 	bool SetBaudRate(int baudrate);
 	bool EncodeAudio(const short *audio, unsigned char *data);
 	bool DecodeData(const unsigned char *data, short *audio);
@@ -87,9 +87,9 @@ public:
 private:
 	int fd;
 	std::string devicepath, productid, version;
-	bool OpenDevice(char *ttyname, int baudrate, Eencoding dvtype);
+	bool OpenDevice(char *ttyname, int baudrate, Encoding dvtype);
 	void dump(const char *title, void *data, int length);
 	bool getresponse(PDV3K_PACKET packet);
-	bool initDV3K(Eencoding dvtype);
+	bool initDV3K(Encoding dvtype);
 	bool checkResponse(PDV3K_PACKET responsePacket, unsigned char response);
 };

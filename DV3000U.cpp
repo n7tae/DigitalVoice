@@ -70,7 +70,7 @@ std::string CDV3000U::GetProductID()
 	return productid;
 }
 
-void CDV3000U::FindandOpen(int baudrate, Eencoding type)
+void CDV3000U::FindandOpen(int baudrate, Encoding type)
 {
 	bool rval = true;
 	char device[16];
@@ -132,7 +132,7 @@ bool CDV3000U::SetBaudRate(int baudrate)
 	return false;
 }
 
-bool CDV3000U::OpenDevice(char *ttyname, int baudrate, Eencoding dvtype)
+bool CDV3000U::OpenDevice(char *ttyname, int baudrate, Encoding dvtype)
 {
 	fd = open(ttyname, O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
@@ -151,7 +151,7 @@ bool CDV3000U::OpenDevice(char *ttyname, int baudrate, Eencoding dvtype)
 	return false;
 }
 
-bool CDV3000U::initDV3K(Eencoding dvtype)
+bool CDV3000U::initDV3K(Encoding dvtype)
 {
 	char prodId[17];
 	char versionstr[49];
@@ -219,16 +219,20 @@ bool CDV3000U::initDV3K(Eencoding dvtype)
 	const char *typestr;
 	const char *dstartype = "DStar";
 	const char *dmrtype = "DMR";
-	unsigned char DSTAR_RATE_P[] = { 0x01U, 0x30U, 0x07U, 0x63U, 0x40U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x48U };
-	unsigned char DMR_RATE_P[]   = { 0x04U, 0x31U, 0x07U, 0x54U, 0x24U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x6FU, 0x48U };
 	switch (dvtype) {
-		case DSTAR_TYPE:
-			memcpy(ctrlPacket.payload.ctrl.data.ratep, DSTAR_RATE_P, 12);
-			typestr = dstartype;
+		case Encoding::dstar:
+			{
+				const unsigned char data[] = { 0x01U, 0x30U, 0x07U, 0x63U, 0x40U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x48U };
+				memcpy(ctrlPacket.payload.ctrl.data.ratep, data, 12);
+				typestr = dstartype;
+			}
 			break;
-		case DMR_TYPE:
-			memcpy(ctrlPacket.payload.ctrl.data.ratep, DMR_RATE_P, 12);
-			typestr = dmrtype;
+		case Encoding::dmr:
+			{
+				const unsigned char data[] = { 0x04U, 0x31U, 0x07U, 0x54U, 0x24U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x6FU, 0x48U };
+				memcpy(ctrlPacket.payload.ctrl.data.ratep, data, 12);
+				typestr = dmrtype;
+			}
 			break;
 		default:
 			std::cerr << "initDV3K: unknown DV type" << std::endl;
@@ -267,17 +271,21 @@ bool CDV3000U::getresponse(PDV3K_PACKET packet)
 
 	// get the start byte
 	packet->start_byte = 0U;
-	for (unsigned i = 0U; i < sizeof(DV3K_PACKET); ++i) {
+	const unsigned limit = sizeof(DV3K_PACKET) + 2;
+	unsigned got = 0;
+	for (unsigned i = 0U; i < limit; ++i) {
 		bytesRead = read(fd, packet, 1);
 		if (bytesRead == -1) {
 			std::cerr << "CDV3000U: Error reading from serial port: " << strerror(errno) << std::endl;
 			return true;
 		}
+		if (bytesRead)
+			got++;
 		if (packet->start_byte == DV3K_START_BYTE)
 			break;
 	}
 	if (packet->start_byte != DV3K_START_BYTE) {
-		std::cerr << "CDV3000U: Couldn't find start byte in serial data" << std::endl;
+		std::cerr << "CDV3000U: Couldn't find start byte in serial data: tried " << limit << " times, got " << got << " bytes" << std::endl;
 		return true;
 	}
 

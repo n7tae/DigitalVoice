@@ -48,7 +48,7 @@ CMainWindow::CMainWindow() :
 {
 	cfg.CopyTo(cfgdata);
 	if (! AudioManager.AMBEDevice.IsOpen()) {
-		AudioManager.AMBEDevice.FindandOpen(cfgdata.iBaudRate, DSTAR_TYPE);
+		AudioManager.AMBEDevice.FindandOpen(cfgdata.iBaudRate, Encoding::dstar);
 	}
 }
 
@@ -111,7 +111,6 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	dbname.append("qn.db");
 	if (qnDB.Open(dbname.c_str()))
 		return true;
-	qnDB.ClearGW();
 	qnDB.ClearLH();
 	qnDB.ClearLS();
 	RebuildGateways(cfgdata.bDPlusEnable);
