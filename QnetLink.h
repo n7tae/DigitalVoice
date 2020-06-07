@@ -87,6 +87,8 @@ private:
     int delay_before;
 	std::string link_at_startup;
 	const unsigned char REF_ACK[3] = { 3, 96, 0 };
+	const unsigned char endbytes[6] = { 0x55U, 0x55U, 0x55U, 0x55U, 0xC8U, 0x7AU };
+
 
 	char notify_msg[64];
 

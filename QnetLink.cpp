@@ -875,7 +875,7 @@ void CQnetLink::Process()
 						}
 
 						/* send the data to the audio manager */
-						//Link2AM.Write(rdvst.dsvt.title, 56);
+						//Link2AM.Write(rdsvt.dsvt.title, 56);
 						is_packet = true;
 					}
 				} else if (found) {
@@ -889,7 +889,7 @@ void CQnetLink::Process()
 					}
 
 					/* send the data to the audio mgr */
-					// Link2AM.Write(rdvst.dsvt.title, 27);
+					// Link2AM.Write(rdsvt.dsvt.title, 27);
 					is_packet = true;
 				}
 			}
@@ -975,7 +975,7 @@ void CQnetLink::Process()
 							memcpy(dsvt.vasd.voice, dcs_buf+46, 12);
 
 							/* send the data to the audio mgr */
-							//Link2AM.Write(rdvst.dsvt.title, 27);
+							//Link2AM.Write(rdsvt.dsvt.title, 27);
 							is_packet = true;
 
 							if ((dcs_buf[45] & 0x40) != 0) {
@@ -1093,30 +1093,29 @@ void CQnetLink::Process()
 								to_remote_g2.out_streamid = dsvt.streamid;
 
 								if (to_remote_g2.addr.GetPort()==rmt_xrf_port || to_remote_g2.addr.GetPort()==rmt_ref_port) {
-									CREFDSVT rdvst;
-									rdvst.head[0] = (unsigned char)(58 & 0xFF);
-									rdvst.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-									rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
+									CREFDSVT rdsvt;
+									rdsvt.head[0] = 56U;
+									rdsvt.head[1] = 0x80U;
 
-									memcpy(rdvst.dsvt.title, dsvt.title, 56);
-									memset(rdvst.dsvt.hdr.rpt1, ' ', CALL_SIZE);
-									memcpy(rdvst.dsvt.hdr.rpt1, to_remote_g2.to_call, strlen(to_remote_g2.to_call));
-									rdvst.dsvt.hdr.rpt1[7] = to_remote_g2.to_mod;
-									memset(rdvst.dsvt.hdr.rpt2, ' ', CALL_SIZE);
-									memcpy(rdvst.dsvt.hdr.rpt2, to_remote_g2.to_call, strlen(to_remote_g2.to_call));
-									rdvst.dsvt.hdr.rpt2[7] = 'G';
-									memcpy(rdvst.dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
-									calcPFCS(rdvst.dsvt.title, 56);
+									memcpy(rdsvt.dsvt.title, dsvt.title, 56);
+									memset(rdsvt.dsvt.hdr.rpt1, ' ', CALL_SIZE);
+									memcpy(rdsvt.dsvt.hdr.rpt1, to_remote_g2.to_call, strlen(to_remote_g2.to_call));
+									rdsvt.dsvt.hdr.rpt1[7] = to_remote_g2.to_mod;
+									memset(rdsvt.dsvt.hdr.rpt2, ' ', CALL_SIZE);
+									memcpy(rdsvt.dsvt.hdr.rpt2, to_remote_g2.to_call, strlen(to_remote_g2.to_call));
+									rdsvt.dsvt.hdr.rpt2[7] = 'G';
+									memcpy(rdsvt.dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
+									calcPFCS(rdsvt.dsvt.title, 56);
 
 									if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
 										/* inform XRF about the source */
-										rdvst.dsvt.flagb[2] = to_remote_g2.from_mod;
-										calcPFCS(rdvst.dsvt.title, 56);
+										rdsvt.dsvt.flagb[2] = to_remote_g2.from_mod;
+										calcPFCS(rdsvt.dsvt.title, 56);
 										for (int j=0; j<5; j++)
-											sendto(xrf_g2_sock, rdvst.dsvt.title, 56, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
+											sendto(xrf_g2_sock, rdsvt.dsvt.title, 56, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 									} else {
 										for (int j=0; j<5; j++)
-											sendto(ref_g2_sock, rdvst.head, 58, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
+											sendto(ref_g2_sock, rdsvt.head, 58, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 									}
 								} else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
 									memcpy(rptr_2_dcs.mycall, dsvt.hdr.mycall, CALL_SIZE);
@@ -1131,20 +1130,22 @@ void CQnetLink::Process()
 
 					if (to_remote_g2.is_connected && to_remote_g2.out_streamid==dsvt.streamid) {
 						if (to_remote_g2.addr.GetPort()==rmt_xrf_port || to_remote_g2.addr.GetPort()==rmt_ref_port) {
-							CREFDSVT rdvst;
-							rdvst.head[0] = (unsigned char)(29 & 0xFF);
-							rdvst.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-							rdvst.head[1] = (unsigned char)(rdvst.head[1] | 0xFFFFFF80);
-
-							memcpy(rdvst.dsvt.title, dsvt.title, 27);
 
 							if (to_remote_g2.addr.GetPort() == rmt_xrf_port) {
 								/* inform XRF about the source */
-								rdvst.dsvt.flagb[2] = to_remote_g2.from_mod;
+								dsvt.flagb[2] = to_remote_g2.from_mod;
 
-								sendto(xrf_g2_sock, rdvst.dsvt.title, 27, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
-							} else if (to_remote_g2.addr.GetPort() == rmt_ref_port)
-								sendto(ref_g2_sock, rdvst.head, 29, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
+								sendto(xrf_g2_sock, dsvt.title, 27, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
+							} else if (to_remote_g2.addr.GetPort() == rmt_ref_port) {
+								CREFDSVT rdsvt;
+								rdsvt.head[0] = (rdsvt.dsvt.ctrl & 0x40U) ? 32U : 29U;
+								rdsvt.head[1] = 0x80U;
+
+								memcpy(rdsvt.dsvt.title, dsvt.title, 27);
+								if (32U == rdsvt.head[0])
+									memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+								sendto(ref_g2_sock, rdsvt.head, rdsvt.head[0], 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
+							}
 						} else if (to_remote_g2.addr.GetPort() == rmt_dcs_port) {
 							memset(dcs_buf, 0x0, 600);
 							dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
