@@ -46,7 +46,7 @@ public:
 		struct {
 			unsigned char voice[9]; // 15
 			unsigned char end[6];	// 24
-		} vend;	// voice and end seq total 32
+		} vend;	// voice and end seq total 30
 	};
 };
 #pragma pack(pop)
