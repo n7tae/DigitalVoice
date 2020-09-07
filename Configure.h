@@ -20,13 +20,13 @@
 
 #include <string>
 
-#define IS_TRUE(a) (a=='t' || a=='T' || a=='1')
+#define IS_TRUE(a) ((a)=='t' || (a)=='T' || (a)=='1')
 
 enum class EQuadNetType { ipv4only, ipv6only, dualstack };
 
 using CFGDATA = struct CFGData_struct {
-	std::string sCallsign, sName, sStation, sMessage, sLocation[2], sURL, sLinkAtStart, sAudioIn, sAudioOut, sAPRSServer, sGPSDServer;
-	bool bUseMyCall, bDPlusEnable, bGPSDEnable, bAPRSEnable, bLinkEnable, bRouteEnable;
+	std::string sCallsign, sName, sStation, sMessage, sLocation[2], sURL, sLinkAtStart, sAudioIn, sAudioOut, sAPRSServer, sGPSDServer, sM17DestCallsign, sM17DestIp, sM17SourceCallsign;
+	bool bUseMyCall, bDPlusEnable, bGPSDEnable, bAPRSEnable, bLinkEnable, bRouteEnable, bCodec2Enable, bVoiceOnlyEnable;
 	int iBaudRate, iAPRSInterval;
 	unsigned short usAPRSPort, usGPSDPort;
 	EQuadNetType eNetType;
@@ -37,7 +37,6 @@ using CFGDATA = struct CFGData_struct {
 class CConfigure {
 public:
 	CConfigure() { ReadData(); }
-	~CConfigure() {}
 
 	void ReadData();
 	void WriteData();

@@ -51,14 +51,17 @@ private:
 
 	// widgets
 	Gtk::Window *pWin;
-	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton;
-	Gtk::ComboBoxText *pRouteComboBox;
-	Gtk::Entry *pLinkEntry, *pRouteEntry;
+	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton, *pM17DestActionButton;
+	Gtk::ComboBoxText *pRouteComboBox, *pM17DestCallsignComboBox;
+	Gtk::Entry *pLinkEntry, *pRouteEntry, *pM17DestCallsignEntry, *pM17DestIPEntry;
 	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
 	Gtk::MenuItem *pAboutMenuItem;
 	Glib::RefPtr<Gtk::TextBuffer> pLogTextBuffer;
 	Gtk::ScrolledWindow *pScrolledWindow;
 	Gtk::TextView *pLogTextView;
+	Gtk::StackSwitcher *pMainStackSwitcher;
+	Gtk::Stack *pMainStack;
+	Gtk::Box *pM17Stack, *pDStarStack;
 
 	// state data
 	std::set<Glib::ustring> routeset;
@@ -91,6 +94,10 @@ private:
 	void on_UnlinkButton_clicked();
 	void on_LinkEntry_changed();
 	void on_AboutMenuItem_activate();
+	void on_M17DestCallsignEntry_changed();
+	void on_M17DestIPEntry_changed();
+	void on_M17DestCallsignComboBox_changed();
+	void on_M17DestActionButton_clicked();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
 	bool GetLogInput(Glib::IOCondition condition);

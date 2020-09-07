@@ -30,6 +30,12 @@
 
 void CConfigure::SetDefaultValues()
 {
+	// M17
+	data.bCodec2Enable = true;
+	data.sM17DestCallsign.assign("XLX797 A");
+	data.sM17DestIp.assign("44.8.8.8");
+	data.sM17SourceCallsign.clear();
+	data.bVoiceOnlyEnable = true;
 	// mode and module
 	data.bLinkEnable = data.bRouteEnable = true;
 	data.eNetType = EQuadNetType::ipv4only;
@@ -52,7 +58,7 @@ void CConfigure::SetDefaultValues()
 	data.sAudioIn.assign("default");
 	data.sAudioOut.assign("default");
 	// aprs
-	data.bAPRSEnable = true;
+	data.bAPRSEnable = false;
 	data.sAPRSServer.assign("rotate.aprs2.net");
 	data.usAPRSPort = 14580U;
 	data.iAPRSInterval = 40;
@@ -65,7 +71,7 @@ void CConfigure::SetDefaultValues()
 void CConfigure::ReadData()
 {
 	std::string path(CFG_DIR);
-	path.append("qdv.cfg");
+	path.append("mmdvoice.cfg");
 
 	std::ifstream cfg(path.c_str(), std::ifstream::in);
 	if (! cfg.is_open()) {
@@ -145,6 +151,16 @@ void CConfigure::ReadData()
 			data.sGPSDServer.assign(val);
 		} else if (0 == strcmp(key, "GPSDPort")) {
 			data.usGPSDPort = std::stoul(val);
+		} else if (0 == strcmp(key, "Codec2Enable")) {
+			data.bCodec2Enable = IS_TRUE(*val);
+		} else if (0 == strcmp(key, "M17DestCallsign")) {
+			data.sM17DestCallsign.assign(val);
+		} else if (0 == strcmp(key, "M17DestIP")) {
+			data.sM17DestIp.assign(val);
+		} else if (0 == strcmp(key, "M17SourceCallsign")) {
+			data.sM17SourceCallsign.assign(val);
+		} else if (0 == strcmp(key, "M17VoiceOnly")) {
+			data.bVoiceOnlyEnable = IS_TRUE(*val);
 		}
 	}
 	cfg.close();
@@ -154,7 +170,7 @@ void CConfigure::WriteData()
 {
 
 	std::string path(CFG_DIR);
-	path.append("qdv.cfg");
+	path.append("mmdvoice.cfg");
 
 	// directory exists, now make the file
 	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
@@ -163,6 +179,12 @@ void CConfigure::WriteData()
 		return;
 	}
 	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
+	// M17
+	file << "Codec2Enable=" << (data.bCodec2Enable ? "true" : "false") << std::endl;
+	file << "M17DestCallsign=" << data.sM17DestCallsign << std::endl;
+	file << "M17DestIP=" << data.sM17DestIp << std::endl;
+	file << "M17SourceCallsign=" << data.sM17SourceCallsign << std::endl;
+	file << "M17VoiceOnly=" << (data.bVoiceOnlyEnable ? "true" : "false") << std::endl;
 	// mode and module
 	file << "RouteEnable=" << (data.bRouteEnable ? "true" : "false") << std::endl;
 	file << "LinkEnable=" << (data.bLinkEnable ? "true" : "false") << std::endl;
@@ -207,6 +229,12 @@ void CConfigure::WriteData()
 
 void CConfigure::CopyFrom(const CFGDATA &from)
 {
+	// M17
+	data.bCodec2Enable = from.bCodec2Enable;
+	data.sM17DestCallsign.assign(from.sM17DestCallsign);
+	data.sM17DestIp.assign(from.sM17DestIp);
+	data.sM17SourceCallsign.assign(from.sM17SourceCallsign);
+	data.bVoiceOnlyEnable = from.bVoiceOnlyEnable;
 	// mode and module
 	data.bRouteEnable = from.bRouteEnable;
 	data.bLinkEnable = from.bLinkEnable;
@@ -243,6 +271,12 @@ void CConfigure::CopyFrom(const CFGDATA &from)
 
 void CConfigure::CopyTo(CFGDATA &to)
 {
+	// M17
+	to.bCodec2Enable = data.bCodec2Enable;
+	to.sM17DestCallsign.assign(data.sM17DestCallsign);
+	to.sM17DestIp.assign(data.sM17DestIp);
+	to.sM17SourceCallsign.assign(data.sM17SourceCallsign);
+	to.bVoiceOnlyEnable = data.bVoiceOnlyEnable;
 	// mode and module
 	to.bRouteEnable = data.bRouteEnable;
 	to.bLinkEnable = data.bLinkEnable;
@@ -279,10 +313,16 @@ void CConfigure::CopyTo(CFGDATA &to)
 
 bool CConfigure::IsOkay()
 {
+	bool audio = (data.sAudioIn.size()>0 && data.sAudioOut.size()>0);
+	if (data.bCodec2Enable) {
+		bool dest = (data.sM17DestCallsign.size() > 2);
+		bool ip = (data.sM17DestIp.size() > 6);
+		bool src = (data.sM17SourceCallsign.size() > 2);
+		return (audio && dest && ip && src);
+	}
 	bool station = (data.sStation.size() > 0);
 	bool module = isalpha(data.cModule);
 	bool call = (data.sCallsign.size() > 0);
-	bool audio = (data.sAudioIn.size()>0 && data.sAudioOut.size()>0);
 	return (station && module && call && audio);
 }
 

@@ -43,7 +43,12 @@ CFGDATA *CSettingsDlg::Show()
 {
 	pMainWindow->cfg.CopyTo(data);	// get the saved config data (MainWindow has alread read it)
 	SetWidgetStates(data);
-	on_AMBERescanButton_clicked();		// reset the ambe device
+	if (data.bCodec2Enable) {
+		on_Codec2RadioButton_clicked();
+	} else {
+		on_AMBERadioButton_clicked();
+		on_AMBERescanButton_clicked();	// reset the ambe device
+	}
 	on_AudioRescanButton_clicked();	// re-read the audio PCM devices
 
 	if (Gtk::RESPONSE_OK == pDlg->run()) {
@@ -67,6 +72,10 @@ CFGDATA *CSettingsDlg::Show()
 
 void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 {
+	// M17
+	d.bCodec2Enable = pCodec2RadioButton->get_active();
+	d.sM17DestCallsign.assign(pM17SourceCallsignEntry->get_text());
+	d.bVoiceOnlyEnable = pM17VoiceOnlyRadioButton->get_active();
 	// modes
 	d.bRouteEnable = pRoutingCheckbutton->get_active();
 	d.bLinkEnable = pLinkingCheckButton->get_active();
@@ -117,6 +126,16 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 
 void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 {
+	// M17
+	if (d.bCodec2Enable)
+		pCodec2RadioButton->clicked();
+	else
+		pAMBERadioButton->clicked();
+	if (d.bVoiceOnlyEnable)
+		pM17VoiceOnlyRadioButton->clicked();
+	else
+		pM17VoiceDataRadioButton->clicked();
+	pM17SourceCallsignEntry->set_text(d.sM17DestCallsign);
 	// mode
 	pLinkingCheckButton->set_active(d.bLinkEnable);
 	pRoutingCheckbutton->set_active(d.bRouteEnable);
@@ -178,10 +197,17 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pOkayButton = pDlg->add_button("Okay", Gtk::RESPONSE_OK);
 	pOkayButton->set_sensitive(false);
 
+	// mode && notebook
+	builder->get_widget("Codec2RadioButton", pCodec2RadioButton);
+	builder->get_widget("AMBERadioButton", pAMBERadioButton);
+	builder->get_widget("SettingsNotebook", pSettingsNotebook);
+	// M17
+	builder->get_widget("M17SourceCallsignEntry", pM17SourceCallsignEntry);
+	builder->get_widget("M17VoiceOnlyRadioButton", pM17VoiceOnlyRadioButton);
+	builder->get_widget("M17VoiceDataRadioButton", pM17VoiceDataRadioButton);
 	// modes
 	builder->get_widget("LinkingCheckButton", pLinkingCheckButton);
 	builder->get_widget("RoutingCheckButton", pRoutingCheckbutton);
-
 	// station
 	builder->get_widget("MyCallsignEntry", pMyCallsignEntry);
 	builder->get_widget("MyNameEntry", pMyNameEntry);
@@ -259,6 +285,9 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pAudioOutputComboBox->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioOutputComboBox_changed));
 	pAPRSEnableCheckButton->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_APRSEnableCheckButton_toggled));
 	pGPSDEnableCheckButton->signal_toggled().connect(sigc::mem_fun(*this, &CSettingsDlg::on_GPSDEnableCheckButton_toggled));
+	pCodec2RadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_Codec2RadioButton_clicked));
+	pAMBERadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AMBERadioButton_clicked));
+	pM17SourceCallsignEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_M17SourceCallsignEntry_changed));
 
 	return false;
 }
@@ -312,41 +341,70 @@ void CSettingsDlg::on_UseMyCallsignCheckButton_toggled()
 	}
 }
 
+void CSettingsDlg::on_Codec2RadioButton_clicked()
+{
+	pSettingsNotebook->get_nth_page(0)->show();
+	const int count = pSettingsNotebook->get_n_pages();
+	for (int i=2; i<count; i++)
+		pSettingsNotebook->get_nth_page(i)->hide();
+}
+
+void CSettingsDlg::on_AMBERadioButton_clicked()
+{
+	pSettingsNotebook->get_nth_page(0)->hide();
+	const int count = pSettingsNotebook->get_n_pages();
+	for (int i=2; i<count; i++)
+		pSettingsNotebook->get_nth_page(i)->show();
+}
+
 void CSettingsDlg::on_MyCallsignEntry_changed()
- {
-	 int pos = pMyCallsignEntry->get_position();
-	 Glib::ustring s = pMyCallsignEntry->get_text().uppercase();
-	 pMyCallsignEntry->set_text(s);
-	 pMyCallsignEntry->set_position(pos);
-	 bCallsign = std::regex_match(s.c_str(), CallRegEx);
-	 pMyCallsignEntry->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
-	 pOkayButton->set_sensitive(bCallsign && bStation);
-	 if (pUseMyCallCheckButton->get_active())
-	 	pStationCallsignEntry->set_text(s);
- }
+{
+	int pos = pMyCallsignEntry->get_position();
+	Glib::ustring s = pMyCallsignEntry->get_text().uppercase();
+	pMyCallsignEntry->set_text(s);
+	pMyCallsignEntry->set_position(pos);
+	bCallsign = std::regex_match(s.c_str(), CallRegEx);
+	pMyCallsignEntry->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
+	if (pAMBERadioButton->get_active())
+		pOkayButton->set_sensitive(bCallsign && bStation);
+	if (pUseMyCallCheckButton->get_active())
+	pStationCallsignEntry->set_text(s);
+}
 
 void CSettingsDlg::on_MyNameEntry_changed()
- {
-	 int pos = pMyNameEntry->get_position();
-	 Glib::ustring s = pMyNameEntry->get_text();
-	 pMyNameEntry->set_text(s.uppercase());
-	 pMyNameEntry->set_position(pos);
- }
+{
+	int pos = pMyNameEntry->get_position();
+	Glib::ustring s = pMyNameEntry->get_text();
+	pMyNameEntry->set_text(s.uppercase());
+	pMyNameEntry->set_position(pos);
+}
 
- void CSettingsDlg::on_LinkAtStartEntry_changed()
- {
-	 int pos = pLinkAtStartEntry->get_position();
-	 Glib::ustring s = pLinkAtStartEntry->get_text().uppercase();
-	 const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
-	 Glib::ustring n;
-	 for (auto it=s.begin(); it!=s.end(); it++) {
-		 if (Glib::ustring::npos != good.find(*it)) {
-			 n.append(1, *it);
-		 }
-	 }
-	 pLinkAtStartEntry->set_text(n);
-	 pLinkAtStartEntry->set_position(pos);
- }
+void CSettingsDlg::on_LinkAtStartEntry_changed()
+{
+	int pos = pLinkAtStartEntry->get_position();
+	Glib::ustring s = pLinkAtStartEntry->get_text().uppercase();
+	const Glib::ustring good("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
+	Glib::ustring n;
+	for (auto it=s.begin(); it!=s.end(); it++) {
+		if (Glib::ustring::npos != good.find(*it)) {
+			n.append(1, *it);
+		}
+	}
+	pLinkAtStartEntry->set_text(n);
+	pLinkAtStartEntry->set_position(pos);
+}
+
+void CSettingsDlg::on_M17SourceCallsignEntry_changed()
+{
+	int pos = pM17SourceCallsignEntry->get_position();
+	Glib::ustring s = pM17SourceCallsignEntry->get_text().uppercase();
+	pM17SourceCallsignEntry->set_text(s);
+	pM17SourceCallsignEntry->set_position(pos);
+	bM17Source = std::regex_match(s.c_str(), CallRegEx);
+	pM17SourceCallsignEntry->set_icon_from_icon_name(bM17Source ? "gtk-ok" : "gtk-cancel");
+	if (pCodec2RadioButton->get_active())
+		pOkayButton->set_sensitive(bM17Source);
+}
 
 void CSettingsDlg::on_StationCallsignEntry_changed()
  {
@@ -357,7 +415,8 @@ void CSettingsDlg::on_StationCallsignEntry_changed()
 	 bStation = std::regex_match(s.c_str(), CallRegEx);
 	 pStationCallsignEntry->set_icon_from_icon_name(bStation ? "gtk-ok" : "gtk-cancel");
 	 pDPlusEnableCheckButton->set_sensitive(bCallsign);
-	 pOkayButton->set_sensitive(bCallsign && bStation);
+	 if (pAMBERadioButton->get_active())
+		 pOkayButton->set_sensitive(bCallsign && bStation);
  }
 
 void CSettingsDlg::OnIntegerChanged(Gtk::Entry *pEntry)

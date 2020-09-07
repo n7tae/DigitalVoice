@@ -51,7 +51,7 @@ private:
 	// data classes
 	CFGDATA data;
 	// other data
-	bool bCallsign, bStation;
+	bool bCallsign, bStation, bM17Source;
 	// regular expression for testing callsign
 	std::regex CallRegEx;
 	// Windows
@@ -61,10 +61,14 @@ private:
 	Gtk::Button *pAMBERescanButton, *pOkayButton, *pAudioRescanButton;
 	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
 	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton, *pLinkingCheckButton, *pRoutingCheckbutton;
-	Gtk::Entry *pStationCallsignEntry, *pMyCallsignEntry, *pMyNameEntry, *pMessageEntry, *pLocationEntry[2], *pURLEntry, *pLatitudeEntry, *pLongitudeEntry, *pLinkAtStartEntry, *pAPRSServerEntry, *pAPRSPortEntry, *pAPRSIntervalEntry, *pGPSDServerEntry, *pGPSDPortEntry;
-	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton;
+	Gtk::Entry *pStationCallsignEntry, *pMyCallsignEntry, *pMyNameEntry, *pMessageEntry, *pLocationEntry[2], *pURLEntry, *pLatitudeEntry, *pLongitudeEntry, *pLinkAtStartEntry, *pAPRSServerEntry, *pAPRSPortEntry, *pAPRSIntervalEntry, *pGPSDServerEntry, *pGPSDPortEntry, *pM17SourceCallsignEntry;
+	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton, *pCodec2RadioButton, *pAMBERadioButton, *pM17VoiceOnlyRadioButton, *pM17VoiceDataRadioButton;
 	Gtk::Label *pDevicePathLabel, *pProductIDLabel, *pVersionLabel, *pInputDescLabel, *pOutputDescLabel;
+	Gtk::Notebook *pSettingsNotebook;
 	// events
+	void on_M17SourceCallsignEntry_changed();
+	void on_Codec2RadioButton_clicked();
+	void on_AMBERadioButton_clicked();
 	void on_LinkingCheckButton_toggled();
 	void on_RoutingCheckButton_toggled();
 	void on_UseMyCallsignCheckButton_toggled();

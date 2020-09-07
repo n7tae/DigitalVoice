@@ -40,7 +40,6 @@ class CAudioManager
 {
 public:
 	CAudioManager();
-	~CAudioManager() {}
 	bool Init(CMainWindow *);
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);

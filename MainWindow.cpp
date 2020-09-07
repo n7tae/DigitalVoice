@@ -80,28 +80,35 @@ void CMainWindow::RunGate()
 
 void CMainWindow::SetState(const CFGDATA &data)
 {
-	if (data.bRouteEnable) {
-		if (nullptr == pGate && cfg.IsOkay())
-			futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
-		pRouteComboBox->set_sensitive(true);
-		pRouteActionButton->set_sensitive(true);
-	} else {
+	if (data.bCodec2Enable) {
+		pMainStack->set_visible_child("page1");
 		StopGate();
-		pRouteEntry->set_text("CQCQCQ");
-		pRouteEntry->set_sensitive(false);
-		pRouteComboBox->set_sensitive(false);
-		pRouteActionButton->set_sensitive(false);
-	}
-
-	if (data.bLinkEnable) { // if data.bLinkEnable==true, then the TimeoutProcess() will handle the link frame widgets
-		if (nullptr == pGate && cfg.IsOkay())
-			futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
-	} else {
 		StopLink();
-		pLinkButton->set_sensitive(false);
-		pLinkEntry->set_sensitive(false);
-		pUnlinkButton->set_sensitive(false);
-		pLinkEntry->set_text("");
+	} else {
+		pMainStack->set_visible_child("page0");
+		if (data.bRouteEnable) {
+			if (nullptr == pGate && cfg.IsOkay())
+				futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
+			pRouteComboBox->set_sensitive(true);
+			pRouteActionButton->set_sensitive(true);
+		} else {
+			StopGate();
+			pRouteEntry->set_text("CQCQCQ");
+			pRouteEntry->set_sensitive(false);
+			pRouteComboBox->set_sensitive(false);
+			pRouteActionButton->set_sensitive(false);
+		}
+
+		if (data.bLinkEnable) { // if data.bLinkEnable==true, then the TimeoutProcess() will handle the link frame widgets
+			if (nullptr == pGate && cfg.IsOkay())
+				futLink = std::async(std::launch::async, &CMainWindow::RunLink, this);
+		} else {
+			StopLink();
+			pLinkButton->set_sensitive(false);
+			pLinkEntry->set_sensitive(false);
+			pUnlinkButton->set_sensitive(false);
+			pLinkEntry->set_text("");
+		}
 	}
 }
 
@@ -177,9 +184,21 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("ScrolledWindow", pScrolledWindow);
 	builder->get_widget("LogTextView", pLogTextView);
 	builder->get_widget("AboutMenuItem", pAboutMenuItem);
+	builder->get_widget("MainStack", pMainStack);
+	builder->get_widget("M17Stack", pM17Stack);
+	builder->get_widget("DStarStack", pDStarStack);
+	builder->get_widget("M17DestActionButton", pM17DestActionButton);
+	builder->get_widget("M17DestCallsignEntry", pM17DestCallsignEntry);
+	builder->get_widget("M17DestIPEntry", pM17DestIPEntry);
+	builder->get_widget("M17DestCallsignComboBox", pM17DestCallsignComboBox);
+
 	pLogTextBuffer = pLogTextView->get_buffer();
 
 	// events
+	pM17DestCallsignEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestCallsignEntry_changed));
+	pM17DestIPEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestIPEntry_changed));
+	pM17DestCallsignComboBox->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestCallsignComboBox_changed));
+	pM17DestActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestActionButton_clicked));
 	pSettingsButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
 	pQuitButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuitButton_clicked));
 	pRouteActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteActionButton_clicked));
@@ -312,6 +331,26 @@ void CMainWindow::on_RouteEntry_changed()
 	pRouteEntry->set_position(pos);
 	pRouteActionButton->set_sensitive(n.size() ? true : false);
 	pRouteActionButton->set_label((routeset.end() == routeset.find(s)) ? "Add to list" : "Delete from list");
+}
+
+void CMainWindow::on_M17DestCallsignEntry_changed()
+{
+
+}
+
+void CMainWindow::on_M17DestIPEntry_changed()
+{
+
+}
+
+void CMainWindow::on_M17DestCallsignComboBox_changed()
+{
+
+}
+
+void CMainWindow::on_M17DestActionButton_clicked()
+{
+
 }
 
 void CMainWindow::on_RouteComboBox_changed()

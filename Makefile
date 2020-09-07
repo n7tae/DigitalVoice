@@ -9,13 +9,13 @@ SYSDIR = /lib/systemd/system/
 # or, you can choose this for a much smaller executable without debugging help
 CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
 
-
+EXE = mmdvoice
 SRCS = $(wildcard *.cpp) $(wildcard ircddb/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-qdv :  $(OBJS)
-	g++ $(CPPFLAGS) -o $@ $^ `pkg-config --libs gtkmm-3.0` -lasound -lsqlite3 -pthread
+$(EXE) : $(OBJS)
+	g++ -o $@ $^ `pkg-config --libs gtkmm-3.0` -lasound -lsqlite3 -pthread
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
@@ -44,13 +44,13 @@ hostfile :
 qdvdash.service : qdvdash.txt
 	sed -e "s|HHHH|$(WWWDIR)|" qdvdash.txt > qdvdash.service
 
-install : qdv qdvdash.service DigitalVoice.glade
+install : $(EXE) qdvdash.service DigitalVoice.glade
 	mkdir -p $(CFGDIR)
 	/bin/cp -rf $(shell pwd)/announce $(CFGDIR)
 	/bin/ln -f $(shell pwd)/DigitalVoice.glade $(CFGDIR)
 	/bin/ln -f -s $(shell pwd)/gwys.txt $(CFGDIR)
 	mkdir -p $(BINDIR)
-	/bin/cp -f qdv $(BINDIR)
+	/bin/cp -f $(EXE) $(BINDIR)
 	mkdir -p $(WWWDIR)
 	sed -e "s|HHHH|$(CFGDIR)|" index.php > $(WWWDIR)index.php
 
@@ -66,9 +66,9 @@ uninstall :
 	/bin/rm -rf $(CFGDIR)announce
 	/bin/rm -f $(CFGDIR)DigitalVoice.glade
 	/bin/rm -f $(CFGDIR)gwys.txt
-	/bin/rm -f $(CFGDIR)qdv.cfg
+	/bin/rm -f $(CFGDIR)$(EXE).cfg
 	/bin/rm -f $(CFGDIR)qn.db
-	/bin/rm -f $(BINDIR)qdv
+	/bin/rm -f $(BINDIR)$(EXE)
 	/bin/rm -f $(WINDIR)index.php
 	/bin/rm qdvdash.service
 
@@ -81,4 +81,4 @@ uninstalldash :
 	/bin/rm -f $(CFGDIR)qn.db
 
 #interactive :
-#	GTK_DEBUG=interactive ./qdv
+#	GTK_DEBUG=interactive ./$(EXE)
