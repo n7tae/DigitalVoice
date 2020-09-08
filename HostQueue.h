@@ -23,10 +23,6 @@
 
 class CHost {
 public:
-	CHost() {}
-
-	~CHost() {}
-
 	CHost(const CHost &from)
 	{
 		name.assign(from.name);
@@ -56,8 +52,6 @@ public:
 template <class T> class CTQueue
 {
 public:
-	CTQueue() {}
-
 	~CTQueue()
 	{
 		Clear();

@@ -23,7 +23,7 @@
 
 #include "HostQueue.h"
 
-template <class T, int N> class CTFrame
+template <class T, class U, int N> class CTFrame
 {
 public:
 	CTFrame()
@@ -38,13 +38,13 @@ public:
 		sequence = 0U;
 	}
 
-	CTFrame(const CTFrame<T, N> &from)
+	CTFrame(const CTFrame<T, U, N> &from)
 	{
 		memcpy(data, from.GetData(), N *sizeof(T));
 		sequence = from.GetSequence();
 	}
 
-	CTFrame<T, N> &operator=(const CTFrame<T, N> &from)
+	CTFrame<T, U, N> &operator=(const CTFrame<T, U, N> &from)
 	{
 		memcpy(data, from.GetData(), N * sizeof(T));
 		sequence = from.GetSequence();
@@ -56,9 +56,14 @@ public:
 		return data;
 	}
 
-	unsigned char GetSequence() const
+	U GetSequence() const
 	{
 		return sequence;
+	}
+
+	unsigned int Size() const
+	{
+		return sizeof(data) / sizeof(T);
 	}
 
 	void SetSequence(unsigned char s)
@@ -66,14 +71,23 @@ public:
 		sequence = s;
 	}
 
-	~CTFrame() {}
 private:
 	T data[N];
-	unsigned char sequence;
+	U sequence;
 };
 
-using CAMBEFrame = CTFrame<unsigned char, 9>;
-using CAMBEQueue = CTQueue<CAMBEFrame>;
-using CAudioFrame = CTFrame<short int, 160>;
-using CAudioQueue = CTQueue<CAudioFrame>;
-using CSequenceQueue = CTQueue<unsigned char>;
+// AMBE
+using CAmbeDataFrame = CTFrame<unsigned char, unsigned char, 9>;
+using CAmbeDataQueue = CTQueue<CAmbeDataFrame>;
+using CAmbeAudioFrame = CTFrame<short int, unsigned char, 160>;
+using CAmbeAudioQueue = CTQueue<CAmbeAudioFrame>;
+using CUByteSeqQueue = CTQueue<unsigned char>;
+
+// M17
+using C3200DataFrame = CTFrame<unsigned char, unsigned short, 16>;
+using C3200DataQueue = CTQueue<C3200DataFrame>;
+using C1600DataFrame = CTFrame<unsigned char, unsigned short, 8>;
+using C1600DataQueue = CTQueue<C1600DataFrame>;
+using CM17AudioFrame = CTFrame<short, unsigned short, 320>;
+using CM17AudioQueue = CTQueue<CM17AudioFrame>;
+using CShortSeqQueue = CTQueue<unsigned short>;

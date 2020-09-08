@@ -58,10 +58,10 @@ private:
 	// data
 	std::atomic<bool> hot_mic, play_file;
 	std::atomic<unsigned short> gate_sid_in, link_sid_in;
-	CAudioQueue audio_queue;
-	CAMBEQueue ambe_queue;
+	CAmbeAudioQueue audio_queue;
+	CAmbeDataQueue ambe_queue;
 	PacketQueue gateway_queue, link_queue;
-	CSequenceQueue a2d_queue, d2a_queue;
+	CUByteSeqQueue a2d_queue, d2a_queue;
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	bool link_open;
