@@ -389,8 +389,8 @@ void CMainWindow::on_EchoTestButton_toggled()
 		//std::cout << "AM.RecordMicThread() returned\n";
 	} else {
 		// play back the queue
-		AudioManager.PlayAMBEDataThread();
-		//std::cout << "AM.PlayAMBEDataThread() returned\n";
+		AudioManager.PlayEchoDataThread();
+		//std::cout << "AM.PlayEchoDataThread() returned\n";
 	}
 }
 

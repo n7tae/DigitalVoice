@@ -29,25 +29,25 @@ public:
 	CTFrame()
 	{
 		memset(data, 0, N * sizeof(T));
-		sequence = 0U;
+		flag = 0;
 	}
 
 	CTFrame(const T *from)
 	{
 		memcpy(data, from, N * sizeof(T));
-		sequence = 0U;
+		flag = 0;
 	}
 
 	CTFrame(const CTFrame<T, U, N> &from)
 	{
 		memcpy(data, from.GetData(), N *sizeof(T));
-		sequence = from.GetSequence();
+		flag = from.GetFlag();
 	}
 
 	CTFrame<T, U, N> &operator=(const CTFrame<T, U, N> &from)
 	{
 		memcpy(data, from.GetData(), N * sizeof(T));
-		sequence = from.GetSequence();
+		flag = from.GetFlag();
 		return *this;
 	}
 
@@ -56,38 +56,35 @@ public:
 		return data;
 	}
 
-	U GetSequence() const
+	U GetFlag() const
 	{
-		return sequence;
+		return flag;
 	}
 
 	unsigned int Size() const
 	{
-		return sizeof(data) / sizeof(T);
+		return N;
 	}
 
-	void SetSequence(unsigned char s)
+	void SetFlag(U s)
 	{
-		sequence = s;
+		flag = s;
 	}
 
 private:
 	T data[N];
-	U sequence;
+	U flag;
 };
 
+// audio
+using CAudioFrame = CTFrame<short int, bool, 160>;
+using CAudioQueue = CTQueue<CAudioFrame>;
+
 // AMBE
-using CAmbeDataFrame = CTFrame<unsigned char, unsigned char, 9>;
+using CAmbeDataFrame = CTFrame<unsigned char, bool, 9>;
 using CAmbeDataQueue = CTQueue<CAmbeDataFrame>;
-using CAmbeAudioFrame = CTFrame<short int, unsigned char, 160>;
-using CAmbeAudioQueue = CTQueue<CAmbeAudioFrame>;
-using CUByteSeqQueue = CTQueue<unsigned char>;
+using CAmbeSeqQueue = CTQueue<bool>;	// used to pass the flag over the ambe device
 
 // M17
-using C3200DataFrame = CTFrame<unsigned char, unsigned short, 16>;
-using C3200DataQueue = CTQueue<C3200DataFrame>;
-using C1600DataFrame = CTFrame<unsigned char, unsigned short, 8>;
-using C1600DataQueue = CTQueue<C1600DataFrame>;
-using CM17AudioFrame = CTFrame<short, unsigned short, 320>;
-using CM17AudioQueue = CTQueue<CM17AudioFrame>;
-using CShortSeqQueue = CTQueue<unsigned short>;
+using CC2DataFrame = CTFrame<unsigned char, bool, 8>;
+using CC2DataQueue = CTQueue<CC2DataFrame>;

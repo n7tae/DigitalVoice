@@ -7,10 +7,10 @@ SYSDIR = /lib/systemd/system/
 # choose this if you want debugging help
 #CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
 # or, you can choose this for a much smaller executable without debugging help
-CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
+CPPFLAGS=-W -Wall -std=c++11 -Iircddb -Icodec2 -DCFG_DIR=\"$(CFGDIR)\" `pkg-config --cflags gtkmm-3.0`
 
 EXE = mmdvoice
-SRCS = $(wildcard *.cpp) $(wildcard ircddb/*.cpp)
+SRCS = $(wildcard *.cpp) $(wildcard ircddb/*.cpp) $(wildcard codec2/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 

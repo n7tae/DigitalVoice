@@ -26,13 +26,13 @@
 
 #include "DV3000U.h"
 #include "TemplateClasses.h"
-#include "DSVT.h"
+#include "Packet.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
 
 using PacketQueue = CTQueue<CDSVT>;
 
-enum class E_PTT_Type { echo, gateway, link };
+enum class E_PTT_Type { echo, gateway, link, m17 };
 
 class CMainWindow;
 
@@ -43,7 +43,7 @@ public:
 	bool Init(CMainWindow *);
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);
-	void PlayAMBEDataThread();	// for Echo
+	void PlayEchoDataThread();	// for Echo
 	void Gateway2AudioMgr(const CDSVT &dsvt);
 	void Link2AudioMgr(const CDSVT &dsvt);
 	void KeyOff();
@@ -57,11 +57,12 @@ public:
 private:
 	// data
 	std::atomic<bool> hot_mic, play_file;
-	std::atomic<unsigned short> gate_sid_in, link_sid_in;
-	CAmbeAudioQueue audio_queue;
+	std::atomic<unsigned short> gate_sid_in, link_sid_in, m17_sid_in;
+	CAudioQueue audio_queue;
 	CAmbeDataQueue ambe_queue;
+	CC2DataQueue c2_queue;
 	PacketQueue gateway_queue, link_queue;
-	CUByteSeqQueue a2d_queue, d2a_queue;
+	CAmbeSeqQueue a2d_queue, d2a_queue;
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	bool link_open;
@@ -81,6 +82,8 @@ private:
 	void ambedevice2ambequeue();
 	void ambequeue2ambedevice();
 	void ambedevice2audioqueue();
+	void codec2encode(const bool is_3200);
+	void codec2decode(const bool is_3200);
 	void ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall);
 	void packetqueue2link();
 	void packetqueue2gate();

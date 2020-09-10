@@ -26,12 +26,13 @@
 #include "MainWindow.h"
 #include "AudioManager.h"
 #include "Configure.h"
+#include "codec2.h"
 
 #ifndef CFG_DIR
 #define CFG_DIR "/tmp/"
 #endif
 
-CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0U), link_sid_in(0U)
+CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0U), link_sid_in(0U), m17_sid_in(0U)
 {
 	link_open = true;
 }
@@ -70,15 +71,20 @@ bool CAudioManager::Init(CMainWindow *pMain)
 
 void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcall)
 {
+	auto data = pMainWindow->cfg.GetData();
 	hot_mic = true;
 
 	r1 = std::async(std::launch::async, &CAudioManager::microphone2audioqueue, this);
 
-	r2 = std::async(std::launch::async, &CAudioManager::audioqueue2ambedevice, this);
+	if (! data->bCodec2Enable)
+		r2 = std::async(std::launch::async, &CAudioManager::audioqueue2ambedevice, this);
+	else
+		r2 = std::async(std::launch::async, &CAudioManager::codec2encode, this, data->bVoiceOnlyEnable);
 
 	switch (for_who) {
 		case E_PTT_Type::echo:
-			r3 = std::async(std::launch::async, &CAudioManager::ambedevice2ambequeue, this);
+			if (! data->bCodec2Enable)
+				r3 = std::async(std::launch::async, &CAudioManager::ambedevice2ambequeue, this);
 			break;
 		case E_PTT_Type::gateway:
 			r3 = std::async(std::launch::async, &CAudioManager::ambedevice2packetqueue, this, std::ref(gateway_queue), std::ref(gateway_mutex), urcall);
@@ -88,7 +94,65 @@ void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcal
 			r3 = std::async(std::launch::async, &CAudioManager::ambedevice2packetqueue, this, std::ref(link_queue), std::ref(link_mutex), urcall);
 			r4 = std::async(std::launch::async, &CAudioManager::packetqueue2link, this);
 			break;
+		case E_PTT_Type::m17:
+			break;
 	}
+}
+
+void CAudioManager::codec2encode(const bool is_3200)
+{
+	CCodec2 c2(is_3200 ? 3200 : 1600);
+	bool last;
+	bool is_odd = false; // true if we've processed an odd number of audio frames
+	do {
+		if ( audio_is_empty() ) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+		} else {
+			audio_mutex.lock();
+			CAudioFrame audioframe = audio_queue.Pop();
+			audio_mutex.unlock();
+			last = audioframe.GetFlag();
+			if ( is_3200 ) {
+				is_odd = ! is_odd;
+				unsigned char data[8];
+				c2.codec2_encode(data, audioframe.GetData());
+				CC2DataFrame dataframe(data);
+				dataframe.SetFlag(is_odd ? false : last);
+				ambe_mutex.lock();
+				c2_queue.Push(dataframe);
+				ambe_mutex.unlock();
+				if (is_odd && last) {
+					// make sure there is an even number of 3200 codec frames
+					const short quiet[160] = { 0 };
+					c2.codec2_encode(data, quiet);
+					CC2DataFrame frame2(data);
+					frame2.SetFlag(last);
+					ambe_mutex.lock();
+					c2_queue.Push(frame2);
+					ambe_mutex.unlock();
+				}
+			} else { // 1600 - we need 40 ms of audio
+				short audio[320] = { 0 }; // 40 ms of silence
+				unsigned char data[8];
+				memcpy(audio, audioframe.GetData(), 160*sizeof(short)); // we have 20 ms of audio at the beginning
+				if (! last) { // get another frame, if available
+					while (audio_is_empty())
+						std::this_thread::sleep_for(std::chrono::milliseconds(3));
+					audio_mutex.lock();
+					audioframe = audio_queue.Pop();
+					audio_mutex.unlock();
+					memcpy(audio+160, audioframe.GetData(), 160*sizeof(short));	// now we have 40 ms total
+					last = audioframe.GetFlag();
+				}
+				c2.codec2_encode(data, audio);
+				CC2DataFrame dataframe(data);
+				dataframe.SetFlag(last);
+				a2d_mutex.lock();
+				c2_queue.Push(dataframe);
+				a2d_mutex.unlock();
+			}
+		}
+	} while (! last);
 }
 
 void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned char *ut, unsigned char *uh)
@@ -322,10 +386,10 @@ void CAudioManager::microphone2audioqueue()
 	// One channels (mono)
 	snd_pcm_hw_params_set_channels(handle, params, 1);
 
-	// 48000 samples/second
+	// 8000 samples/second
 	snd_pcm_hw_params_set_rate(handle, params, 8000, 0);
 
-	// Set period size to 160*6 frames.
+	// Set period size to 40 ms for M17, 20 ms for AMBE.
 	snd_pcm_uframes_t frames = 160;
 	snd_pcm_hw_params_set_period_size(handle, params, frames, 0);
 
@@ -336,7 +400,6 @@ void CAudioManager::microphone2audioqueue()
 		return;
 	}
 
-	unsigned count = 0U;
 	bool keep_running;
 	do {
 		short int audio_buffer[frames];
@@ -352,15 +415,11 @@ void CAudioManager::microphone2audioqueue()
 			std::cerr << "short readi, read " << rc << " frames" << std::endl;
 		}
 		keep_running = hot_mic;
-		unsigned char seq = count % 21;
-		if (! keep_running)
-			seq |= 0x40U;
-		CAmbeAudioFrame frame(audio_buffer);
-		frame.SetSequence(seq);
+		CAudioFrame frame(audio_buffer);
+		frame.SetFlag(! keep_running);
 		audio_mutex.lock();
 		audio_queue.Push(frame);
 		audio_mutex.unlock();
-		count++;
 	} while (keep_running);
 	//std::cout << count << " frames by microphone2audioqueue\n";
 	snd_pcm_drop(handle);
@@ -369,31 +428,27 @@ void CAudioManager::microphone2audioqueue()
 
 void CAudioManager::audioqueue2ambedevice()
 {
-	//unsigned count = 0U;
-	unsigned char seq = 0U;
+	bool last;
 	do {
 		while (audio_is_empty())
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		audio_mutex.lock();
-		CAmbeAudioFrame frame(audio_queue.Pop());
+		CAudioFrame frame(audio_queue.Pop());
 		audio_mutex.unlock();
 		if (! AMBEDevice.IsOpen())
 			return;
 		if(AMBEDevice.SendAudio(frame.GetData()))
 			break;
-		seq = frame.GetSequence();
+		last = frame.GetFlag();
 		a2d_mutex.lock();
-		a2d_queue.Push(frame.GetSequence());
+		a2d_queue.Push(frame.GetFlag());
 		a2d_mutex.unlock();
-	//	count++;
-	} while (0U == (seq & 0x40U));
-	//std::cout << count << " frames thru audioqueue2ambedevice\n";
+	} while (! last);
 }
 
 void CAudioManager::ambedevice2ambequeue()
 {
-//	unsigned count = 0U;
-	unsigned char seq = 0U;
+	bool last;
 	do {
 		unsigned char ambe[9];
 		if (! AMBEDevice.IsOpen())
@@ -402,20 +457,50 @@ void CAudioManager::ambedevice2ambequeue()
 			break;
 		CAmbeDataFrame frame(ambe);
 		a2d_mutex.lock();
-		seq = a2d_queue.Pop();
+		last = a2d_queue.Pop();
 		a2d_mutex.unlock();
-		frame.SetSequence(seq);
+		frame.SetFlag(last);
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
-//		count++;
-	} while (0U == (seq & 0x40U));
-//	std::cout << count << "frames thru amebedevice2ambequeue\n";
+	} while (! last);
 	return;
 }
 
-void CAudioManager::PlayAMBEDataThread()
+void CAudioManager::codec2decode(const bool is_3200)
 {
+	CCodec2 c2(is_3200 ? 3200 : 1600);
+	bool last;
+	do {
+		ambe_mutex.lock();
+		CC2DataFrame dataframe = c2_queue.Pop();
+		ambe_mutex.unlock();
+		last = dataframe.GetFlag();
+		if (is_3200) {
+			short audio[160];
+			c2.codec2_decode(audio, dataframe.GetData());
+			CAudioFrame audioframe(audio);
+			audioframe.SetFlag(last);
+			audio_mutex.lock();
+			audio_queue.Push(audioframe);
+			audio_mutex.unlock();
+		} else {
+			short audio[320];
+			c2.codec2_decode(audio, dataframe.GetData());
+			CAudioFrame audio1(audio), audio2(audio+160);
+			audio1.SetFlag(false);
+			audio2.SetFlag(last);
+			audio_mutex.lock();
+			audio_queue.Push(audio1);
+			audio_queue.Push(audio2);
+			audio_mutex.unlock();
+		}
+	} while (! last);
+}
+
+void CAudioManager::PlayEchoDataThread()
+{
+	auto data = pMainWindow->cfg.GetData();
 	hot_mic = false;
 	r1.get();
 	r2.get();
@@ -423,11 +508,17 @@ void CAudioManager::PlayAMBEDataThread()
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-	p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
-
-	p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
-
-	p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+	if (data->bCodec2Enable) {
+		p1 = std::async(std::launch::async, &CAudioManager::codec2decode, this, data->bVoiceOnlyEnable);
+		p2 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+	} else {
+		p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
+		p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
+		p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+		p1.get();
+		p2.get();
+		p3.get();
+	}
 }
 
 void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
@@ -454,7 +545,7 @@ void CAudioManager::l2am(const CDSVT &dsvt, const bool shutoff) {
 		if (0x20U != dsvt.config)
 			return;	// we only need audio frames at this point
 		CAmbeDataFrame frame(dsvt.vasd.voice);
-		frame.SetSequence(dsvt.ctrl);
+		frame.SetFlag((dsvt.ctrl & 0x40U) == 0x40U);
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
@@ -488,11 +579,12 @@ void CAudioManager::Gateway2AudioMgr(const CDSVT &dsvt)
 		if (0x20U != dsvt.config)
 			return;	// we only need audio frames at this point
 		CAmbeDataFrame frame(dsvt.vasd.voice);
-		frame.SetSequence(dsvt.ctrl);
+		bool last = (dsvt.ctrl & 0x40U) == 0x40U;
+		frame.SetFlag(last);
 		ambe_mutex.lock();
 		ambe_queue.Push(frame);
 		ambe_mutex.unlock();
-		if (dsvt.ctrl & 0x40U) {
+		if (last) {
 			p1.get();	// we're done, get the finished threads and reset the current stream id
 			p2.get();
 			p3.get();
@@ -504,55 +596,47 @@ void CAudioManager::Gateway2AudioMgr(const CDSVT &dsvt)
 
 void CAudioManager::ambequeue2ambedevice()
 {
-	//std::cout << "ambequeue2ambedevice launched\n";
-	//int count = 0;
-	unsigned char seq = 0U;
+	bool last;
 	do {
 		while (ambe_is_empty())
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		ambe_mutex.lock();
 		CAmbeDataFrame frame(ambe_queue.Pop());
 		ambe_mutex.unlock();
-		seq = frame.GetSequence();
+		last = frame.GetFlag();
 		d2a_mutex.lock();
-		d2a_queue.Push(seq);
+		d2a_queue.Push(last);
 		d2a_mutex.unlock();
 		if (! AMBEDevice.IsOpen())
 			return;
 		if (AMBEDevice.SendData(frame.GetData()))
 			return;
-	//	count++;
-	} while (0U == (seq & 0x40U));
-	//std::cout << "ambequeue2ambedevice sent " << count << " packets" << std::endl;
+	} while (! last);
 }
 
 void CAudioManager::ambedevice2audioqueue()
 {
-	//int count = 0;
-	unsigned char seq = 0U;
+	bool last;
 	do {
 		if (! AMBEDevice.IsOpen())
 			return;
 		short audio[160];
 		if (AMBEDevice.GetAudio(audio))
 			return;
-		CAmbeAudioFrame frame(audio);
+		CAudioFrame frame(audio);
 		d2a_mutex.lock();
-		seq = d2a_queue.Pop();
+		last = d2a_queue.Pop();
 		d2a_mutex.unlock();
-		frame.SetSequence(seq);
+		frame.SetFlag(last);
 		audio_mutex.lock();
 		audio_queue.Push(frame);
 		audio_mutex.unlock();
-	//	count++;
-	} while ( 0U == (seq & 0x40U));
-	//std::cout << "ambedevice2audioqueue sent " << count << " packets" << std::endl;
+	} while (! last);
 }
 
 void CAudioManager::play_audio_queue()
 {
 	auto data = pMainWindow->cfg.GetData();
-	//int count = 0;
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 	// Open PCM device for playback.
 	snd_pcm_t *handle;
@@ -598,14 +682,14 @@ void CAudioManager::play_audio_queue()
 	// Use a buffer large enough to hold one period
 	snd_pcm_hw_params_get_period_size(params, &frames, 0);
 
-	unsigned char seq = 0U;
+	bool last;
 	do {
 		while (audio_is_empty())
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		audio_mutex.lock();
-		CAmbeAudioFrame frame(audio_queue.Pop());
+		CAudioFrame frame(audio_queue.Pop());
 		audio_mutex.unlock();
-		seq = frame.GetSequence();
+		last = frame.GetFlag();
 		rc = snd_pcm_writei(handle, frame.GetData(), frames);
 		if (rc == -EPIPE) {
 			// EPIPE means underrun
@@ -616,12 +700,10 @@ void CAudioManager::play_audio_queue()
 		}  else if (rc != int(frames)) {
 			std::cerr << "short write, write " << rc << " frames" << std::endl;
 		}
-	//	count++;
-	} while (0U == (seq & 0x40U));
+	} while (! last);
 
 	snd_pcm_drain(handle);
 	snd_pcm_close(handle);
-	//std::cout << "play_audio_queue played " << count << " packets" << std::endl;
 }
 
 bool CAudioManager::audio_is_empty()
@@ -779,10 +861,10 @@ void CAudioManager::PlayFile(const char *filetoplay)
 		int nread = fread(voice, 9, 1, fp);
 		if (nread == 1) {
 			CAmbeDataFrame frame(voice);
-			unsigned char ctrl = count % 21U;
+			bool last = false;
 			if (count+1 == ambeblocks && ! is_linked)
-				ctrl |= 0x40U;
-			frame.SetSequence(ctrl);
+				last = true;
+			frame.SetFlag(last);
 			ambe_mutex.lock();
 			ambe_queue.Push(frame);
 			ambe_mutex.unlock();
@@ -830,10 +912,10 @@ void CAudioManager::PlayFile(const char *filetoplay)
 						int nread = fread(voice, 9, 1, fp);
 						if (nread == 1) {
 							CAmbeDataFrame frame(voice);
-							unsigned char ctrl = count++ % 21U;
+							bool last = false;
 							if (i+1==size && lastch)
-								ctrl |= 0x40U;	// signal the last voiceframe (of the last character)
-							frame.SetSequence(ctrl);
+								last = true;	// signal the last voiceframe (of the last character)
+							frame.SetFlag(last);
 							ambe_mutex.lock();
 							ambe_queue.Push(frame);
 							ambe_mutex.unlock();

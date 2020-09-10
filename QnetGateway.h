@@ -21,7 +21,7 @@
 #include <regex>
 
 #include "IRCDDB.h"
-#include "DSVT.h"
+#include "Packet.h"
 #include "TypeDefs.h"
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"

@@ -26,7 +26,7 @@
 #include <atomic>
 #include <netinet/in.h>
 
-#include "DSVT.h"
+#include "Packet.h"
 #include "Random.h"
 #include "SockAddress.h"
 #include "UnixDgramSocket.h"
