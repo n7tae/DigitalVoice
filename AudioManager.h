@@ -30,7 +30,8 @@
 #include "Random.h"
 #include "UnixDgramSocket.h"
 
-using PacketQueue = CTQueue<CDSVT>;
+using DSVTPacketQueue = CTQueue<CDSVT>;
+using M17PacketQueue = CTQueue<M17_IPFrame>;
 
 enum class E_PTT_Type { echo, gateway, link, m17 };
 
@@ -46,10 +47,13 @@ public:
 	void PlayEchoDataThread();	// for Echo
 	void Gateway2AudioMgr(const CDSVT &dsvt);
 	void Link2AudioMgr(const CDSVT &dsvt);
+	void M17_2AudioMgr(const M17_IPFrame &m17);
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
 	void QuickKey(const char *urcall);
 	void Link(const std::string &linkcmd);
+	void EncodeCallsign(uint8_t *out, const std::string &callsign);
+	void DecodeCallsign(std::string &cs, const uint8_t *in);
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;
@@ -61,22 +65,25 @@ private:
 	CAudioQueue audio_queue;
 	CAmbeDataQueue ambe_queue;
 	CC2DataQueue c2_queue;
-	PacketQueue gateway_queue, link_queue;
+	DSVTPacketQueue gateway_queue, link_queue;
 	CAmbeSeqQueue a2d_queue, d2a_queue;
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	bool link_open;
+	const std::string m17_alphabet{" ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."};
+
+	// Unix sockets
+	CUnixDgramWriter AM2M17, AM2Gate, AM2Link, LogInput;
 	// helpers
 	CMainWindow *pMainWindow;
 	CRandom random;
 	void l2am(const CDSVT &dsvt, const bool shutoff);
 	std::vector<unsigned long> speak;
-	// Unix sockets
-	CUnixDgramWriter AM2Gate, AM2Link, LogInput;
 	// methods
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 	bool audio_is_empty();
 	bool ambe_is_empty();
+	bool codec_is_empty();
 	void microphone2audioqueue();
 	void audioqueue2ambedevice();
 	void ambedevice2ambequeue();
@@ -84,7 +91,8 @@ private:
 	void ambedevice2audioqueue();
 	void codec2encode(const bool is_3200);
 	void codec2decode(const bool is_3200);
-	void ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall);
+	void codec2m17gateway();
+	void ambedevice2packetqueue(DSVTPacketQueue &queue, std::mutex &mtx, const std::string &urcall);
 	void packetqueue2link();
 	void packetqueue2gate();
 	void play_audio_queue();

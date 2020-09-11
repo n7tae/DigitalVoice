@@ -26,8 +26,6 @@ class CRandom
 public:
 	CRandom() { srandom(getpid()); }
 
-	~CRandom() {}
-
 	unsigned short NewStreamID()
 	{
 		unsigned short r = 0;

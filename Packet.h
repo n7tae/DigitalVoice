@@ -78,7 +78,7 @@ using M17_LICH = struct _LICH {
 	uint8_t  addr_src[6];
 	uint16_t frametype; //frametype flag field per the M17 spec
 	uint8_t  nonce[16]; //bytes for the nonce
-};
+}; // 6 + 6 + 2 + 16 = 30 bytes = 240 bits
 
 //without SYNC or other parts
 using M17_IPFrame = struct _ip_frame {
@@ -88,4 +88,4 @@ using M17_IPFrame = struct _ip_frame {
 	uint16_t framenumber;
 	uint8_t  payload[16];
 	uint8_t  crc[2]; 	//16 bit CRC
-};
+}; // 4 + 2 + 30 + 2 + 16 + 2 = 56 bytes = 448 bits

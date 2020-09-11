@@ -218,6 +218,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	// i/o events
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayGate2AM), Gate2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
+	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayM17_2AM), Link2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::GetLogInput), LogInput.GetFD(), Glib::IO_IN);
 	// idle processing
 	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 1000);
@@ -436,6 +437,19 @@ bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
 			AudioManager.PlayFile((char *)&dsvt.config);
 	} else {
 		std::cerr << "RelayLink2AM not a read event!" << std::endl;
+	}
+	return true;
+}
+
+bool CMainWindow::RelayM17_2AM(Glib::IOCondition condition)
+{
+	if (condition & Glib::IO_IN) {
+		M17_IPFrame m17;
+		Gate2AM.Read(m17.magic, sizeof(M17_IPFrame));
+		if (0 == memcmp(m17.magic, "M17 ", 4))
+			AudioManager.M17_2AudioMgr(m17);
+	} else {
+		std::cerr << "RelayM17_2AM not a read event!" << std::endl;
 	}
 	return true;
 }

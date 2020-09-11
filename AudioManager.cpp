@@ -37,6 +37,36 @@ CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0
 	link_open = true;
 }
 
+void CAudioManager::EncodeCallsign(uint8_t *out, const std::string &callsign)
+{
+	uint64_t encoded = 0;
+	std::string cs(callsign);
+	if (cs.size() > 9)
+		cs.resize(9);
+	for( auto it=cs.crbegin(); it!=cs.crend(); it++ ) {
+		auto pos = m17_alphabet.find(*it);
+		if (pos == std::string::npos)
+			pos = 0;
+		encoded *= 40;
+		encoded += pos;
+	}
+	for (int i=0; i<6; i++) {
+		out[i] = (encoded >> (8*(5-i)) & 0xFFU);
+	}
+}
+
+void CAudioManager::DecodeCallsign(std::string &cs, const uint8_t *in)
+{
+	uint64_t coded = in[0];
+	for (int i=1; i<6; i++)
+		coded = (coded << 8) | in[i];
+	cs.clear();
+	while (coded) {
+		cs.append(1, m17_alphabet[coded % 40]);
+		coded /= 40;
+	}
+}
+
 bool CAudioManager::Init(CMainWindow *pMain)
 {
 	pMainWindow = pMain;
@@ -62,6 +92,7 @@ bool CAudioManager::Init(CMainWindow *pMain)
 		std::cerr << "read unexpected (" << speak.size() << " number of indices from " << index << std::endl;
 		speak.clear();
 	}
+	AM2M17.SetUp("am2m17");
 	AM2Gate.SetUp("am2gate");
 	AM2Link.SetUp("am2link");
 	LogInput.SetUp("log_input");
@@ -217,7 +248,63 @@ void CAudioManager::QuickKey(const char *urcall)
 	hot_mic = false;
 }
 
-void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, const std::string &urcall)
+void CAudioManager::codec2m17gateway()
+{
+	auto data = *pMainWindow->cfg.GetData();
+	uint8_t source[3], destination[3];
+	EncodeCallsign(source, data.sM17SourceCallsign);
+	EncodeCallsign(destination, data.sM17DestCallsign);
+
+	// make most of the M17 IP frame
+	// TODO: nonce and encryption and more TODOs mentioned later...
+	M17_IPFrame ipframe;
+	memcpy(ipframe.magic, "M17 ", 4);
+	ipframe.streamid = random.NewStreamID(); // no need to htons because it's just a random id
+	ipframe.lich.frametype = data.bVoiceOnlyEnable ? 0x5U : 0x7U;
+	memcpy(ipframe.lich.addr_src, source, 3);
+	memcpy(ipframe.lich.addr_dst, destination, 3);
+
+	unsigned int count = 0;
+	bool last;
+	do {
+		while (codec_is_empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+		ambe_mutex.lock();
+		CC2DataFrame cframe = c2_queue.Pop();
+		ambe_mutex.unlock();
+		last = cframe.GetFlag();
+		memcpy(ipframe.payload, cframe.GetData(), 8);
+		if (data.bVoiceOnlyEnable) {
+			if (last) {
+				// we should never get here, but just in case...
+				std::cerr << "WARNING: unexpected end of 3200 voice stream!" << std::endl;
+				const uint8_t quiet[] = { 0x00u, 0x01u, 0x43u, 0x09u, 0xe4u, 0x9cu, 0x08u, 0x21u };	// for 3200 only!
+				memcpy(ipframe.payload+8, quiet, 8);
+			} else {
+				// fill in the second part of the payload for C2 3200
+				while (codec_is_empty())
+					std::this_thread::sleep_for(std::chrono::milliseconds(2));
+				ambe_mutex.lock();
+				cframe = c2_queue.Pop();
+				ambe_mutex.unlock();
+				last = cframe.GetFlag();
+				memcpy(ipframe.payload+8, cframe.GetData(), 8);
+			}
+		}
+		// TODO: do something with the 2nd half of the payload when it's voice + "data"
+
+		uint16_t fn = count++ % 0x8000u;
+		if (last)
+			fn |= 0x8000u;
+		ipframe.framenumber = htons(fn);
+
+		// TODO: calculate crc
+
+		AM2M17.Write(ipframe.magic, sizeof(M17_IPFrame));
+	} while (! last);
+}
+
+void CAudioManager::ambedevice2packetqueue(DSVTPacketQueue &queue, std::mutex &mtx, const std::string &urcall)
 {
 	unsigned count = 0;
 	// add a header;
@@ -234,8 +321,10 @@ void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, 
 		if (AMBEDevice.GetData(v.vasd.voice))
 			break;
 		a2d_mutex.lock();
-		v.ctrl = a2d_queue.Pop();
+		auto last = a2d_queue.Pop();
 		a2d_mutex.unlock();
+		v.ctrl = count % 21;
+		if (last) v.ctrl |= 0x40U;
 		SlowData(count++, ut, uh, v);
 		mtx.lock();
 		if (header_not_sent) {
@@ -245,7 +334,6 @@ void CAudioManager::ambedevice2packetqueue(PacketQueue &queue, std::mutex &mtx, 
 		queue.Push(v);
 		mtx.unlock();
 	} while (0U == (v.ctrl & 0x40U));
-	//std::cout << count << " frames thru ambedevice2packetqueue\n";
 }
 
 void CAudioManager::packetqueue2link()
@@ -291,7 +379,7 @@ void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, cons
 	const unsigned char empty[3] = { 0x16U, 0x29U, 0xF5U };
 	unsigned ctrl = d.ctrl & 0x1FU;
 	if (ctrl) {
-		const unsigned sf = count / 21;
+		const unsigned sf = count / 21;	// superframe count
 		const unsigned cd2 = ctrl / 2;
 		if (sf % 70) {
 			// header
@@ -485,7 +573,7 @@ void CAudioManager::codec2decode(const bool is_3200)
 			audio_queue.Push(audioframe);
 			audio_mutex.unlock();
 		} else {
-			short audio[320];
+			short audio[320];	// C2 1600 is 40 ms audio
 			c2.codec2_decode(audio, dataframe.GetData());
 			CAudioFrame audio1(audio), audio2(audio+160);
 			audio1.SetFlag(false);
@@ -511,6 +599,8 @@ void CAudioManager::PlayEchoDataThread()
 	if (data->bCodec2Enable) {
 		p1 = std::async(std::launch::async, &CAudioManager::codec2decode, this, data->bVoiceOnlyEnable);
 		p2 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+		p1.get();
+		p2.get();
 	} else {
 		p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
 		p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
@@ -556,6 +646,42 @@ void CAudioManager::l2am(const CDSVT &dsvt, const bool shutoff) {
 			p2.get();
 			p3.get();
 			link_sid_in = 0U;
+			pMainWindow->Receive(false);
+		}
+	}
+}
+
+void CAudioManager::M17_2AudioMgr(const M17_IPFrame &m17)
+{
+	static bool is_3200;
+	if (! play_file) {
+		if (0U==m17_sid_in && 0U==(m17.framenumber & 0x8000u)) {	// don't start if it's the last audio frame
+			// here comes a new stream
+			m17_sid_in = m17.streamid;
+			is_3200 = ((m17.lich.frametype & 0x7u) == 0x5u);
+			pMainWindow->Receive(true);
+			// launch the audio processing threads
+			p1 = std::async(std::launch::async, &CAudioManager::codec2decode, this, is_3200);
+			p2 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+		}
+		if (m17.streamid != m17_sid_in)
+			return;
+		auto payload = m17.payload;
+		CC2DataFrame dataframe(m17.payload);
+		auto last = (0x8000u == (m17.framenumber & 0x8000u));
+		dataframe.SetFlag(is_3200 ? false : last);
+		ambe_mutex.lock();
+		c2_queue.Push(dataframe);
+		if (is_3200) {
+			CC2DataFrame frame2(m17.payload+8);
+			frame2.SetFlag(last);
+			c2_queue.Push(frame2);
+		}
+		ambe_mutex.unlock();
+		if (last) {
+			p1.get();	// we're done, get the finished threads and reset the current stream id
+			p2.get();
+			m17_sid_in = 0U;
 			pMainWindow->Receive(false);
 		}
 	}
@@ -718,6 +844,14 @@ bool CAudioManager::ambe_is_empty()
 {
 	ambe_mutex.lock();
 	bool ret = ambe_queue.Empty();
+	ambe_mutex.unlock();
+	return ret;
+}
+
+bool CAudioManager::codec_is_empty()
+{
+	ambe_mutex.lock();
+	bool ret = c2_queue.Empty();
 	ambe_mutex.unlock();
 	return ret;
 }

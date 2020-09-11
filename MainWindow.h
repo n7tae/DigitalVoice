@@ -78,7 +78,7 @@ private:
 	void RunGate();
 	void StopLink();
 	void StopGate();
-	CUnixDgramReader Gate2AM, Link2AM, LogInput;
+	CUnixDgramReader Gate2AM, Link2AM, M17_2AM, LogInput;
 	CAPRS aprs;
 
 	// events
@@ -100,6 +100,7 @@ private:
 	void on_M17DestActionButton_clicked();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
+	bool RelayM17_2AM(Glib::IOCondition condition);
 	bool GetLogInput(Glib::IOCondition condition);
 	bool TimeoutProcess();
 };
