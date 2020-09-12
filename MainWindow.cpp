@@ -50,6 +50,10 @@ CMainWindow::CMainWindow() :
 	if (! AudioManager.AMBEDevice.IsOpen()) {
 		AudioManager.AMBEDevice.FindandOpen(cfgdata.iBaudRate, Encoding::dstar);
 	}
+	// allowed M17 " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."
+	CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
+	IPRegEx = std::regex("^((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$", std::regex::extended);
+	M17CallRegEx = std::regex("^[A-Z0-9/.-]([ A-Z0-9/.-]){0,8}$", std::regex::extended);
 }
 
 CMainWindow::~CMainWindow()
@@ -213,6 +217,7 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pAboutMenuItem->signal_activate().connect(sigc::mem_fun(*this, &CMainWindow::on_AboutMenuItem_activate));
 
 	ReadRoutes();
+	ReadDestinations();
 	SetState(cfgdata);
 
 	// i/o events
@@ -268,6 +273,40 @@ void CMainWindow::on_SettingsButton_clicked()
 
 		SetState(*newdata);
 		cfg.CopyTo(cfgdata);
+	}
+}
+
+void CMainWindow::WriteDestinations()
+{
+	std::string path(CFG_DIR);
+	path.append("M17-destinations.cfg");
+	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
+	if (! file.is_open())
+		return;
+	for (auto it=destmap.begin(); it!=destmap.end(); it++) {
+		file << it->first << '=' << it->second << std::endl;
+	}
+	file.close();
+}
+
+void CMainWindow::ReadDestinations()
+{
+	std::string path(CFG_DIR);
+	path.append("M17-destinations.cfg");
+	std::ifstream file(path.c_str(), std::ifstream::in);
+	if (file.is_open()) {
+		destmap.clear();
+		char line[128];
+		while (file.getline(line, 128)) {
+			char *key = strtok(line, "=");
+			if (! key || *key == '#') continue;
+			char *val = strtok(NULL, " \t\r\n");
+			if (! val) continue;
+			destmap[std::string(key)] = std::string(val);
+			pM17DestCallsignComboBox->append(key);
+		}
+		pM17DestCallsignComboBox->set_active(0);
+		file.close();
 	}
 }
 
@@ -334,24 +373,31 @@ void CMainWindow::on_RouteEntry_changed()
 	pRouteActionButton->set_label((routeset.end() == routeset.find(s)) ? "Add to list" : "Delete from list");
 }
 
-void CMainWindow::on_M17DestCallsignEntry_changed()
-{
-
-}
-
-void CMainWindow::on_M17DestIPEntry_changed()
-{
-
-}
-
 void CMainWindow::on_M17DestCallsignComboBox_changed()
 {
-
+	auto cs = pM17DestCallsignComboBox->get_active_text();
+	pM17DestCallsignEntry->set_text(cs);
+	pM17DestCallsignEntry->set_text(destmap[cs]);
 }
 
 void CMainWindow::on_M17DestActionButton_clicked()
 {
-
+	auto obj = pM17DestActionButton->get_label();
+	if (0 == obj.compare("Add")) {
+		auto add = pM17DestCallsignEntry->get_text();
+		destmap[add] = pM17DestIPEntry->get_text();
+		pM17DestCallsignComboBox->remove_all();
+		for (const auto &pair : destmap)
+			pM17DestCallsignComboBox->append(pair.first);
+		pM17DestCallsignComboBox->set_active_text(obj);
+	} else if (0 == obj.compare("Remove")) {
+		int index = pM17DestCallsignComboBox->get_active_row_number();
+		destmap.erase(obj);
+		if (index >= int(destmap.size()))
+			index--;
+		pM17DestCallsignComboBox->set_active(index);
+	}
+	WriteDestinations();
 }
 
 void CMainWindow::on_RouteComboBox_changed()
@@ -361,7 +407,7 @@ void CMainWindow::on_RouteComboBox_changed()
 
 void CMainWindow::on_RouteActionButton_clicked()
 {
-	if (pRouteActionButton->get_label().compare(0,3, "Add")) {
+	if (pRouteActionButton->get_label().compare(0, 3, "Add")) {
 		// deleting an entry
 		auto todelete = pRouteEntry->get_text();
 		int index = pRouteComboBox->get_active_row_number();
@@ -511,6 +557,61 @@ bool CMainWindow::TimeoutProcess()
 		pUnlinkButton->set_sensitive(true);
 	}
 	return true;
+}
+
+void CMainWindow::on_M17DestCallsignEntry_changed()
+{
+	int pos = pM17DestCallsignEntry->get_position();
+	Glib::ustring s = pM17DestCallsignEntry->get_text().uppercase();
+	pM17DestCallsignEntry->set_text(s);
+	pM17DestCallsignEntry->set_position(pos);
+	destCS = std::regex_match(s.c_str(), M17CallRegEx);
+	pM17DestCallsignEntry->set_icon_from_icon_name(destCS ? "gtk-ok" : "gtk-cancel");
+	FixM17DestActionButton();
+}
+
+void CMainWindow::on_M17DestIPEntry_changed()
+{
+	destIP = std::regex_match(pM17DestIPEntry->get_text().c_str(), IPRegEx);
+	pM17DestIPEntry->set_icon_from_icon_name(destIP ? "gtk-ok" : "gtk-cancel");
+	FixM17DestActionButton();
+}
+
+void CMainWindow::SetDestActionButton(const bool sensitive, const char *label)
+{
+	pM17DestActionButton->set_sensitive(sensitive);
+	pM17DestActionButton->set_label(label);
+}
+
+void CMainWindow::FixM17DestActionButton()
+{
+	const std::string cs(pM17DestCallsignEntry->get_text().c_str());
+	const std::string ip(pM17DestIPEntry->get_text().c_str());
+	if (destCS) {
+		auto it = destmap.find(cs);
+		if (destmap.end() == it) {
+			// cs is not found in map
+			if (destIP) { // is the IP okay?
+				SetDestActionButton(true, "Add");
+			} else {
+				SetDestActionButton(false, "");
+			}
+		} else {
+			// cs is found in map
+			if (destIP) { // is the IP okay?
+				if (ip.compare(destmap[cs])) {
+					// the ip in the IPEntry is different
+					SetDestActionButton(true, "Update");
+				} else {
+					// perfect match
+					SetDestActionButton(true, "Remove");
+					pM17DestCallsignComboBox->set_active_text(cs);
+				}
+			}
+		}
+	} else {
+		SetDestActionButton(false, "");
+	}
 }
 
 void CMainWindow::on_LinkEntry_changed()

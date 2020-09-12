@@ -626,7 +626,7 @@ void CCodec2::analyse_one_frame(MODEL *model, const short *speech)
 	dft_speech(&c2.c2const, c2.fft_fwd_cfg, Sw, c2.Sn.data(), c2.w.data());
 
 	/* Estimate pitch */
-	nlp.nlp(c2.Sn.data(), n_samp, &pitch, Sw, c2.W, &c2.prev_f0_enc);
+	nlp.nlp(c2.Sn.data(), n_samp, &pitch, &c2.prev_f0_enc);
 	model->Wo = TWO_PI/pitch;
 	model->L = PI/model->Wo;
 
@@ -634,7 +634,7 @@ void CCodec2::analyse_one_frame(MODEL *model, const short *speech)
 	two_stage_pitch_refinement(&c2.c2const, model, Sw);
 
 	/* estimate phases when doing ML experiments */
-	estimate_amplitudes(model, Sw, c2.W, 0);
+	estimate_amplitudes(model, Sw, 0);
 	est_voicing_mbe(&c2.c2const, model, Sw, c2.W);
 }
 
@@ -1249,7 +1249,7 @@ void CCodec2::hs_pitch_refinement(MODEL *model, std::complex<float> Sw[], float 
 
 \*---------------------------------------------------------------------------*/
 
-void CCodec2::estimate_amplitudes(MODEL *model, std::complex<float> Sw[], float W[], int est_phase)
+void CCodec2::estimate_amplitudes(MODEL *model, std::complex<float> Sw[], int est_phase)
 {
 	int   i,m;		/* loop variables */
 	int   am,bm;		/* bounds of current harmonic */

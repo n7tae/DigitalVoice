@@ -132,7 +132,7 @@ void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcal
 
 void CAudioManager::codec2encode(const bool is_3200)
 {
-	CCodec2 c2(is_3200 ? 3200 : 1600);
+	CCodec2 c2(is_3200);
 	bool last;
 	bool is_odd = false; // true if we've processed an odd number of audio frames
 	do {
@@ -557,7 +557,7 @@ void CAudioManager::ambedevice2ambequeue()
 
 void CAudioManager::codec2decode(const bool is_3200)
 {
-	CCodec2 c2(is_3200 ? 3200 : 1600);
+	CCodec2 c2(is_3200);
 	bool last;
 	do {
 		ambe_mutex.lock();
@@ -667,13 +667,13 @@ void CAudioManager::M17_2AudioMgr(const M17_IPFrame &m17)
 		if (m17.streamid != m17_sid_in)
 			return;
 		auto payload = m17.payload;
-		CC2DataFrame dataframe(m17.payload);
+		CC2DataFrame dataframe(payload);
 		auto last = (0x8000u == (m17.framenumber & 0x8000u));
 		dataframe.SetFlag(is_3200 ? false : last);
 		ambe_mutex.lock();
 		c2_queue.Push(dataframe);
 		if (is_3200) {
-			CC2DataFrame frame2(m17.payload+8);
+			CC2DataFrame frame2(payload+8);
 			frame2.SetFlag(last);
 			c2_queue.Push(frame2);
 		}

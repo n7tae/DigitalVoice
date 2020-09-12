@@ -244,8 +244,8 @@ float Cnlp::nlp(
 	float  Sn[],   /* input speech vector                                */
 	int    n,      /* frames shift (no. new samples in Sn[])             */
 	float *pitch,  /* estimated pitch period in samples at current Fs    */
-	std::complex<float>   Sw[],   /* Freq domain version of Sn[]                        */
-	float  W[],    /* Freq domain window                                 */
+//	std::complex<float>   Sw[],   /* Freq domain version of Sn[]                        */
+//	float  W[],    /* Freq domain window                                 */
 	float *prev_f0 /* previous pitch f0 in Hz, memory for pitch tracking */
 )
 {
@@ -364,7 +364,7 @@ float Cnlp::nlp(
 		}
 	}
 
-	best_f0 = post_process_sub_multiples(Fw, pmin, pmax, gmax, gmax_bin, prev_f0);
+	best_f0 = post_process_sub_multiples(Fw, pmax, gmax, gmax_bin, prev_f0);
 
 	/* Shift samples in buffer to make room for new samples */
 
@@ -401,7 +401,7 @@ float Cnlp::nlp(
 
 \*---------------------------------------------------------------------------*/
 
-float Cnlp::post_process_sub_multiples(std::complex<float> Fw[], int pmin, int pmax, float gmax, int gmax_bin, float *prev_f0)
+float Cnlp::post_process_sub_multiples(std::complex<float> Fw[], int pmax, float gmax, int gmax_bin, float *prev_f0)
 {
 	int   min_bin, cmax_bin;
 	int   mult;

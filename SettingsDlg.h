@@ -19,7 +19,6 @@
 #pragma once
 
 #include <gtkmm.h>
-#include <regex>
 
 #include "Configure.h"
 
@@ -52,8 +51,6 @@ private:
 	CFGDATA data;
 	// other data
 	bool bCallsign, bStation, bM17Source;
-	// regular expression for testing callsign
-	std::regex CallRegEx;
 	// Windows
 	CMainWindow *pMainWindow;
     Gtk::Dialog *pDlg;

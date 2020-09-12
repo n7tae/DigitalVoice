@@ -181,9 +181,9 @@ void CConfigure::WriteData()
 	file << "#Generated Automatically, DO NOT MANUALLY EDIT!" << std::endl;
 	// M17
 	file << "Codec2Enable=" << (data.bCodec2Enable ? "true" : "false") << std::endl;
-	file << "M17DestCallsign=" << data.sM17DestCallsign << std::endl;
-	file << "M17DestIP=" << data.sM17DestIp << std::endl;
-	file << "M17SourceCallsign=" << data.sM17SourceCallsign << std::endl;
+	file << "M17DestCallsign='" << data.sM17DestCallsign << "'" << std::endl;
+	file << "M17DestIP='" << data.sM17DestIp << "'" << std::endl;
+	file << "M17SourceCallsign='" << data.sM17SourceCallsign << "'" << std::endl;
 	file << "M17VoiceOnly=" << (data.bVoiceOnlyEnable ? "true" : "false") << std::endl;
 	// mode and module
 	file << "RouteEnable=" << (data.bRouteEnable ? "true" : "false") << std::endl;

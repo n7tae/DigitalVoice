@@ -30,7 +30,6 @@
 
 CSettingsDlg::CSettingsDlg() : pMainWindow(nullptr), pDlg(nullptr)
 {
-	CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 }
 
 CSettingsDlg::~CSettingsDlg()
@@ -363,7 +362,7 @@ void CSettingsDlg::on_MyCallsignEntry_changed()
 	Glib::ustring s = pMyCallsignEntry->get_text().uppercase();
 	pMyCallsignEntry->set_text(s);
 	pMyCallsignEntry->set_position(pos);
-	bCallsign = std::regex_match(s.c_str(), CallRegEx);
+	bCallsign = std::regex_match(s.c_str(), pMainWindow->CallRegEx);
 	pMyCallsignEntry->set_icon_from_icon_name(bCallsign ? "gtk-ok" : "gtk-cancel");
 	if (pAMBERadioButton->get_active())
 		pOkayButton->set_sensitive(bCallsign && bStation);
@@ -400,7 +399,7 @@ void CSettingsDlg::on_M17SourceCallsignEntry_changed()
 	Glib::ustring s = pM17SourceCallsignEntry->get_text().uppercase();
 	pM17SourceCallsignEntry->set_text(s);
 	pM17SourceCallsignEntry->set_position(pos);
-	bM17Source = std::regex_match(s.c_str(), CallRegEx);
+	bM17Source = std::regex_match(s.c_str(), pMainWindow->CallRegEx);
 	pM17SourceCallsignEntry->set_icon_from_icon_name(bM17Source ? "gtk-ok" : "gtk-cancel");
 	if (pCodec2RadioButton->get_active())
 		pOkayButton->set_sensitive(bM17Source);
@@ -412,7 +411,7 @@ void CSettingsDlg::on_StationCallsignEntry_changed()
 	 Glib::ustring s = pStationCallsignEntry->get_text().uppercase();
 	 pStationCallsignEntry->set_text(s);
 	 pStationCallsignEntry->set_position(pos);
-	 bStation = std::regex_match(s.c_str(), CallRegEx);
+	 bStation = std::regex_match(s.c_str(), pMainWindow->CallRegEx);
 	 pStationCallsignEntry->set_icon_from_icon_name(bStation ? "gtk-ok" : "gtk-cancel");
 	 pDPlusEnableCheckButton->set_sensitive(bCallsign);
 	 if (pAMBERadioButton->get_active())

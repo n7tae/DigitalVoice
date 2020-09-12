@@ -32,6 +32,7 @@
 
 using DSVTPacketQueue = CTQueue<CDSVT>;
 using M17PacketQueue = CTQueue<M17_IPFrame>;
+#define M17CHARACTERS " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."
 
 enum class E_PTT_Type { echo, gateway, link, m17 };
 
@@ -70,7 +71,7 @@ private:
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	bool link_open;
-	const std::string m17_alphabet{" ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."};
+	const std::string m17_alphabet{M17CHARACTERS};
 
 	// Unix sockets
 	CUnixDgramWriter AM2M17, AM2Gate, AM2Link, LogInput;

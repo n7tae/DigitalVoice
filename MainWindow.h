@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <regex>
 #include <future>
 #include <gtkmm.h>
 
@@ -43,6 +44,9 @@ public:
 	void Run();
 	void Receive(bool is_rx);
 	void RebuildGateways(bool includelegacy);
+	// regular expression for testing stuff
+	std::regex CallRegEx, IPRegEx, M17CallRegEx;
+
 private:
 	// classes
 	CSettingsDlg SettingsDlg;
@@ -65,9 +69,14 @@ private:
 
 	// state data
 	std::set<Glib::ustring> routeset;
+	std::map<std::string, std::string> destmap;
 	CFGDATA cfgdata;
 
 	// helpers
+	void FixM17DestActionButton();
+	void SetDestActionButton(const bool sensitive, const char *label);
+	void ReadDestinations();
+	void WriteDestinations();
 	void ReadRoutes();
 	void WriteRoutes();
 	CQnetGateway *pGate;
@@ -103,4 +112,6 @@ private:
 	bool RelayM17_2AM(Glib::IOCondition condition);
 	bool GetLogInput(Glib::IOCondition condition);
 	bool TimeoutProcess();
+
+	bool destCS, destIP;
 };

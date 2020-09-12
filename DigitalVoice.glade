@@ -393,6 +393,7 @@ Author: Thomas A. Early, N7TAE
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="max_width_chars">46</property>
+                        <property name="primary_icon_stock">gtk-cancel</property>
                         <signal name="changed" handler="on_M17DestIPEntry_changed" swapped="no"/>
                       </object>
                       <packing>
