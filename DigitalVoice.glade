@@ -421,6 +421,7 @@ Author: Thomas A. Early, N7TAE
                       <object class="GtkComboBoxText" id="M17DestCallsignComboBox">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
                         <signal name="changed" handler="on_M17DestCallsignComboBox_changed" swapped="no"/>
                       </object>
                       <packing>
@@ -431,10 +432,11 @@ Author: Thomas A. Early, N7TAE
                     </child>
                     <child>
                       <object class="GtkButton" id="M17DestActionButton">
-                        <property name="label" translatable="yes">Action Button</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="halign">start</property>
                         <signal name="clicked" handler="on_M17DestActionButton_clicked" swapped="no"/>
                       </object>
                       <packing>

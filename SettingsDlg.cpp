@@ -73,7 +73,7 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 {
 	// M17
 	d.bCodec2Enable = pCodec2RadioButton->get_active();
-	d.sM17DestCallsign.assign(pM17SourceCallsignEntry->get_text());
+	d.sM17SourceCallsign.assign(pM17SourceCallsignEntry->get_text());
 	d.bVoiceOnlyEnable = pM17VoiceOnlyRadioButton->get_active();
 	// modes
 	d.bRouteEnable = pRoutingCheckbutton->get_active();
@@ -134,7 +134,7 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 		pM17VoiceOnlyRadioButton->clicked();
 	else
 		pM17VoiceDataRadioButton->clicked();
-	pM17SourceCallsignEntry->set_text(d.sM17DestCallsign);
+	pM17SourceCallsignEntry->set_text(d.sM17SourceCallsign);
 	// mode
 	pLinkingCheckButton->set_active(d.bLinkEnable);
 	pRoutingCheckbutton->set_active(d.bRouteEnable);

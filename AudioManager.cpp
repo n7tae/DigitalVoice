@@ -136,52 +136,50 @@ void CAudioManager::codec2encode(const bool is_3200)
 	bool last;
 	bool is_odd = false; // true if we've processed an odd number of audio frames
 	do {
-		if ( audio_is_empty() ) {
+		while ( audio_is_empty() )
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
-		} else {
-			audio_mutex.lock();
-			CAudioFrame audioframe = audio_queue.Pop();
-			audio_mutex.unlock();
-			last = audioframe.GetFlag();
-			if ( is_3200 ) {
-				is_odd = ! is_odd;
-				unsigned char data[8];
-				c2.codec2_encode(data, audioframe.GetData());
-				CC2DataFrame dataframe(data);
-				dataframe.SetFlag(is_odd ? false : last);
+		audio_mutex.lock();
+		CAudioFrame audioframe = audio_queue.Pop();
+		audio_mutex.unlock();
+		last = audioframe.GetFlag();
+		if ( is_3200 ) {
+			is_odd = ! is_odd;
+			unsigned char data[8];
+			c2.codec2_encode(data, audioframe.GetData());
+			CC2DataFrame dataframe(data);
+			dataframe.SetFlag(is_odd ? false : last);
+			ambe_mutex.lock();
+			c2_queue.Push(dataframe);
+			ambe_mutex.unlock();
+			if (is_odd && last) {
+				// make sure there is an even number of 3200 codec frames
+				const short quiet[160] = { 0 };
+				c2.codec2_encode(data, quiet);
+				CC2DataFrame frame2(data);
+				frame2.SetFlag(last);
 				ambe_mutex.lock();
-				c2_queue.Push(dataframe);
+				c2_queue.Push(frame2);
 				ambe_mutex.unlock();
-				if (is_odd && last) {
-					// make sure there is an even number of 3200 codec frames
-					const short quiet[160] = { 0 };
-					c2.codec2_encode(data, quiet);
-					CC2DataFrame frame2(data);
-					frame2.SetFlag(last);
-					ambe_mutex.lock();
-					c2_queue.Push(frame2);
-					ambe_mutex.unlock();
-				}
-			} else { // 1600 - we need 40 ms of audio
-				short audio[320] = { 0 }; // 40 ms of silence
-				unsigned char data[8];
-				memcpy(audio, audioframe.GetData(), 160*sizeof(short)); // we have 20 ms of audio at the beginning
-				if (! last) { // get another frame, if available
-					while (audio_is_empty())
-						std::this_thread::sleep_for(std::chrono::milliseconds(3));
-					audio_mutex.lock();
-					audioframe = audio_queue.Pop();
-					audio_mutex.unlock();
-					memcpy(audio+160, audioframe.GetData(), 160*sizeof(short));	// now we have 40 ms total
-					last = audioframe.GetFlag();
-				}
-				c2.codec2_encode(data, audio);
-				CC2DataFrame dataframe(data);
-				dataframe.SetFlag(last);
-				a2d_mutex.lock();
-				c2_queue.Push(dataframe);
-				a2d_mutex.unlock();
 			}
+		} else { // 1600 - we need 40 ms of audio
+			short audio[320] = { 0 }; // 40 ms of silence
+			unsigned char data[8];
+			memcpy(audio, audioframe.GetData(), 160*sizeof(short)); // we have 20 ms of audio at the beginning
+			if (! last) { // get another frame, if available
+				while (audio_is_empty())
+					std::this_thread::sleep_for(std::chrono::milliseconds(3));
+				audio_mutex.lock();
+				audioframe = audio_queue.Pop();
+				audio_mutex.unlock();
+				memcpy(audio+160, audioframe.GetData(), 160*sizeof(short));	// now we have 40 ms total
+				last = audioframe.GetFlag();
+			}
+			c2.codec2_encode(data, audio);
+			CC2DataFrame dataframe(data);
+			dataframe.SetFlag(last);
+			a2d_mutex.lock();
+			c2_queue.Push(dataframe);
+			a2d_mutex.unlock();
 		}
 	} while (! last);
 }
@@ -345,6 +343,7 @@ void CAudioManager::packetqueue2link()
 		link_mutex.lock();
 		if (link_queue.Empty()) {
 			link_mutex.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		} else {
 			CDSVT dsvt = link_queue.Pop();
 			link_mutex.unlock();
@@ -364,6 +363,7 @@ void CAudioManager::packetqueue2gate()
 		gateway_mutex.lock();
 		if (gateway_queue.Empty()) {
 			gateway_mutex.unlock();
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		} else {
 			CDSVT dsvt = gateway_queue.Pop();
 			gateway_mutex.unlock();
@@ -560,6 +560,8 @@ void CAudioManager::codec2decode(const bool is_3200)
 	CCodec2 c2(is_3200);
 	bool last;
 	do {
+		while (codec_is_empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		ambe_mutex.lock();
 		CC2DataFrame dataframe = c2_queue.Pop();
 		ambe_mutex.unlock();
@@ -592,7 +594,8 @@ void CAudioManager::PlayEchoDataThread()
 	hot_mic = false;
 	r1.get();
 	r2.get();
-	r3.get();
+	if (! data->bCodec2Enable)
+		r3.get();
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -811,7 +814,7 @@ void CAudioManager::play_audio_queue()
 	bool last;
 	do {
 		while (audio_is_empty())
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		audio_mutex.lock();
 		CAudioFrame frame(audio_queue.Pop());
 		audio_mutex.unlock();

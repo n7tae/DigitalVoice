@@ -32,8 +32,8 @@ void CConfigure::SetDefaultValues()
 {
 	// M17
 	data.bCodec2Enable = true;
-	data.sM17DestCallsign.assign("XLX797 A");
-	data.sM17DestIp.assign("44.8.8.8");
+	data.sM17DestCallsign.clear();
+	data.sM17DestIp.clear();
 	data.sM17SourceCallsign.clear();
 	data.bVoiceOnlyEnable = true;
 	// mode and module

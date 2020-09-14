@@ -44,7 +44,10 @@ CMainWindow::CMainWindow() :
 	pQuitButton(nullptr),
 	pSettingsButton(nullptr),
 	pGate(nullptr),
-	pLink(nullptr)
+	pLink(nullptr),
+	bDestCS(false),
+	bDestIP(false),
+	bTransOK(true)
 {
 	cfg.CopyTo(cfgdata);
 	if (! AudioManager.AMBEDevice.IsOpen()) {
@@ -88,6 +91,8 @@ void CMainWindow::SetState(const CFGDATA &data)
 		pMainStack->set_visible_child("page1");
 		StopGate();
 		StopLink();
+		pM17DestCallsignEntry->set_text(data.sM17DestCallsign);
+		pM17DestIPEntry->set_text(data.sM17DestIp);
 	} else {
 		pMainStack->set_visible_child("page0");
 		if (data.bRouteEnable) {
@@ -218,7 +223,10 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 
 	ReadRoutes();
 	ReadDestinations();
+	Receive(false);
 	SetState(cfgdata);
+	if (destmap.size())
+		on_M17DestCallsignComboBox_changed();
 
 	// i/o events
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayGate2AM), Gate2AM.GetFD(), Glib::IO_IN);
@@ -299,7 +307,7 @@ void CMainWindow::ReadDestinations()
 		char line[128];
 		while (file.getline(line, 128)) {
 			char *key = strtok(line, "=");
-			if (! key || *key == '#') continue;
+			if ((! key) || (*key == '#') | (0==strlen(key))) continue;
 			char *val = strtok(NULL, " \t\r\n");
 			if (! val) continue;
 			destmap[std::string(key)] = std::string(val);
@@ -370,32 +378,41 @@ void CMainWindow::on_RouteEntry_changed()
 	pRouteEntry->set_text(n);
 	pRouteEntry->set_position(pos);
 	pRouteActionButton->set_sensitive(n.size() ? true : false);
-	pRouteActionButton->set_label((routeset.end() == routeset.find(s)) ? "Add to list" : "Delete from list");
+	pRouteActionButton->set_label((routeset.end() == routeset.find(s)) ? "Save" : "Delete");
 }
 
 void CMainWindow::on_M17DestCallsignComboBox_changed()
 {
 	auto cs = pM17DestCallsignComboBox->get_active_text();
 	pM17DestCallsignEntry->set_text(cs);
-	pM17DestCallsignEntry->set_text(destmap[cs]);
+	if (destmap.end() != destmap.find(cs))
+		pM17DestIPEntry->set_text(destmap[cs]);
 }
 
 void CMainWindow::on_M17DestActionButton_clicked()
 {
-	auto obj = pM17DestActionButton->get_label();
-	if (0 == obj.compare("Add")) {
-		auto add = pM17DestCallsignEntry->get_text();
-		destmap[add] = pM17DestIPEntry->get_text();
+	auto label = pM17DestActionButton->get_label();
+		auto cs = pM17DestCallsignEntry->get_text();
+	if (0 == label.compare("Save")) {
+		destmap[cs] = pM17DestIPEntry->get_text();
 		pM17DestCallsignComboBox->remove_all();
 		for (const auto &pair : destmap)
 			pM17DestCallsignComboBox->append(pair.first);
-		pM17DestCallsignComboBox->set_active_text(obj);
-	} else if (0 == obj.compare("Remove")) {
+		pM17DestCallsignComboBox->set_active_text(cs);
+		SetDestActionButton(true, "Delete");
+	} else if (0 == label.compare("Delete")) {
 		int index = pM17DestCallsignComboBox->get_active_row_number();
-		destmap.erase(obj);
+		pM17DestCallsignComboBox->remove_text(index);
+		destmap.erase(cs);
 		if (index >= int(destmap.size()))
 			index--;
-		pM17DestCallsignComboBox->set_active(index);
+		if (index < 0) {
+			pM17DestCallsignComboBox->unset_active();
+			pM17DestIPEntry->set_text("");
+		} else
+			pM17DestCallsignComboBox->set_active(index);
+	} else if (0 == label.compare("Update")) {
+		destmap[pM17DestCallsignEntry->get_text()] = pM17DestIPEntry->get_text();
 	}
 	WriteDestinations();
 }
@@ -407,7 +424,7 @@ void CMainWindow::on_RouteComboBox_changed()
 
 void CMainWindow::on_RouteActionButton_clicked()
 {
-	if (pRouteActionButton->get_label().compare(0, 3, "Add")) {
+	if (pRouteActionButton->get_label().compare("Save")) {
 		// deleting an entry
 		auto todelete = pRouteEntry->get_text();
 		int index = pRouteComboBox->get_active_row_number();
@@ -415,14 +432,15 @@ void CMainWindow::on_RouteActionButton_clicked()
 		routeset.erase(todelete);
 		if (index >= int(routeset.size()))
 			index--;
-		pRouteComboBox->set_active(index);
+		if (index >= 0)
+			pRouteComboBox->set_active(index);
 	} else {
 		// adding an entry
 		auto toadd = pRouteEntry->get_text();
 		routeset.insert(toadd);
 		pRouteComboBox->remove_all();
-		for (auto it=routeset.begin(); it!=routeset.end(); it++)
-			pRouteComboBox->append(*it);
+		for (const auto &item : routeset)
+			pRouteComboBox->append(item);
 		pRouteComboBox->set_active_text(toadd);
 	}
 	WriteRoutes();
@@ -443,9 +461,16 @@ void CMainWindow::on_EchoTestButton_toggled()
 
 void CMainWindow::Receive(bool is_rx)
 {
-	pPTTButton->set_sensitive(!is_rx);
-	pEchoTestButton->set_sensitive(!is_rx);
-	pQuickKeyButton->set_sensitive(!is_rx);
+	bool ppt_okay;
+	bTransOK = ! is_rx;
+	if (cfgdata.bCodec2Enable) {
+		ppt_okay = bTransOK && bDestCS && bDestCS;
+	} else {
+		ppt_okay = bTransOK && (pRouteEntry->get_text().size() > 0);
+	}
+	pPTTButton->set_sensitive(ppt_okay);
+	pEchoTestButton->set_sensitive(bTransOK);
+	pQuickKeyButton->set_sensitive(ppt_okay);
 }
 
 void CMainWindow::on_PTTButton_toggled()
@@ -565,15 +590,15 @@ void CMainWindow::on_M17DestCallsignEntry_changed()
 	Glib::ustring s = pM17DestCallsignEntry->get_text().uppercase();
 	pM17DestCallsignEntry->set_text(s);
 	pM17DestCallsignEntry->set_position(pos);
-	destCS = std::regex_match(s.c_str(), M17CallRegEx);
-	pM17DestCallsignEntry->set_icon_from_icon_name(destCS ? "gtk-ok" : "gtk-cancel");
+	bDestCS = std::regex_match(s.c_str(), M17CallRegEx);
+	pM17DestCallsignEntry->set_icon_from_icon_name(bDestCS ? "gtk-ok" : "gtk-cancel");
 	FixM17DestActionButton();
 }
 
 void CMainWindow::on_M17DestIPEntry_changed()
 {
-	destIP = std::regex_match(pM17DestIPEntry->get_text().c_str(), IPRegEx);
-	pM17DestIPEntry->set_icon_from_icon_name(destIP ? "gtk-ok" : "gtk-cancel");
+	bDestIP = std::regex_match(pM17DestIPEntry->get_text().c_str(), IPRegEx);
+	pM17DestIPEntry->set_icon_from_icon_name(bDestIP ? "gtk-ok" : "gtk-cancel");
 	FixM17DestActionButton();
 }
 
@@ -587,31 +612,36 @@ void CMainWindow::FixM17DestActionButton()
 {
 	const std::string cs(pM17DestCallsignEntry->get_text().c_str());
 	const std::string ip(pM17DestIPEntry->get_text().c_str());
-	if (destCS) {
+	if (bDestCS) {
 		auto it = destmap.find(cs);
 		if (destmap.end() == it) {
 			// cs is not found in map
-			if (destIP) { // is the IP okay?
-				SetDestActionButton(true, "Add");
+			if (bDestIP) { // is the IP okay?
+				SetDestActionButton(true, "Save");
 			} else {
 				SetDestActionButton(false, "");
 			}
 		} else {
 			// cs is found in map
-			if (destIP) { // is the IP okay?
+			if (bDestIP) { // is the IP okay?
 				if (ip.compare(destmap[cs])) {
 					// the ip in the IPEntry is different
 					SetDestActionButton(true, "Update");
 				} else {
 					// perfect match
-					SetDestActionButton(true, "Remove");
+					SetDestActionButton(true, "Delete");
 					pM17DestCallsignComboBox->set_active_text(cs);
 				}
+			} else {
+				SetDestActionButton(false, "");
 			}
 		}
 	} else {
 		SetDestActionButton(false, "");
 	}
+	bool all = (bTransOK && bDestCS && bDestIP);
+	pPTTButton->set_sensitive(all);
+	pQuickKeyButton->set_sensitive(all);
 }
 
 void CMainWindow::on_LinkEntry_changed()

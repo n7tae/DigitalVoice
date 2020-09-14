@@ -113,5 +113,5 @@ private:
 	bool GetLogInput(Glib::IOCondition condition);
 	bool TimeoutProcess();
 
-	bool destCS, destIP;
+	bool bDestCS, bDestIP, bTransOK;
 };
