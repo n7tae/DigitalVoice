@@ -20,72 +20,58 @@
 #include <cstdint>
 
 // for the g2 external port and between QnetGateway programs
-#pragma pack(push, 1)
-class CDSVT
+using SDSVT = struct __attribute__((__packed__)) dsvt_tag
 {
-public:
-	uint8_t title[4];	//  0   "DSVT"
-	uint8_t config;	//  4   0x10 is hdr 0x20 is vasd
-	uint8_t flaga[3];	//  5   zeros
-	uint8_t id;		//  8   0x20
-	uint8_t flagb[3];	//  9   0x0 0x1 (A:0x3 B:0x1 C:0x2)
-	unsigned short streamid;// 12
-	uint8_t ctrl;		// 14   hdr: 0x80 vsad: framecounter (mod 21)
+	uint8_t title[4];			//  0   "DSVT"
+	uint8_t config;				//  4   0x10 is hdr 0x20 is vasd
+	uint8_t flaga[3];			//  5   zeros
+	uint8_t id;					//  8   0x20
+	uint8_t flagb[3];			//  9   0x0 0x1 (A:0x3 B:0x1 C:0x2)
+	unsigned short streamid;	// 12
+	uint8_t ctrl;				// 14   hdr: 0x80 vsad: framecounter (mod 21)
 	union {
-		struct {                    // index
-			uint8_t flag[3];  // 15
+		struct {				// index
+			uint8_t flag[3];	// 15
 			uint8_t rpt1[8];	// 18
-			uint8_t rpt2[8];  // 26
-			uint8_t urcall[8];// 34
-			uint8_t mycall[8];// 42
-			uint8_t sfx[4];   // 50
-			uint8_t pfcs[2];  // 54
-		} hdr;						// total 56
+			uint8_t rpt2[8];	// 26
+			uint8_t urcall[8];	// 34
+			uint8_t mycall[8];	// 42
+			uint8_t sfx[4];		// 50
+			uint8_t pfcs[2];	// 54
+		} hdr;					// total 56
 		struct {
-			uint8_t voice[9]; // 15
-			uint8_t text[3];  // 24
+			uint8_t voice[9];	// 15
+			uint8_t text[3];	// 24
 		} vasd;	// voice and slow data total 27
 		struct {
-			uint8_t voice[9]; // 15
-			uint8_t end[6];	// 24
+			uint8_t voice[9];	// 15
+			uint8_t end[6];		// 24
 		} vend;	// voice and end seq total 30
 	};
 };
-#pragma pack(pop)
 
-#pragma pack(push, 1)
-class CREFDSVT
+using SREFDSVT = struct __attribute__((__packed__)) refdsvt_tag
 {
 public:
 	uint8_t head[2];
-	CDSVT dsvt;
+	SDSVT dsvt;
 };
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-class CLinkFamily
-{
-public:
-    char title[4];
-    int family;
-};
-#pragma pack(pop)
 
 // M17 Packets
 //all structures must be big endian on the wire, so you'll want htonl (man byteorder 3) and such.
-using M17_LICH = struct _LICH {
+using M17_LICH = struct __attribute__((__packed__)) _LICH {
 	uint8_t  addr_dst[6]; //48 bit int - you'll have to assemble it yourself unfortunately
 	uint8_t  addr_src[6];
 	uint16_t frametype; //frametype flag field per the M17 spec
-	uint8_t  nonce[16]; //bytes for the nonce
-}; // 6 + 6 + 2 + 16 = 30 bytes = 240 bits
+	uint8_t  nonce[14]; //bytes for the nonce
+}; // 6 + 6 + 2 + 14 = 28 bytes = 224 bits
 
 //without SYNC or other parts
-using M17_IPFrame = struct _ip_frame {
+using M17_IPFrame = struct __attribute__((__packed__)) _ip_frame {
 	uint8_t  magic[4];
 	uint16_t streamid;
 	M17_LICH lich;
 	uint16_t framenumber;
 	uint8_t  payload[16];
 	uint8_t  crc[2]; 	//16 bit CRC
-}; // 4 + 2 + 30 + 2 + 16 + 2 = 56 bytes = 448 bits
+}; // 4 + 2 + 28 + 2 + 16 + 2 = 54 bytes = 432 bits

@@ -184,7 +184,7 @@ void CAudioManager::codec2encode(const bool is_3200)
 	} while (! last);
 }
 
-void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned char *ut, unsigned char *uh)
+void CAudioManager::makeheader(SDSVT &c, const std::string &urcall, unsigned char *ut, unsigned char *uh)
 {
 	// this also makes the scrambled text message and header for streaming into the slow data
 	// only the 1-byte header need to be interleaved before and between each 5 byte set
@@ -195,7 +195,7 @@ void CAudioManager::makeheader(CDSVT &c, const std::string &urcall, unsigned cha
 	for (int i=0; i<20; i++) {
 		ut[i] = scramble[i%5] ^ msg.at(i);
 	}
-	memset(c.title, 0, sizeof(CDSVT));
+	memset(c.title, 0, sizeof(SDSVT));
 	memcpy(c.title, "DSVT", 4);
 	c.config = 0x10U;
 	c.id = 0x20U;
@@ -222,7 +222,7 @@ void CAudioManager::QuickKey(const char *urcall)
 	const unsigned char silence[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
 	unsigned char ut[20];
 	unsigned char uh[41];
-	CDSVT h;
+	SDSVT h;
 	makeheader(h, urcall, ut, uh);
 	bool islink = (0 == memcmp(urcall, "CQCQCQ", 6));
 	if (islink)
@@ -308,9 +308,9 @@ void CAudioManager::ambedevice2packetqueue(DSVTPacketQueue &queue, std::mutex &m
 	// add a header;
 	unsigned char ut[20];
 	unsigned char uh[41];
-	CDSVT h;
+	SDSVT h;
 	makeheader(h, urcall, ut, uh);
-	CDSVT v(h);
+	SDSVT v(h);
 	v.config = 0x20U;
 	bool header_not_sent = true;
 	do {
@@ -345,7 +345,7 @@ void CAudioManager::packetqueue2link()
 			link_mutex.unlock();
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		} else {
-			CDSVT dsvt = link_queue.Pop();
+			SDSVT dsvt = link_queue.Pop();
 			link_mutex.unlock();
 			AM2Link.Write(dsvt.title, (dsvt.config==0x10) ? 56 : 27);
 			ctrl = dsvt.ctrl;
@@ -365,7 +365,7 @@ void CAudioManager::packetqueue2gate()
 			gateway_mutex.unlock();
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		} else {
-			CDSVT dsvt = gateway_queue.Pop();
+			SDSVT dsvt = gateway_queue.Pop();
 			gateway_mutex.unlock();
 			AM2Gate.Write(dsvt.title, (dsvt.config==0x10) ? 56 : 27);
 			ctrl = dsvt.ctrl;
@@ -373,7 +373,7 @@ void CAudioManager::packetqueue2gate()
 	} while (0U == (ctrl & 0x40U));
 }
 
-void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDSVT &d)
+void CAudioManager::SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, SDSVT &d)
 {
 	const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
 	const unsigned char empty[3] = { 0x16U, 0x29U, 0xF5U };
@@ -614,14 +614,14 @@ void CAudioManager::PlayEchoDataThread()
 	}
 }
 
-void CAudioManager::Link2AudioMgr(const CDSVT &dsvt)
+void CAudioManager::Link2AudioMgr(const SDSVT &dsvt)
 {
 	l2am_mutex.lock();
 	l2am(dsvt, false);
 	l2am_mutex.unlock();
 }
 
-void CAudioManager::l2am(const CDSVT &dsvt, const bool shutoff) {
+void CAudioManager::l2am(const SDSVT &dsvt, const bool shutoff) {
 	if (link_open && AMBEDevice.IsOpen() && 0U==gate_sid_in && ! play_file) {	// don't do anythings if the gateway is currently providing audio
 
 		if (0U==link_sid_in && 0U==(dsvt.ctrl & 0x40U)) {	// don't start if it's the last audio frame
@@ -690,7 +690,7 @@ void CAudioManager::M17_2AudioMgr(const M17_IPFrame &m17)
 	}
 }
 
-void CAudioManager::Gateway2AudioMgr(const CDSVT &dsvt)
+void CAudioManager::Gateway2AudioMgr(const SDSVT &dsvt)
 {
 	if (AMBEDevice.IsOpen() && 0U==link_sid_in && ! play_file) {	// don't do anythings if the link is currently providing audio
 
@@ -915,7 +915,7 @@ void CAudioManager::Link(const std::string &linkcmd)
 		if (link_sid_in) {
 			l2am_mutex.lock();
 			const unsigned char quiet[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
-			CDSVT dsvt;		// we only need to set up a few things to keep l2am() happy
+			SDSVT dsvt;		// we only need to set up a few things to keep l2am() happy
 			dsvt.config = 0x20U;				// it's a voice packet
 			dsvt.ctrl = 0x40U;					// it's the last packet
 			dsvt.streamid = link_sid_in;		// it has the correct streamid

@@ -30,7 +30,7 @@
 #include "Random.h"
 #include "UnixDgramSocket.h"
 
-using DSVTPacketQueue = CTQueue<CDSVT>;
+using DSVTPacketQueue = CTQueue<SDSVT>;
 using M17PacketQueue = CTQueue<M17_IPFrame>;
 #define M17CHARACTERS " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."
 
@@ -46,8 +46,8 @@ public:
 
 	void RecordMicThread(E_PTT_Type for_who, const std::string &urcall);
 	void PlayEchoDataThread();	// for Echo
-	void Gateway2AudioMgr(const CDSVT &dsvt);
-	void Link2AudioMgr(const CDSVT &dsvt);
+	void Gateway2AudioMgr(const SDSVT &dsvt);
+	void Link2AudioMgr(const SDSVT &dsvt);
 	void M17_2AudioMgr(const M17_IPFrame &m17);
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
@@ -78,7 +78,7 @@ private:
 	// helpers
 	CMainWindow *pMainWindow;
 	CRandom random;
-	void l2am(const CDSVT &dsvt, const bool shutoff);
+	void l2am(const SDSVT &dsvt, const bool shutoff);
 	std::vector<unsigned long> speak;
 	// methods
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
@@ -97,6 +97,6 @@ private:
 	void packetqueue2link();
 	void packetqueue2gate();
 	void play_audio_queue();
-	void makeheader(CDSVT &c, const std::string &urcall, unsigned char *ut, unsigned char *uh);
-	void SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, CDSVT &v);
+	void makeheader(SDSVT &c, const std::string &urcall, unsigned char *ut, unsigned char *uh);
+	void SlowData(const unsigned count, const unsigned char *ut, const unsigned char *uh, SDSVT &v);
 };

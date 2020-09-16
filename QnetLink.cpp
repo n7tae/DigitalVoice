@@ -468,7 +468,7 @@ void CQnetLink::Process()
 	struct silent_tag {
 		time_t lasttime;
 		unsigned char ctrl;
-		CDSVT dsvt;
+		SDSVT dsvt;
 	} silent;
 
 	memset(&silent, 0, sizeof(silent));
@@ -590,7 +590,7 @@ void CQnetLink::Process()
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
 		bool is_packet = false;
-		CDSVT dsvt;
+		SDSVT dsvt;
 
 		if (keep_running && FD_ISSET(xrf_g2_sock, &fdset)) {
 			socklen_t fromlen = sizeof(struct sockaddr_in);
@@ -1058,7 +1058,7 @@ void CQnetLink::Process()
 		}
 
 		while (keep_running && FD_ISSET(AM2Link.GetFD(), &fdset)) {
-			CDSVT dsvt;
+			SDSVT dsvt;
 			int length = AM2Link.Read(dsvt.title, 56);
 			if (0 == memcmp(dsvt.title, "LINK", 4)) {
 				if (dsvt.config) {
@@ -1093,7 +1093,7 @@ void CQnetLink::Process()
 								to_remote_g2.out_streamid = dsvt.streamid;
 
 								if (to_remote_g2.addr.GetPort()==rmt_xrf_port || to_remote_g2.addr.GetPort()==rmt_ref_port) {
-									CREFDSVT rdsvt;
+									SREFDSVT rdsvt;
 									rdsvt.head[0] = 56U;
 									rdsvt.head[1] = 0x80U;
 
@@ -1137,7 +1137,7 @@ void CQnetLink::Process()
 
 								sendto(xrf_g2_sock, dsvt.title, 27, 0, to_remote_g2.addr.GetCPointer(), to_remote_g2.addr.GetSize());
 							} else if (to_remote_g2.addr.GetPort() == rmt_ref_port) {
-								CREFDSVT rdsvt;
+								SREFDSVT rdsvt;
 								rdsvt.head[0] = (rdsvt.dsvt.ctrl & 0x40U) ? 32U : 29U;
 								rdsvt.head[1] = 0x80U;
 
@@ -1267,7 +1267,7 @@ void CQnetLink::PlayAudioNotifyThread(char *msg)
 		fprintf(stderr, "Audio Message string too long: %s", msg);
 		return;
 	}
-	CDSVT dsvt;
+	SDSVT dsvt;
 	memcpy(dsvt.title, "PLAY", 4);
 	memcpy(dsvt.title+4, msg, strlen(msg)+1);	// copy the terminating NULL
 	Link2AM.Write(dsvt.title, 56);

@@ -42,7 +42,7 @@ using STOREMOTEG2 = struct gate_to_remote_g2_tag {
 
 using STOREPEATER = struct torepeater_tag {
 	// help with header re-generation
-	CDSVT saved_hdr; // repeater format
+	SDSVT saved_hdr; // repeater format
 	CSockAddress saved_addr;
 
 	unsigned short streamid;
@@ -90,7 +90,7 @@ private:
 	// RPTR defined in aprs.h
 	SRPTR Rptr;
 
-	CDSVT recbuf; // 56 or 27, max is 56
+	SDSVT recbuf; // 56 or 27, max is 56
 
 	// the streamids going to remote Gateways from each local module
 	STOREMOTEG2 to_remote_g2;
@@ -103,7 +103,7 @@ private:
 	// must be fed into our local repeater modules.
 	STOREPEATER toRptr;
 
-	CDSVT end_of_audio;
+	SDSVT end_of_audio;
 
 	// send packets to g2_link
 	struct sockaddr_in plug;
@@ -131,8 +131,8 @@ private:
 	int get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	void ProcessTimeouts();
 	bool ProcessG2Msg(const unsigned char *data, std::string &smrtgrp);
-	void ProcessG2(const ssize_t g2buflen, CDSVT &g2buf);
-	void ProcessAudio(const CDSVT *packet);
+	void ProcessG2(const ssize_t g2buflen, SDSVT &g2buf);
+	void ProcessAudio(const SDSVT *packet);
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);

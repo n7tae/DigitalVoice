@@ -500,7 +500,7 @@ void CMainWindow::on_QuickKeyButton_clicked()
 bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
 {
 	if (condition & Glib::IO_IN) {
-		CDSVT dsvt;
+		SDSVT dsvt;
 		Link2AM.Read(dsvt.title, 56);
 		if (0 == memcmp(dsvt.title, "DSVT", 4))
 			AudioManager.Link2AudioMgr(dsvt);
@@ -528,7 +528,7 @@ bool CMainWindow::RelayM17_2AM(Glib::IOCondition condition)
 bool CMainWindow::RelayGate2AM(Glib::IOCondition condition)
 {
 	if (condition & Glib::IO_IN) {
-		CDSVT dsvt;
+		SDSVT dsvt;
 		Gate2AM.Read(dsvt.title, 56);
 		if (0 == memcmp(dsvt.title, "DSVT", 4))
 			AudioManager.Gateway2AudioMgr(dsvt);
