@@ -103,13 +103,15 @@ void CSettingsDlg::SaveWidgetStates(CFGDATA &d)
 	//link
 	d.sLinkAtStart.assign(pLinkAtStartEntry->get_text());
 	d.bDPlusEnable = pDPlusEnableCheckButton->get_active();
-	// quadnet
-	if (pIPv6OnlyRadioButton->get_active())
-		d.eNetType = EQuadNetType::ipv6only;
-	else if (pDualStackRadioButton->get_active())
-		d.eNetType = EQuadNetType::dualstack;
+	// Internet
+	if (pIPv6CheckButton->get_active()) {
+		if (pIPv4CheckButton->get_active())
+			d.eNetType = EInternetType::dualstack;
+		else
+			d.eNetType = EInternetType::ipv6only;
+	}
 	else
-		d.eNetType = EQuadNetType::ipv4only;
+		d.eNetType = EInternetType::ipv4only;
 	// device
 	d.iBaudRate = (p230kRadioButton->get_active()) ? 230400 : 460800;
 	// audio
@@ -165,14 +167,17 @@ void CSettingsDlg::SetWidgetStates(const CFGDATA &d)
 		pDPlusEnableCheckButton->set_active(d.bDPlusEnable);	// only do this if we need to
 	//quadnet
 	switch (d.eNetType) {
-		case EQuadNetType::ipv6only:
-			pIPv6OnlyRadioButton->set_active();
+		case EInternetType::ipv6only:
+			pIPv6CheckButton->set_active();
+			pIPv4CheckButton->set_active(false);
 			break;
-		case EQuadNetType::dualstack:
-			pDualStackRadioButton->set_active();
+		case EInternetType::dualstack:
+			pIPv4CheckButton->set_active();
+			pIPv6CheckButton->set_active();
 			break;
 		default:
-			pIPv4OnlyRadioButton->set_active();
+			pIPv4CheckButton->set_active();
+			pIPv6CheckButton->set_active(false);
 			break;
 	}
 	//device
@@ -236,10 +241,9 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	// linking
 	builder->get_widget("LinkAtStartEntry", pLinkAtStartEntry);
 	builder->get_widget("LegacyCheckButton", pDPlusEnableCheckButton);
-	// QuadNet
-	builder->get_widget("IPV4_RadioButton", pIPv4OnlyRadioButton);
-	builder->get_widget("IPV6_RadioButton", pIPv6OnlyRadioButton);
-	builder->get_widget("Dual_Stack_RadioButton", pDualStackRadioButton);
+	// Internet
+	builder->get_widget("IPv4CheckButton", pIPv4CheckButton);
+	builder->get_widget("IPv6CheckButton", pIPv6CheckButton);
 	// Audio
 	builder->get_widget("AudioInputComboBox", pAudioInputComboBox);
 	refAudioInListModel = Gtk::ListStore::create(audio_columns);
@@ -274,9 +278,8 @@ bool CSettingsDlg::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::us
 	pLatitudeEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LatitudeEntry_changed));
 	pLongitudeEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LongitudeEntry_changed));
 	pURLEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_URLEntry_changed));
-	pIPv4OnlyRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pIPv6OnlyRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
-	pDualStackRadioButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_QuadNet_Group_clicked));
+	pIPv4CheckButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_IPv4CheckButton_clicked));
+	pIPv6CheckButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_IPv6CheckButton_clicked));
 	pAMBERescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AMBERescanButton_clicked));
 	pAudioRescanButton->signal_clicked().connect(sigc::mem_fun(*this, &CSettingsDlg::on_AudioRescanButton_clicked));
 	pLinkAtStartEntry->signal_changed().connect(sigc::mem_fun(*this, &CSettingsDlg::on_LinkAtStartEntry_changed));
@@ -344,7 +347,7 @@ void CSettingsDlg::on_Codec2RadioButton_clicked()
 {
 	pSettingsNotebook->get_nth_page(0)->show();
 	const int count = pSettingsNotebook->get_n_pages();
-	for (int i=2; i<count; i++)
+	for (int i=3; i<count; i++)
 		pSettingsNotebook->get_nth_page(i)->hide();
 }
 
@@ -352,7 +355,7 @@ void CSettingsDlg::on_AMBERadioButton_clicked()
 {
 	pSettingsNotebook->get_nth_page(0)->hide();
 	const int count = pSettingsNotebook->get_n_pages();
-	for (int i=2; i<count; i++)
+	for (int i=3; i<count; i++)
 		pSettingsNotebook->get_nth_page(i)->show();
 }
 
@@ -545,14 +548,20 @@ void CSettingsDlg::BaudrateChanged(int baudrate)
 	}
 }
 
-void CSettingsDlg::on_QuadNet_Group_clicked()
+void CSettingsDlg::on_IPv4CheckButton_clicked()
 {
-	if (pIPv6OnlyRadioButton->get_active())
-		data.eNetType = EQuadNetType::ipv6only;
-	else if (pDualStackRadioButton->get_active())
-		data.eNetType = EQuadNetType::dualstack;
-	else
-		data.eNetType = EQuadNetType::ipv4only;
+	if (pIPv4CheckButton->get_active())
+		data.eNetType = pIPv6CheckButton->get_active() ? EInternetType::dualstack : EInternetType::ipv4only;
+	if (!pIPv6CheckButton->get_active())
+		on_IPv6CheckButton_clicked();
+}
+
+void CSettingsDlg::on_IPv6CheckButton_clicked()
+{
+	if (pIPv6CheckButton->get_active())
+		data.eNetType = pIPv4CheckButton->get_active() ? EInternetType::dualstack : EInternetType::ipv6only;
+	if (!pIPv4CheckButton->get_active())
+		on_IPv4CheckButton_clicked();
 }
 
 void CSettingsDlg::on_LinkingCheckButton_toggled()

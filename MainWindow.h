@@ -25,10 +25,12 @@
 #include "Configure.h"
 #include "QnetGateway.h"
 #include "QnetLink.h"
+#include "M17Gateway.h"
 #include "QnetDB.h"
 #include "SettingsDlg.h"
 #include "AboutDlg.h"
 #include "AudioManager.h"
+#include "M17RouteMap.h"
 #include "aprs.h"
 
 class CMainWindow
@@ -45,13 +47,14 @@ public:
 	void Receive(bool is_rx);
 	void RebuildGateways(bool includelegacy);
 	// regular expression for testing stuff
-	std::regex CallRegEx, IPRegEx, M17CallRegEx;
+	std::regex CallRegEx, IPv4RegEx, IPv6RegEx, M17CallRegEx, M17RefRegEx;
 
 private:
 	// classes
 	CSettingsDlg SettingsDlg;
 	CAboutDlg AboutDlg;
 	CQnetDB qnDB;
+	CM17RouteMap routeMap;
 
 	// widgets
 	Gtk::Window *pWin;
@@ -69,25 +72,26 @@ private:
 
 	// state data
 	std::set<Glib::ustring> routeset;
-	std::map<std::string, std::string> destmap;
 	CFGDATA cfgdata;
 
 	// helpers
 	void FixM17DestActionButton();
 	void SetDestActionButton(const bool sensitive, const char *label);
-	void ReadDestinations();
-	void WriteDestinations();
 	void ReadRoutes();
 	void WriteRoutes();
 	CQnetGateway *pGate;
 	CQnetLink *pLink;
-	std::future<void> futLink, futGate;
+	CM17Gateway *pM17Gate;
+	std::future<void> futLink, futGate, futM17;
 	void SetState(const CFGDATA &data);
 	void RunLink();
 	void RunGate();
+	void RunM17();
 	void StopLink();
 	void StopGate();
-	CUnixDgramReader Gate2AM, Link2AM, M17_2AM, LogInput;
+	void StopM17();
+	CUnixDgramReader Gate2AM, Link2AM, M172AM, LogInput;
+	void CloseAll();
 	CAPRS aprs;
 
 	// events
@@ -109,7 +113,7 @@ private:
 	void on_M17DestActionButton_clicked();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
-	bool RelayM17_2AM(Glib::IOCondition condition);
+	bool RelayM172AM(Glib::IOCondition condition);
 	bool GetLogInput(Glib::IOCondition condition);
 	bool TimeoutProcess();
 

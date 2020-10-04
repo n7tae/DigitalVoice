@@ -55,8 +55,11 @@ CMainWindow::CMainWindow() :
 	}
 	// allowed M17 " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."
 	CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
-	IPRegEx = std::regex("^((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$", std::regex::extended);
-	M17CallRegEx = std::regex("^[A-Z0-9/.-]([ A-Z0-9/.-]){0,8}$", std::regex::extended);
+	IPv4RegEx = std::regex("^((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])$", std::regex::extended);
+	IPv6RegEx = std::regex("([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)$", std::regex::extended);
+	M17RefRegEx = std::regex("^M17([A-Z0-9-]){4,4}[ ][A-Z]$", std::regex::extended);
+	//M17CallRegEx = std::regex("^[A-Z0-9/\\.-]([ A-Z0-9/\\.-]){0,8}$", std::regex::extended);
+	M17CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][- /\\.]*[ A-RT-Z]$", std::regex::extended);
 }
 
 CMainWindow::~CMainWindow()
@@ -65,6 +68,7 @@ CMainWindow::~CMainWindow()
 		delete pWin;
 	StopLink();
 	StopGate();
+	StopM17();
 }
 
 void CMainWindow::RunLink()
@@ -85,6 +89,15 @@ void CMainWindow::RunGate()
 	pGate = nullptr;
 }
 
+void CMainWindow::RunM17()
+{
+	pM17Gate = new CM17Gateway;
+	if (! pM17Gate->Init(cfgdata, &routeMap))
+		pM17Gate->Process();
+	delete pM17Gate;
+	pM17Gate = nullptr;
+}
+
 void CMainWindow::SetState(const CFGDATA &data)
 {
 	if (data.bCodec2Enable) {
@@ -93,8 +106,11 @@ void CMainWindow::SetState(const CFGDATA &data)
 		StopLink();
 		pM17DestCallsignEntry->set_text(data.sM17DestCallsign);
 		pM17DestIPEntry->set_text(data.sM17DestIp);
+		if (nullptr == pM17Gate && cfg.IsOkay())
+			futM17 = std::async(std::launch::async, &CMainWindow::RunM17, this);
 	} else {
 		pMainStack->set_visible_child("page0");
+		StopM17();
 		if (data.bRouteEnable) {
 			if (nullptr == pGate && cfg.IsOkay())
 				futGate = std::async(std::launch::async, &CMainWindow::RunGate, this);
@@ -121,6 +137,14 @@ void CMainWindow::SetState(const CFGDATA &data)
 	}
 }
 
+void CMainWindow::CloseAll()
+{
+	Gate2AM.Close();
+	Link2AM.Close();
+	M172AM.Close();
+	LogInput.Close();
+}
+
 bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ustring &name)
 {
 	std::string dbname(CFG_DIR);
@@ -135,28 +159,28 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 		return true;
 
 	if (Link2AM.Open("link2am")) {
-		Gate2AM.Close();
+		CloseAll();
+		return true;
+	}
+
+	if (M172AM.Open("m172am")) {
+		CloseAll();
 		return true;
 	}
 
 	if (LogInput.Open("log_input")) {
-		Gate2AM.Close();
-		Link2AM.Close();
+		CloseAll();
 		return true;
 	}
 
 	if (AudioManager.Init(this)) {
-		LogInput.Close();
-		Gate2AM.Close();
-		Link2AM.Close();
+		CloseAll();
 		return true;
 	}
 
  	builder->get_widget(name, pWin);
 	if (nullptr == pWin) {
-		LogInput.Close();
-		Link2AM.Close();
-		Gate2AM.Close();
+		CloseAll();
 		std::cerr << "Failed to Initialize MainWindow!" << std::endl;
 		return true;
 	}
@@ -173,11 +197,15 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 		style->add_provider_for_screen(pWin->get_screen(), css, GTK_STYLE_PROVIDER_PRIORITY_USER);
 	}
 
-	if (SettingsDlg.Init(builder, "SettingsDialog", pWin, this))
+	if (SettingsDlg.Init(builder, "SettingsDialog", pWin, this)) {
+		CloseAll();
 		return true;
+	}
 
-	if (AboutDlg.Init(builder, pWin))
+	if (AboutDlg.Init(builder, pWin)) {
+		CloseAll();
 		return true;
+	}
 
 	builder->get_widget("QuitButton", pQuitButton);
 	builder->get_widget("SettingsButton", pSettingsButton);
@@ -222,16 +250,15 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pAboutMenuItem->signal_activate().connect(sigc::mem_fun(*this, &CMainWindow::on_AboutMenuItem_activate));
 
 	ReadRoutes();
-	ReadDestinations();
+	routeMap.Open();
 	Receive(false);
 	SetState(cfgdata);
-	if (destmap.size())
-		on_M17DestCallsignComboBox_changed();
+	on_M17DestCallsignComboBox_changed();
 
 	// i/o events
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayGate2AM), Gate2AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayLink2AM), Link2AM.GetFD(), Glib::IO_IN);
-	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayM17_2AM), Link2AM.GetFD(), Glib::IO_IN);
+	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::RelayM172AM),  M172AM.GetFD(), Glib::IO_IN);
 	Glib::signal_io().connect(sigc::mem_fun(*this, &CMainWindow::GetLogInput), LogInput.GetFD(), Glib::IO_IN);
 	// idle processing
 	Glib::signal_timeout().connect(sigc::mem_fun(*this, &CMainWindow::TimeoutProcess), 1000);
@@ -251,6 +278,7 @@ void CMainWindow::on_QuitButton_clicked()
 	AudioManager.KeyOff();
 	StopGate();
 	StopLink();
+	StopM17();
 
 	if (pWin)
 		pWin->hide();
@@ -273,6 +301,9 @@ void CMainWindow::on_SettingsButton_clicked()
 			StopGate();
 		}
 
+		if (! newdata->bCodec2Enable)
+			StopM17();
+
 		if (! newdata->bLinkEnable)
 			StopLink();
 
@@ -281,40 +312,6 @@ void CMainWindow::on_SettingsButton_clicked()
 
 		SetState(*newdata);
 		cfg.CopyTo(cfgdata);
-	}
-}
-
-void CMainWindow::WriteDestinations()
-{
-	std::string path(CFG_DIR);
-	path.append("M17-destinations.cfg");
-	std::ofstream file(path.c_str(), std::ofstream::out | std::ofstream::trunc);
-	if (! file.is_open())
-		return;
-	for (auto it=destmap.begin(); it!=destmap.end(); it++) {
-		file << it->first << '=' << it->second << std::endl;
-	}
-	file.close();
-}
-
-void CMainWindow::ReadDestinations()
-{
-	std::string path(CFG_DIR);
-	path.append("M17-destinations.cfg");
-	std::ifstream file(path.c_str(), std::ifstream::in);
-	if (file.is_open()) {
-		destmap.clear();
-		char line[128];
-		while (file.getline(line, 128)) {
-			char *key = strtok(line, "=");
-			if ((! key) || (*key == '#') | (0==strlen(key))) continue;
-			char *val = strtok(NULL, " \t\r\n");
-			if (! val) continue;
-			destmap[std::string(key)] = std::string(val);
-			pM17DestCallsignComboBox->append(key);
-		}
-		pM17DestCallsignComboBox->set_active(0);
-		file.close();
 	}
 }
 
@@ -385,8 +382,9 @@ void CMainWindow::on_M17DestCallsignComboBox_changed()
 {
 	auto cs = pM17DestCallsignComboBox->get_active_text();
 	pM17DestCallsignEntry->set_text(cs);
-	if (destmap.end() != destmap.find(cs))
-		pM17DestIPEntry->set_text(destmap[cs]);
+	auto address = routeMap.Find(cs.c_str());
+	if (address)
+		pM17DestIPEntry->set_text(address->GetAddress());
 }
 
 void CMainWindow::on_M17DestActionButton_clicked()
@@ -394,17 +392,17 @@ void CMainWindow::on_M17DestActionButton_clicked()
 	auto label = pM17DestActionButton->get_label();
 		auto cs = pM17DestCallsignEntry->get_text();
 	if (0 == label.compare("Save")) {
-		destmap[cs] = pM17DestIPEntry->get_text();
+		routeMap.Update(cs, pM17DestIPEntry->get_text());
 		pM17DestCallsignComboBox->remove_all();
-		for (const auto &pair : destmap)
-			pM17DestCallsignComboBox->append(pair.first);
+		for (const auto &member : routeMap.GetKeys())
+			pM17DestCallsignComboBox->append(member);
 		pM17DestCallsignComboBox->set_active_text(cs);
 		SetDestActionButton(true, "Delete");
 	} else if (0 == label.compare("Delete")) {
 		int index = pM17DestCallsignComboBox->get_active_row_number();
 		pM17DestCallsignComboBox->remove_text(index);
-		destmap.erase(cs);
-		if (index >= int(destmap.size()))
+		routeMap.Erase(cs);
+		if (index >= int(routeMap.Size()))
 			index--;
 		if (index < 0) {
 			pM17DestCallsignComboBox->unset_active();
@@ -412,9 +410,9 @@ void CMainWindow::on_M17DestActionButton_clicked()
 		} else
 			pM17DestCallsignComboBox->set_active(index);
 	} else if (0 == label.compare("Update")) {
-		destmap[pM17DestCallsignEntry->get_text()] = pM17DestIPEntry->get_text();
+		routeMap.Update(pM17DestIPEntry->get_text(), pM17DestIPEntry->get_text());
 	}
-	WriteDestinations();
+	routeMap.Save();
 }
 
 void CMainWindow::on_RouteComboBox_changed()
@@ -512,13 +510,15 @@ bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
 	return true;
 }
 
-bool CMainWindow::RelayM17_2AM(Glib::IOCondition condition)
+bool CMainWindow::RelayM172AM(Glib::IOCondition condition)
 {
 	if (condition & Glib::IO_IN) {
-		M17_IPFrame m17;
-		Gate2AM.Read(m17.magic, sizeof(M17_IPFrame));
+		SM17Frame m17;
+		M172AM.Read(m17.magic, sizeof(SM17Frame));
 		if (0 == memcmp(m17.magic, "M17 ", 4))
 			AudioManager.M17_2AudioMgr(m17);
+		else if (0 == memcmp(m17.magic, "PLAY", 4))
+			AudioManager.PlayFile((char *)&m17.streamid);
 	} else {
 		std::cerr << "RelayM17_2AM not a read event!" << std::endl;
 	}
@@ -590,14 +590,28 @@ void CMainWindow::on_M17DestCallsignEntry_changed()
 	Glib::ustring s = pM17DestCallsignEntry->get_text().uppercase();
 	pM17DestCallsignEntry->set_text(s);
 	pM17DestCallsignEntry->set_position(pos);
-	bDestCS = std::regex_match(s.c_str(), M17CallRegEx);
+	bDestCS = std::regex_match(s.c_str(), M17CallRegEx) || std::regex_match(s.c_str(), M17RefRegEx);
+	const auto addr = routeMap.FindBase(s);
+	if (addr)
+		pM17DestIPEntry->set_text(addr->GetAddress());
 	pM17DestCallsignEntry->set_icon_from_icon_name(bDestCS ? "gtk-ok" : "gtk-cancel");
 	FixM17DestActionButton();
 }
 
 void CMainWindow::on_M17DestIPEntry_changed()
 {
-	bDestIP = std::regex_match(pM17DestIPEntry->get_text().c_str(), IPRegEx);
+	auto bIP4 = std::regex_match(pM17DestIPEntry->get_text().c_str(), IPv4RegEx);
+	auto bIP6 = std::regex_match(pM17DestIPEntry->get_text().c_str(), IPv6RegEx);
+	switch (cfgdata.eNetType) {
+		case EInternetType::ipv4only:
+			bDestIP = bIP4;
+			break;
+		case EInternetType::ipv6only:
+			bDestIP = bIP6;
+			break;
+		default:
+			bDestIP = (bIP4 || bIP6);
+	}
 	pM17DestIPEntry->set_icon_from_icon_name(bDestIP ? "gtk-ok" : "gtk-cancel");
 	FixM17DestActionButton();
 }
@@ -613,18 +627,11 @@ void CMainWindow::FixM17DestActionButton()
 	const std::string cs(pM17DestCallsignEntry->get_text().c_str());
 	const std::string ip(pM17DestIPEntry->get_text().c_str());
 	if (bDestCS) {
-		auto it = destmap.find(cs);
-		if (destmap.end() == it) {
-			// cs is not found in map
-			if (bDestIP) { // is the IP okay?
-				SetDestActionButton(true, "Save");
-			} else {
-				SetDestActionButton(false, "");
-			}
-		} else {
+		auto addr = routeMap.Find(cs);
+		if (addr) {
 			// cs is found in map
 			if (bDestIP) { // is the IP okay?
-				if (ip.compare(destmap[cs])) {
+				if (ip.compare(addr->GetAddress())) {
 					// the ip in the IPEntry is different
 					SetDestActionButton(true, "Update");
 				} else {
@@ -632,6 +639,13 @@ void CMainWindow::FixM17DestActionButton()
 					SetDestActionButton(true, "Delete");
 					pM17DestCallsignComboBox->set_active_text(cs);
 				}
+			} else {
+				SetDestActionButton(false, "");
+			}
+		} else {
+			// cs is not found in map
+			if (bDestIP) { // is the IP okay?
+				SetDestActionButton(true, "Save");
 			} else {
 				SetDestActionButton(false, "");
 			}
@@ -779,5 +793,14 @@ void CMainWindow::StopGate()
 		pGate->keep_running = false;
 		futGate.get();
 		pGate = nullptr;
+	}
+}
+
+void CMainWindow::StopM17()
+{
+	if (nullptr != pM17Gate) {
+		pM17Gate->keep_running = false;
+		futM17.get();
+		pM17Gate = nullptr;
 	}
 }

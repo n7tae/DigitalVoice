@@ -24,6 +24,9 @@
 #include <strings.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 class CSockAddress
 {
@@ -31,6 +34,27 @@ public:
 	CSockAddress()
 	{
 		Clear();
+	}
+
+	CSockAddress(const char *address, uint16_t port, int type = SOCK_DGRAM)
+	{
+		Clear();
+		struct addrinfo hints, *result;
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = type;
+		if (0 == getaddrinfo(address, (port ? std::to_string(port).c_str() : nullptr), &hints, &result))
+		{
+			memcpy(&addr, result->ai_addr, result->ai_addrlen);
+			addr.ss_family = result->ai_family;
+			freeaddrinfo(result);
+		}
+		else
+		{
+			std::cerr << "ERROR: Couldn't find IP Address for '" << address << "'" << std::endl;
+			addr.ss_family = AF_INET;
+		}
+		SetPort(port);
 	}
 
 	CSockAddress(const int family, const unsigned short port = 0, const char *address = NULL)
@@ -70,8 +94,10 @@ public:
 						std::cerr << "Address Initialization Error: '" << address << "' is not a valid IPV6 address!" << std::endl;
 				}
 			}
-		} else
+		} else {
+			addr.ss_family = AF_INET;
 			std::cerr << "Error: Wrong address family type:" << family << " for [" << (address ? address : "NULL") << "]:" << port << std::endl;
+		}
 	}
 
 	CSockAddress &operator=(const CSockAddress &from)
@@ -117,6 +143,21 @@ public:
 		return true;
 	}
 
+	operator const char *() const { return GetAddress(); }
+
+	friend std::ostream &operator<<(std::ostream &stream, const CSockAddress &addr)
+	{
+		const char *sz = addr;
+		if (AF_INET6 == addr.GetFamily())
+			stream << "[" << sz << "]";
+		else
+			stream << sz;
+		const uint16_t port = addr.GetPort();
+		if (port)
+			stream << ":" << port;
+		return stream;
+	}
+
 	bool AddressIsZero() const
 	{
 		if (AF_INET == addr.ss_family) {
@@ -145,7 +186,7 @@ public:
 		}
 	}
 
-	const char *GetAddress()
+	const char *GetAddress() const
 	{
 		if (straddr[0])
 			return straddr;
@@ -216,5 +257,5 @@ public:
 
 private:
 	struct sockaddr_storage addr;
-	char straddr[INET6_ADDRSTRLEN];
+	mutable char straddr[INET6_ADDRSTRLEN];
 };

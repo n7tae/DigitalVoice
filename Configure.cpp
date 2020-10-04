@@ -38,7 +38,7 @@ void CConfigure::SetDefaultValues()
 	data.bVoiceOnlyEnable = true;
 	// mode and module
 	data.bLinkEnable = data.bRouteEnable = true;
-	data.eNetType = EQuadNetType::ipv4only;
+	data.eNetType = EInternetType::ipv4only;
 	data.cModule = 'A';
 	// station
 	data.bUseMyCall = false;
@@ -114,11 +114,11 @@ void CConfigure::ReadData()
 			data.iBaudRate = (0 == strcmp(val, "460800")) ? 460800 : 230400;
 		} else if (0 == strcmp(key, "QuadNetType")) {
 			if (0 == strcmp(val, "IPv6"))
-				data.eNetType = EQuadNetType::ipv6only;
+				data.eNetType = EInternetType::ipv6only;
 			else if (0 == strcmp(val, "Dual"))
-				data.eNetType = EQuadNetType::dualstack;
+				data.eNetType = EInternetType::dualstack;
 			else
-				data.eNetType = EQuadNetType::ipv4only;
+				data.eNetType = EInternetType::ipv4only;
 		} else if (0 == strcmp(key, "Latitude")) {
 			data.dLatitude = std::stod(val);
 		} else if (0 == strcmp(key, "Longitude")) {
@@ -189,9 +189,9 @@ void CConfigure::WriteData()
 	file << "RouteEnable=" << (data.bRouteEnable ? "true" : "false") << std::endl;
 	file << "LinkEnable=" << (data.bLinkEnable ? "true" : "false") << std::endl;
 	file << "QuadNetType=";
-	if (data.eNetType == EQuadNetType::ipv6only)
+	if (data.eNetType == EInternetType::ipv6only)
 		file << "IPv6";
-	else if (data.eNetType == EQuadNetType::dualstack)
+	else if (data.eNetType == EInternetType::dualstack)
 		file << "Dual";
 	else
 		file << "IPv4";

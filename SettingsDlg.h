@@ -57,9 +57,9 @@ private:
 	// widgets
 	Gtk::Button *pAMBERescanButton, *pOkayButton, *pAudioRescanButton;
 	Gtk::ComboBox *pAudioInputComboBox, *pAudioOutputComboBox;
-	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton, *pLinkingCheckButton, *pRoutingCheckbutton;
+	Gtk::CheckButton *pUseMyCallCheckButton, *pDPlusEnableCheckButton, *pAPRSEnableCheckButton, *pGPSDEnableCheckButton, *pLinkingCheckButton, *pRoutingCheckbutton, *pIPv4CheckButton, *pIPv6CheckButton;
 	Gtk::Entry *pStationCallsignEntry, *pMyCallsignEntry, *pMyNameEntry, *pMessageEntry, *pLocationEntry[2], *pURLEntry, *pLatitudeEntry, *pLongitudeEntry, *pLinkAtStartEntry, *pAPRSServerEntry, *pAPRSPortEntry, *pAPRSIntervalEntry, *pGPSDServerEntry, *pGPSDPortEntry, *pM17SourceCallsignEntry;
-	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pIPv4OnlyRadioButton, *pIPv6OnlyRadioButton, *pDualStackRadioButton, *pCodec2RadioButton, *pAMBERadioButton, *pM17VoiceOnlyRadioButton, *pM17VoiceDataRadioButton;
+	Gtk::RadioButton *p230kRadioButton, *p460kRadioButton, *pCodec2RadioButton, *pAMBERadioButton, *pM17VoiceOnlyRadioButton, *pM17VoiceDataRadioButton;
 	Gtk::Label *pDevicePathLabel, *pProductIDLabel, *pVersionLabel, *pInputDescLabel, *pOutputDescLabel;
 	Gtk::Notebook *pSettingsNotebook;
 	// events
@@ -83,7 +83,8 @@ private:
 	void on_URLEntry_changed();
 	void OnServerChanged(Gtk::Entry *pEntry);
 	void on_AMBERescanButton_clicked();
-	void on_QuadNet_Group_clicked();
+	void on_IPv4CheckButton_clicked();
+	void on_IPv6CheckButton_clicked();
 	void on_LinkAtStartEntry_changed();
 	void on_AudioInputComboBox_changed();
 	void on_AudioOutputComboBox_changed();

@@ -31,8 +31,7 @@
 #include "UnixDgramSocket.h"
 
 using DSVTPacketQueue = CTQueue<SDSVT>;
-using M17PacketQueue = CTQueue<M17_IPFrame>;
-#define M17CHARACTERS " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/."
+using M17PacketQueue = CTQueue<SM17Frame>;
 
 enum class E_PTT_Type { echo, gateway, link, m17 };
 
@@ -48,13 +47,11 @@ public:
 	void PlayEchoDataThread();	// for Echo
 	void Gateway2AudioMgr(const SDSVT &dsvt);
 	void Link2AudioMgr(const SDSVT &dsvt);
-	void M17_2AudioMgr(const M17_IPFrame &m17);
+	void M17_2AudioMgr(const SM17Frame &m17);
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
 	void QuickKey(const char *urcall);
 	void Link(const std::string &linkcmd);
-	void EncodeCallsign(uint8_t *out, const std::string &callsign);
-	void DecodeCallsign(std::string &cs, const uint8_t *in);
 
 	// the ambe device is well protected so it can be public
 	CDV3000U AMBEDevice;
@@ -71,7 +68,6 @@ private:
 	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	bool link_open;
-	const std::string m17_alphabet{M17CHARACTERS};
 
 	// Unix sockets
 	CUnixDgramWriter AM2M17, AM2Gate, AM2Link, LogInput;

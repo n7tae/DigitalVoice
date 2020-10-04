@@ -1,6 +1,5 @@
-#pragma once
 /*
- *   Copyright (C) 2019 by Thomas Early N7TAE
+ *   Copyright (c) 2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,31 +16,25 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#pragma once
+
+#include <cstdint>
 #include <string>
-#include <stdlib.h>
-#include <sys/un.h>
 
-class CUnixDgramReader
+class CCallsign
 {
 public:
-	CUnixDgramReader();
-	~CUnixDgramReader();
-	bool Open(const char *path);
-	ssize_t Read(void *buf, size_t size);
-	void Close();
-	int GetFD();
-private:
-	int fd;
-};
+	CCallsign();
+	CCallsign(const std::string &cs);
+	CCallsign(const uint8_t *code);
+	void SetCS(const std::string &cs);
+	void SetCode(const uint8_t *code);
+	const std::string GetCS(unsigned len = 9) const;
+	char GetModule(void) const;
+	void GetCode(uint8_t *out) const { memcpy(out, code, 6); };
+	bool operator==(const CCallsign &rhs) const;
 
-class CUnixDgramWriter
-{
-public:
-	CUnixDgramWriter();
-	~CUnixDgramWriter();
-	void SetUp(const char *path);
-	ssize_t Write(const void *buf, size_t size);
-	ssize_t Write(const std::string &s) { return Write(s.c_str(), s.size()); }
 private:
-	struct sockaddr_un addr;
+	uint8_t code[6];
+	char cs[10];
 };

@@ -1,6 +1,5 @@
-#pragma once
 /*
- *   Copyright (C) 2019 by Thomas Early N7TAE
+ *   Copyright (c) 2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,31 +16,32 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#pragma once
+
+#include <mutex>
 #include <string>
-#include <stdlib.h>
-#include <sys/un.h>
+#include <memory>
+#include <map>
+#include <list>
 
-class CUnixDgramReader
+#include "SockAddress.h"
+
+class CM17RouteMap
 {
 public:
-	CUnixDgramReader();
-	~CUnixDgramReader();
-	bool Open(const char *path);
-	ssize_t Read(void *buf, size_t size);
-	void Close();
-	int GetFD();
-private:
-	int fd;
-};
+	CM17RouteMap() {}
+	~CM17RouteMap();
+	const std::shared_ptr<CSockAddress> Find(const std::string &cs) const;
+	const std::shared_ptr<CSockAddress> FindBase(const std::string &base) const;
+	void Update(const std::string &cs, const std::string &addr);
+	void Open();
+	void Save() const;
+	const std::list<std::string> GetKeys() const;
+	void Erase(const std::string &cs);
+	size_t Size() const;
 
-class CUnixDgramWriter
-{
-public:
-	CUnixDgramWriter();
-	~CUnixDgramWriter();
-	void SetUp(const char *path);
-	ssize_t Write(const void *buf, size_t size);
-	ssize_t Write(const std::string &s) { return Write(s.c_str(), s.size()); }
 private:
-	struct sockaddr_un addr;
+	std::map<std::string, std::shared_ptr<CSockAddress>> baseMap;
+	std::map<std::string, std::string> cs2baseMap;
+	mutable std::mutex mux;
 };

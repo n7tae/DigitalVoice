@@ -22,14 +22,14 @@
 
 #define IS_TRUE(a) ((a)=='t' || (a)=='T' || (a)=='1')
 
-enum class EQuadNetType { ipv4only, ipv6only, dualstack };
+enum class EInternetType { ipv4only, ipv6only, dualstack };
 
 using CFGDATA = struct CFGData_struct {
 	std::string sCallsign, sName, sStation, sMessage, sLocation[2], sURL, sLinkAtStart, sAudioIn, sAudioOut, sAPRSServer, sGPSDServer, sM17DestCallsign, sM17DestIp, sM17SourceCallsign;
 	bool bUseMyCall, bDPlusEnable, bGPSDEnable, bAPRSEnable, bLinkEnable, bRouteEnable, bCodec2Enable, bVoiceOnlyEnable;
 	int iBaudRate, iAPRSInterval;
 	unsigned short usAPRSPort, usGPSDPort;
-	EQuadNetType eNetType;
+	EInternetType eNetType;
 	double dLatitude, dLongitude;
 	char cModule;
 };

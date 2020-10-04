@@ -27,6 +27,7 @@
 #include "AudioManager.h"
 #include "Configure.h"
 #include "codec2.h"
+#include "Callsign.h"
 
 #ifndef CFG_DIR
 #define CFG_DIR "/tmp/"
@@ -35,36 +36,6 @@
 CAudioManager::CAudioManager() : hot_mic(false), play_file(false), gate_sid_in(0U), link_sid_in(0U), m17_sid_in(0U)
 {
 	link_open = true;
-}
-
-void CAudioManager::EncodeCallsign(uint8_t *out, const std::string &callsign)
-{
-	uint64_t encoded = 0;
-	std::string cs(callsign);
-	if (cs.size() > 9)
-		cs.resize(9);
-	for( auto it=cs.crbegin(); it!=cs.crend(); it++ ) {
-		auto pos = m17_alphabet.find(*it);
-		if (pos == std::string::npos)
-			pos = 0;
-		encoded *= 40;
-		encoded += pos;
-	}
-	for (int i=0; i<6; i++) {
-		out[i] = (encoded >> (8*(5-i)) & 0xFFU);
-	}
-}
-
-void CAudioManager::DecodeCallsign(std::string &cs, const uint8_t *in)
-{
-	uint64_t coded = in[0];
-	for (int i=1; i<6; i++)
-		coded = (coded << 8) | in[i];
-	cs.clear();
-	while (coded) {
-		cs.append(1, m17_alphabet[coded % 40]);
-		coded /= 40;
-	}
 }
 
 bool CAudioManager::Init(CMainWindow *pMain)
@@ -249,18 +220,17 @@ void CAudioManager::QuickKey(const char *urcall)
 void CAudioManager::codec2m17gateway()
 {
 	auto data = *pMainWindow->cfg.GetData();
-	uint8_t source[3], destination[3];
-	EncodeCallsign(source, data.sM17SourceCallsign);
-	EncodeCallsign(destination, data.sM17DestCallsign);
+	CCallsign source(data.sM17SourceCallsign);
+	CCallsign destination(data.sM17DestCallsign);
 
 	// make most of the M17 IP frame
 	// TODO: nonce and encryption and more TODOs mentioned later...
-	M17_IPFrame ipframe;
+	SM17Frame ipframe;
 	memcpy(ipframe.magic, "M17 ", 4);
 	ipframe.streamid = random.NewStreamID(); // no need to htons because it's just a random id
 	ipframe.lich.frametype = data.bVoiceOnlyEnable ? 0x5U : 0x7U;
-	memcpy(ipframe.lich.addr_src, source, 3);
-	memcpy(ipframe.lich.addr_dst, destination, 3);
+	source.GetCode(ipframe.lich.addr_src);
+	destination.GetCode(ipframe.lich.addr_dst);
 
 	unsigned int count = 0;
 	bool last;
@@ -298,7 +268,7 @@ void CAudioManager::codec2m17gateway()
 
 		// TODO: calculate crc
 
-		AM2M17.Write(ipframe.magic, sizeof(M17_IPFrame));
+		AM2M17.Write(ipframe.magic, sizeof(SM17Frame));
 	} while (! last);
 }
 
@@ -654,7 +624,7 @@ void CAudioManager::l2am(const SDSVT &dsvt, const bool shutoff) {
 	}
 }
 
-void CAudioManager::M17_2AudioMgr(const M17_IPFrame &m17)
+void CAudioManager::M17_2AudioMgr(const SM17Frame &m17)
 {
 	static bool is_3200;
 	if (! play_file) {

@@ -57,21 +57,28 @@ public:
 	SDSVT dsvt;
 };
 
-// M17 Packets
+// M17 Packet
 //all structures must be big endian on the wire, so you'll want htonl (man byteorder 3) and such.
-using M17_LICH = struct __attribute__((__packed__)) _LICH {
+using SM17Lich = struct __attribute__((__packed__)) _LICH {
 	uint8_t  addr_dst[6]; //48 bit int - you'll have to assemble it yourself unfortunately
 	uint8_t  addr_src[6];
 	uint16_t frametype; //frametype flag field per the M17 spec
 	uint8_t  nonce[14]; //bytes for the nonce
 }; // 6 + 6 + 2 + 14 = 28 bytes = 224 bits
 
-//without SYNC or other parts
-using M17_IPFrame = struct __attribute__((__packed__)) _ip_frame {
+// the one and only frame
+using SM17Frame = struct __attribute__((__packed__)) _ip_frame {
 	uint8_t  magic[4];
 	uint16_t streamid;
-	M17_LICH lich;
+	SM17Lich lich;
 	uint16_t framenumber;
 	uint8_t  payload[16];
-	uint8_t  crc[2]; 	//16 bit CRC
+	uint16_t  crc; 	//16 bit CRC
 }; // 4 + 2 + 28 + 2 + 16 + 2 = 54 bytes = 432 bits
+
+// reflector packet for linking, unlinking, pinging, etc
+using SM17RefPacket = struct __attribute__((__packed__)) reflector_tag {
+	char magic[4];
+	uint8_t cs[6];
+	char mod;
+}; // 11 bytes (but sometimes 4 or 10 bytes)

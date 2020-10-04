@@ -44,7 +44,6 @@
 #include <fstream>
 
 #include "IRCutils.h"
-#include "DStarDecode.h"
 #include "QnetGateway.h"
 
 #ifndef CFG_DIR
@@ -184,7 +183,7 @@ bool CQnetGateway::Configure()
 	OWNER.resize(CALL_SIZE, ' ');
 
 	switch (pCFGData->eNetType) {
-		case EQuadNetType::ipv4only:
+		case EInternetType::ipv4only:
 			ircddb[0].ip.assign("rr.openquad.net");
 			ircddb[0].port = 9007U;
 			IRCDDB_PASSWORD[0].clear();
@@ -192,7 +191,7 @@ bool CQnetGateway::Configure()
 			ircddb[1].port = 0U;
 			IRCDDB_PASSWORD[1].clear();
 			break;
-		case EQuadNetType::ipv6only:
+		case EInternetType::ipv6only:
 			ircddb[0].ip.assign("rrv6.openquad.net");
 			ircddb[0].port = 9007U;
 			IRCDDB_PASSWORD[0].clear();
@@ -200,7 +199,7 @@ bool CQnetGateway::Configure()
 			ircddb[1].port = 0U;
 			IRCDDB_PASSWORD[1].clear();
 			break;
-		case EQuadNetType::dualstack:
+		case EInternetType::dualstack:
 			ircddb[0].ip.assign("rrv6.openquad.net");
 			ircddb[0].port = 9007U;
 			IRCDDB_PASSWORD[0].clear();
