@@ -228,6 +228,8 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	builder->get_widget("M17DestCallsignEntry", pM17DestCallsignEntry);
 	builder->get_widget("M17DestIPEntry", pM17DestIPEntry);
 	builder->get_widget("M17DestCallsignComboBox", pM17DestCallsignComboBox);
+	builder->get_widget("M17LinkButton", pM17LinkButton);
+	builder->get_widget("M17UnlinkButton", pM17UnlinkButton);
 
 	pLogTextBuffer = pLogTextView->get_buffer();
 
@@ -298,6 +300,7 @@ void CMainWindow::on_SettingsButton_clicked()
 			StopGate();
 			StopLink();
 		} else if (newdata->eNetType != cfgdata.eNetType) {
+			StopM17();
 			StopGate();
 		}
 
@@ -390,7 +393,7 @@ void CMainWindow::on_M17DestCallsignComboBox_changed()
 void CMainWindow::on_M17DestActionButton_clicked()
 {
 	auto label = pM17DestActionButton->get_label();
-		auto cs = pM17DestCallsignEntry->get_text();
+	auto cs = pM17DestCallsignEntry->get_text();
 	if (0 == label.compare("Save")) {
 		routeMap.Update(cs, pM17DestIPEntry->get_text());
 		pM17DestCallsignComboBox->remove_all();
@@ -473,26 +476,37 @@ void CMainWindow::Receive(bool is_rx)
 
 void CMainWindow::on_PTTButton_toggled()
 {
-	const std::string urcall(pRouteEntry->get_text().c_str());
-	bool is_cqcqcq = (0 == urcall.compare(0, 6, "CQCQCQ"));
-
-	if ((! is_cqcqcq && cfgdata.bRouteEnable) || (is_cqcqcq && cfgdata.bLinkEnable)) {
+	if (cfgdata.bCodec2Enable) {
+		const std::string dest(pM17DestCallsignEntry->get_text().c_str());
 		if (pPTTButton->get_active()) {
-			if (is_cqcqcq) {
-				AudioManager.RecordMicThread(E_PTT_Type::link, "CQCQCQ");
-			} else {
-				AudioManager.RecordMicThread(E_PTT_Type::gateway, pRouteEntry->get_text().c_str());
-			}
-			if (cfgdata.bAPRSEnable)
-				aprs.UpdateUser();
+			AudioManager.RecordMicThread(E_PTT_Type::m17, dest);
 		} else
 			AudioManager.KeyOff();
+	} else {
+		const std::string urcall(pRouteEntry->get_text().c_str());
+		bool is_cqcqcq = (0 == urcall.compare(0, 6, "CQCQCQ"));
+
+		if ((! is_cqcqcq && cfgdata.bRouteEnable) || (is_cqcqcq && cfgdata.bLinkEnable)) {
+			if (pPTTButton->get_active()) {
+				if (is_cqcqcq) {
+					AudioManager.RecordMicThread(E_PTT_Type::link, "CQCQCQ");
+				} else {
+					AudioManager.RecordMicThread(E_PTT_Type::gateway, urcall);
+				}
+				if (cfgdata.bAPRSEnable)
+					aprs.UpdateUser();
+			} else
+				AudioManager.KeyOff();
+		}
 	}
 }
 
 void CMainWindow::on_QuickKeyButton_clicked()
 {
-	AudioManager.QuickKey(pRouteEntry->get_text().c_str());
+	if (cfgdata.bCodec2Enable)
+		AudioManager.QuickKey(pM17DestCallsignEntry->get_text().c_str(), cfgdata.sM17SourceCallsign);
+	else
+		AudioManager.QuickKey(pRouteEntry->get_text().c_str());
 }
 
 bool CMainWindow::RelayLink2AM(Glib::IOCondition condition)
@@ -572,14 +586,25 @@ bool CMainWindow::TimeoutProcess()
 	}
 
 	if (call.empty()) {
+		// DStar
 		pLinkEntry->set_sensitive(true);
 		pUnlinkButton->set_sensitive(false);
 		std::string s(pLinkEntry->get_text().c_str());
 		pLinkButton->set_sensitive((8==s.size() && isalpha(s.at(7)) && qnDB.FindGW(s.c_str())) ? true : false);
+		// M17
+		pM17DestIPEntry->set_sensitive(true);
+		pM17UnlinkButton->set_sensitive(false);
+		s.assign(pM17DestCallsignEntry->get_text().c_str());
+		pM17LinkButton->set_sensitive(std::regex_match(s, M17RefRegEx));
 	} else {
+		// DStar
 		pLinkEntry->set_sensitive(false);
 		pLinkButton->set_sensitive(false);
 		pUnlinkButton->set_sensitive(true);
+		// M17
+		pM17DestCallsignEntry->set_sensitive(false);
+		pM17LinkButton->set_sensitive(false);
+		pM17UnlinkButton->set_sensitive(true);
 	}
 	return true;
 }
@@ -620,6 +645,24 @@ void CMainWindow::SetDestActionButton(const bool sensitive, const char *label)
 {
 	pM17DestActionButton->set_sensitive(sensitive);
 	pM17DestActionButton->set_label(label);
+}
+
+void CMainWindow::on_M17LinkButton_clicked()
+{
+	if (pM17Gate) {
+		std::cout << "Pushed the Link button for " << pM17DestCallsignEntry->get_text().c_str() << '.' << std::endl;
+		std::string cmd("M17L");
+		cmd.append(pM17DestCallsignEntry->get_text().c_str());
+		AudioManager.Link(cmd);
+	}
+}
+
+void CMainWindow::on_M17UnlinkButton_clicked()
+{
+	if (pLink) {
+		std::string cmd("M17U");
+		AudioManager.Link(cmd);
+	}
 }
 
 void CMainWindow::FixM17DestActionButton()

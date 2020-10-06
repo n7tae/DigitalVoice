@@ -29,6 +29,7 @@
 #include "Packet.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
+#include "CRC.h"
 
 using DSVTPacketQueue = CTQueue<SDSVT>;
 using M17PacketQueue = CTQueue<SM17Frame>;
@@ -50,7 +51,8 @@ public:
 	void M17_2AudioMgr(const SM17Frame &m17);
 	void KeyOff();
 	void PlayFile(const char *filetoplay);
-	void QuickKey(const char *urcall);
+	void QuickKey(const std::string &urcall);
+	void QuickKey(const std::string &dest, const std::string &sour);
 	void Link(const std::string &linkcmd);
 
 	// the ambe device is well protected so it can be public
@@ -76,6 +78,7 @@ private:
 	CRandom random;
 	void l2am(const SDSVT &dsvt, const bool shutoff);
 	std::vector<unsigned long> speak;
+	CCRC crc;
 	// methods
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 	bool audio_is_empty();
@@ -86,9 +89,9 @@ private:
 	void ambedevice2ambequeue();
 	void ambequeue2ambedevice();
 	void ambedevice2audioqueue();
-	void codec2encode(const bool is_3200);
-	void codec2decode(const bool is_3200);
-	void codec2m17gateway();
+	void audio2codec(const bool is_3200);
+	void codec2audio(const bool is_3200);
+	void codec2m17gateway(const std::string &dest, const std::string &sour, bool voiceonly);
 	void ambedevice2packetqueue(DSVTPacketQueue &queue, std::mutex &mtx, const std::string &urcall);
 	void packetqueue2link();
 	void packetqueue2gate();

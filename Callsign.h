@@ -30,9 +30,9 @@ public:
 	void SetCS(const std::string &cs);
 	void SetCode(const uint8_t *code);
 	const std::string GetCS(unsigned len = 9) const;
-	char GetModule(void) const;
 	void GetCode(uint8_t *out) const { memcpy(out, code, 6); };
 	bool operator==(const CCallsign &rhs) const;
+	char GetModule(void) const;
 
 private:
 	uint8_t code[6];

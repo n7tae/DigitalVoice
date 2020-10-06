@@ -62,15 +62,15 @@ CCRC::CCRC()
 	}
 }
 
-uint16_t CCRC::CalcCRC( const uint8_t *input_str, size_t num_bytes ) const
+uint16_t CCRC::CalcCRC(const SM17Frame &frame) const
 {
 	uint16_t crc = CRC_START_16;
+	const uint8_t *input_str = frame.magic;
 
-	if ( input_str )
-		for (size_t a=0; a<num_bytes; a++)
-		{
-			crc = (crc << 8) ^ crc_tab16[ ((crc >> 8) ^ uint16_t(input_str[a])) & 0x00FF ];
-		}
+	for (size_t a=0; a<sizeof(SM17Frame)-2; a++)
+	{
+		crc = (crc << 8) ^ crc_tab16[ ((crc >> 8) ^ uint16_t(input_str[a])) & 0x00FF ];
+	}
 
 	return crc;
 }

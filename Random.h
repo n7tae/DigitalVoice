@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,9 +26,9 @@ class CRandom
 public:
 	CRandom() { srandom(getpid()); }
 
-	unsigned short NewStreamID()
+	uint16_t NewStreamID()
 	{
-		unsigned short r = 0;
+		uint16_t r = 0;
 		while (0 == r)
 			r = 0xffffU & random();
 		return r;

@@ -103,7 +103,7 @@ void CM17Gateway::StreamTimeout()
 		break;
 	}
 	// calculate the crc
-	currentStream.header.crc = crc.CalcCRC(currentStream.header.magic, sizeof(SM17Frame) - 2);
+	currentStream.header.crc = crc.CalcCRC(currentStream.header);
 	// send the packet
 	M172AM.Write(currentStream.header.magic, sizeof(SM17Frame));
 	// close the stream;
@@ -276,6 +276,7 @@ void CM17Gateway::Process()
 				memcpy(disc.magic, "DISC", 4);
 				mlink.cs.GetCode(disc.cs);
 				Write(disc.magic, 10, mlink.addr);
+				qnDB.DeleteLS(mlink.addr.GetAddress());
 			} else {
 				const auto addr = routeMap->Find(dest.GetCS());
 				if (addr)
@@ -331,7 +332,7 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 		}
 	} else {
 		// here comes a first packet, so init the currentStream
-		auto check = crc.CalcCRC(frame.magic, sizeof(SM17Frame) - 2);
+		auto check = crc.CalcCRC(frame);
 		std::cout << "Header Packet crc=0x" << std::hex << frame.crc << " calculate=0x" << std::hex << check;
 		memcpy(currentStream.header.magic, frame.magic, sizeof(SM17Frame));
 		M172AM.Write(frame.magic, sizeof(SM17Frame));

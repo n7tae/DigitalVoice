@@ -36,11 +36,13 @@
 
 #include <cstdint>
 
+#include "Packet.h"
+
 class CCRC
 {
 public:
 	CCRC();
-	uint16_t CalcCRC(const uint8_t *buf, size_t len) const;
+	uint16_t CalcCRC(const SM17Frame &frame) const;
 
 private:
 	uint16_t crc_tab16[256];

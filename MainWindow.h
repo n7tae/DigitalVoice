@@ -58,7 +58,7 @@ private:
 
 	// widgets
 	Gtk::Window *pWin;
-	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton, *pM17DestActionButton;
+	Gtk::Button *pQuitButton, *pSettingsButton, *pLinkButton, *pUnlinkButton, *pRouteActionButton, *pQuickKeyButton, *pM17DestActionButton, *pM17LinkButton, *pM17UnlinkButton;
 	Gtk::ComboBoxText *pRouteComboBox, *pM17DestCallsignComboBox;
 	Gtk::Entry *pLinkEntry, *pRouteEntry, *pM17DestCallsignEntry, *pM17DestIPEntry;
 	Gtk::ToggleButton *pEchoTestButton, *pPTTButton;
@@ -111,6 +111,8 @@ private:
 	void on_M17DestIPEntry_changed();
 	void on_M17DestCallsignComboBox_changed();
 	void on_M17DestActionButton_clicked();
+	void on_M17LinkButton_clicked();
+	void on_M17UnlinkButton_clicked();
 	bool RelayLink2AM(Glib::IOCondition condition);
 	bool RelayGate2AM(Glib::IOCondition condition);
 	bool RelayM172AM(Glib::IOCondition condition);

@@ -46,7 +46,7 @@ bool CAudioManager::Init(CMainWindow *pMain)
 	index.append("announce/index.dat");
 	std::ifstream indexfile(index.c_str(), std::ifstream::in);
 	if (indexfile) {
-		for (int i=0; i<62; i++) {
+		for (int i=0; i<65; i++) {
 			std::string name, offset, size;
 			indexfile >> name >> offset >> size;
 			if (name.size() && offset.size() && size.size()) {
@@ -57,7 +57,7 @@ bool CAudioManager::Init(CMainWindow *pMain)
 		}
 		indexfile.close();
 	}
-	if (62 == speak.size()) {
+	if (65 == speak.size()) {
 		std::cout << "read " << speak.size() << " indicies from " << index << std::endl;
 	} else {
 		std::cerr << "read unexpected (" << speak.size() << " number of indices from " << index << std::endl;
@@ -78,10 +78,10 @@ void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcal
 
 	r1 = std::async(std::launch::async, &CAudioManager::microphone2audioqueue, this);
 
-	if (! data->bCodec2Enable)
-		r2 = std::async(std::launch::async, &CAudioManager::audioqueue2ambedevice, this);
+	if (data->bCodec2Enable)
+		r2 = std::async(std::launch::async, &CAudioManager::audio2codec, this, data->bVoiceOnlyEnable);
 	else
-		r2 = std::async(std::launch::async, &CAudioManager::codec2encode, this, data->bVoiceOnlyEnable);
+		r2 = std::async(std::launch::async, &CAudioManager::audioqueue2ambedevice, this);
 
 	switch (for_who) {
 		case E_PTT_Type::echo:
@@ -97,11 +97,12 @@ void CAudioManager::RecordMicThread(E_PTT_Type for_who, const std::string &urcal
 			r4 = std::async(std::launch::async, &CAudioManager::packetqueue2link, this);
 			break;
 		case E_PTT_Type::m17:
+			r3 = std::async(std::launch::async, &CAudioManager::codec2m17gateway, this, urcall, data->sM17SourceCallsign, data->bVoiceOnlyEnable);
 			break;
 	}
 }
 
-void CAudioManager::codec2encode(const bool is_3200)
+void CAudioManager::audio2codec(const bool is_3200)
 {
 	CCodec2 c2(is_3200);
 	bool last;
@@ -187,7 +188,7 @@ void CAudioManager::makeheader(SDSVT &c, const std::string &urcall, unsigned cha
 	}
 }
 
-void CAudioManager::QuickKey(const char *urcall)
+void CAudioManager::QuickKey(const std::string &urcall)
 {
 	hot_mic = true;
 	const unsigned char silence[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
@@ -195,7 +196,7 @@ void CAudioManager::QuickKey(const char *urcall)
 	unsigned char uh[41];
 	SDSVT h;
 	makeheader(h, urcall, ut, uh);
-	bool islink = (0 == memcmp(urcall, "CQCQCQ", 6));
+	bool islink = (0 == urcall.compare(0, 6, "CQCQCQ"));
 	if (islink)
 		AM2Link.Write(h.title, 56);
 	else
@@ -217,18 +218,39 @@ void CAudioManager::QuickKey(const char *urcall)
 	hot_mic = false;
 }
 
-void CAudioManager::codec2m17gateway()
+void CAudioManager::QuickKey(const std::string &d, const std::string &s)
 {
-	auto data = *pMainWindow->cfg.GetData();
-	CCallsign source(data.sM17SourceCallsign);
-	CCallsign destination(data.sM17DestCallsign);
+	hot_mic = true;
+	SM17Frame frame;
+	CCallsign dest(d), sour(s);
+	memcpy(frame.magic, "M17 ", 4);
+	frame.streamid = random.NewStreamID();
+	dest.GetCode(frame.lich.addr_dst);
+	sour.GetCode(frame.lich.addr_src);
+	frame.lich.frametype = htons(0x5u);
+	memset(frame.lich.nonce, 0, 14);
+	const uint8_t quiet[] = { 0x01u, 0x00u, 0x09u, 0x43u, 0x9cu, 0xe4u, 0x21u, 0x08u };
+	memcpy(frame.payload,     quiet, 8);
+	memcpy(frame.payload + 8, quiet, 8);
+	for (uint16_t i=0; i<5; i++) {
+		frame.framenumber = htons(i);
+		frame.crc = htons(crc.CalcCRC(frame));
+		AM2M17.Write(frame.magic, sizeof(SM17Frame));
+	}
+	hot_mic = false;
+}
+
+void CAudioManager::codec2m17gateway(const std::string &dest, const std::string &sour, bool voiceonly)
+{
+	CCallsign destination(dest);
+	CCallsign source(sour);
 
 	// make most of the M17 IP frame
 	// TODO: nonce and encryption and more TODOs mentioned later...
 	SM17Frame ipframe;
 	memcpy(ipframe.magic, "M17 ", 4);
 	ipframe.streamid = random.NewStreamID(); // no need to htons because it's just a random id
-	ipframe.lich.frametype = data.bVoiceOnlyEnable ? 0x5U : 0x7U;
+	ipframe.lich.frametype = voiceonly ? 0x5U : 0x7U;
 	source.GetCode(ipframe.lich.addr_src);
 	destination.GetCode(ipframe.lich.addr_dst);
 
@@ -242,7 +264,7 @@ void CAudioManager::codec2m17gateway()
 		ambe_mutex.unlock();
 		last = cframe.GetFlag();
 		memcpy(ipframe.payload, cframe.GetData(), 8);
-		if (data.bVoiceOnlyEnable) {
+		if (voiceonly) {
 			if (last) {
 				// we should never get here, but just in case...
 				std::cerr << "WARNING: unexpected end of 3200 voice stream!" << std::endl;
@@ -525,7 +547,7 @@ void CAudioManager::ambedevice2ambequeue()
 	return;
 }
 
-void CAudioManager::codec2decode(const bool is_3200)
+void CAudioManager::codec2audio(const bool is_3200)
 {
 	CCodec2 c2(is_3200);
 	bool last;
@@ -570,7 +592,7 @@ void CAudioManager::PlayEchoDataThread()
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 	if (data->bCodec2Enable) {
-		p1 = std::async(std::launch::async, &CAudioManager::codec2decode, this, data->bVoiceOnlyEnable);
+		p1 = std::async(std::launch::async, &CAudioManager::codec2audio, this, data->bVoiceOnlyEnable);
 		p2 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
 		p1.get();
 		p2.get();
@@ -634,7 +656,7 @@ void CAudioManager::M17_2AudioMgr(const SM17Frame &m17)
 			is_3200 = ((m17.lich.frametype & 0x7u) == 0x5u);
 			pMainWindow->Receive(true);
 			// launch the audio processing threads
-			p1 = std::async(std::launch::async, &CAudioManager::codec2decode, this, is_3200);
+			p1 = std::async(std::launch::async, &CAudioManager::codec2audio, this, is_3200);
 			p2 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
 		}
 		if (m17.streamid != m17_sid_in)
@@ -879,28 +901,45 @@ void CAudioManager::KeyOff()
 
 void CAudioManager::Link(const std::string &linkcmd)
 {
-	AM2Link.Write(linkcmd.c_str(), linkcmd.size() + 1);
-	if (linkcmd.size() < 5) {
-		// ON UNLINK: if there is an open link stream, push a closing ambe frame onto the stream
-		if (link_sid_in) {
-			l2am_mutex.lock();
-			const unsigned char quiet[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
-			SDSVT dsvt;		// we only need to set up a few things to keep l2am() happy
-			dsvt.config = 0x20U;				// it's a voice packet
-			dsvt.ctrl = 0x40U;					// it's the last packet
-			dsvt.streamid = link_sid_in;		// it has the correct streamid
-			memcpy(dsvt.vasd.voice, quiet, 9);	// it noiseless
-			l2am(dsvt, true);
-			l2am_mutex.unlock();
+	if (0 == linkcmd.compare(0, 4, "LINK")) {
+		AM2Link.Write(linkcmd.c_str(), linkcmd.size() + 1);
+		if (linkcmd.size() < 5) {
+			// ON UNLINK: if there is an open link stream, push a closing ambe frame onto the stream
+			if (link_sid_in) {
+				l2am_mutex.lock();
+				const unsigned char quiet[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+				SDSVT dsvt;		// we only need to set up a few things to keep l2am() happy
+				dsvt.config = 0x20U;				// it's a voice packet
+				dsvt.ctrl = 0x40U;					// it's the last packet
+				dsvt.streamid = link_sid_in;		// it has the correct streamid
+				memcpy(dsvt.vasd.voice, quiet, 9);	// it noiseless
+				l2am(dsvt, true);
+				l2am_mutex.unlock();
+			}
+		} else {
+			link_open = true;
 		}
-	} else {
-		link_open = true;
+	} else if (0 == linkcmd.compare(0, 3, "M17")) { //it's an M17 link/unlink command
+		SM17Frame frame;
+		if ('L' == linkcmd.at(3)) {
+			if (13 == linkcmd.size()) {
+				std::string sDest(linkcmd.substr(4));
+				sDest[7] = 'L';
+				CCallsign dest(sDest);
+				dest.SetCode(frame.lich.addr_dst);
+				AM2M17.Write(frame.magic, sizeof(SM17Frame));
+			}
+		} else if ('U' == linkcmd.at(3)) {
+			CCallsign dest("U");
+			dest.SetCode(frame.lich.addr_dst);
+			AM2M17.Write(frame.magic, sizeof(SM17Frame));
+		}
 	}
 }
 
 void CAudioManager::PlayFile(const char *filetoplay)
 {
-	if (gate_sid_in || link_sid_in) {
+	if (gate_sid_in || link_sid_in || m17_sid_in) {
 		std::cout << "Too busy to play " << filetoplay << std::endl;
 		return;
 	}
@@ -946,9 +985,9 @@ void CAudioManager::PlayFile(const char *filetoplay)
 		return;
 	}
 
-	if (sbuf.st_size % 9)
-		std::cerr << "Warning " << path << " file size is " << sbuf.st_size << " (not a multiple of 9)!" << std::endl;
-	int ambeblocks = (int)sbuf.st_size / 9;
+	if (sbuf.st_size % 8)
+		std::cerr << "Warning " << path << " file size is " << sbuf.st_size << " (not a multiple of 8)!" << std::endl;
+	int ambeblocks = (int)sbuf.st_size / 8;
 
 
 	FILE *fp = fopen(path.c_str(), "rb");
@@ -958,22 +997,21 @@ void CAudioManager::PlayFile(const char *filetoplay)
 		return;
 	}
 
-	p1 = std::async(std::launch::async, &CAudioManager::ambequeue2ambedevice, this);
-	p2 = std::async(std::launch::async, &CAudioManager::ambedevice2audioqueue, this);
-	p3 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
+	p1 = std::async(std::launch::async, &CAudioManager::codec2audio, this, true);
+	p2 = std::async(std::launch::async, &CAudioManager::play_audio_queue, this);
 
 	int count;
 	for (count=0; count<ambeblocks; count++) {
 		unsigned char voice[9];
-		int nread = fread(voice, 9, 1, fp);
+		int nread = fread(voice, 8, 1, fp);
 		if (nread == 1) {
-			CAmbeDataFrame frame(voice);
+			CC2DataFrame frame(voice);
 			bool last = false;
 			if (count+1 == ambeblocks && ! is_linked)
 				last = true;
 			frame.SetFlag(last);
 			ambe_mutex.lock();
-			ambe_queue.Push(frame);
+			c2_queue.Push(frame);
 			ambe_mutex.unlock();
 		}
 	}
@@ -1001,13 +1039,17 @@ void CAudioManager::PlayFile(const char *filetoplay)
 				int size = 0;
 				if ('A' <= *it && *it <= 'Z')
 					offset = speak[*it - 'A' + (lastch ? 26 : 0)];
-				else if ('1' <= *it && *it <= '9')
-					offset = speak[*it - '1' + 52];
-				else if ('0' == *it)
-					offset = speak[61];
+				else if ('0' <= *it && *it <= '9')
+					offset = speak[*it - '0' + 52];
+				else if ('.' == *it)
+					offset = speak[62];
+				else if ('-' == *it)
+					offset = speak[63];
+				else if ('/' == *it)
+					offset = speak[64];
 				if (offset) {
 					size = (int)(offset % 1000UL);
-					offset = (offset / 1000UL) * 9UL;
+					offset = (offset / 1000UL) * 8UL;
 				}
 				if (0 == size)
 					continue;
@@ -1015,16 +1057,16 @@ void CAudioManager::PlayFile(const char *filetoplay)
 					std::cerr << "fseek to " << offset << " error!" << std::endl;
 				} else {
 					for (int i=0; i<size; i++) {
-						unsigned char voice[9];
-						int nread = fread(voice, 9, 1, fp);
+						uint8_t voice[8];
+						int nread = fread(voice, 8, 1, fp);
 						if (nread == 1) {
-							CAmbeDataFrame frame(voice);
+							CC2DataFrame frame(voice);
 							bool last = false;
 							if (i+1==size && lastch)
 								last = true;	// signal the last voiceframe (of the last character)
 							frame.SetFlag(last);
 							ambe_mutex.lock();
-							ambe_queue.Push(frame);
+							c2_queue.Push(frame);
 							ambe_mutex.unlock();
 						}
 					}
@@ -1035,6 +1077,5 @@ void CAudioManager::PlayFile(const char *filetoplay)
 	}
 	p1.get();
 	p2.get();
-	p3.get();
 	play_file = false;
 }
