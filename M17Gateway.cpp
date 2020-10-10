@@ -21,6 +21,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <cstring>
 
@@ -29,6 +30,49 @@
 #ifndef CFG_DIR
 #define CFG_DIR "/tmp/"
 #endif
+
+static void dump(const char *title, const void *pointer, int length)
+{
+	const unsigned char *data = (const unsigned char *)pointer;
+
+	std::cout << title << std::endl;
+
+	unsigned int offset = 0U;
+
+	while (length > 0) {
+
+		unsigned int bytes = (length > 16) ? 16U : length;
+
+		for (unsigned i = 0U; i < bytes; i++) {
+			if (i)
+				std::cout << " ";
+			std::cout << std::hex << std::setw(2) << std::right << std::setfill('0') << int(data[offset + i]);
+		}
+
+		for (unsigned int i = bytes; i < 16U; i++)
+			std::cout << "   ";
+
+		std::cout << "   *";
+
+		for (unsigned i = 0U; i < bytes; i++) {
+			unsigned char c = data[offset + i];
+
+			if (::isprint(c))
+				std::cout << c;
+			else
+				std::cout << '.';
+		}
+
+		std::cout << '*' << std::endl;
+
+		offset += 16U;
+
+		if (length >= 16)
+			length -= 16;
+		else
+			length = 0;
+	}
+}
 
 CM17Gateway::CM17Gateway()
 {
@@ -73,7 +117,7 @@ void CM17Gateway::LinkCheck()
 	if (mlink.receivePingTimer.time() > 30) { // is the reflector okay?
 		// looks like we lost contact
 		std::stringstream ss("Unlinked from ");
-		ss << mlink.cs.GetCS() << ", TIMEOUT...";
+		ss << mlink.cs.GetCS() << ", TIMEOUT..." << std::endl;
 		LogInput.Write(ss.str());
 		qnDB.DeleteLS(mlink.addr.GetAddress());
 		mlink.state = ELinkState::unlinked;
@@ -206,18 +250,26 @@ void CM17Gateway::Process()
 		if (keep_running && is_packet) {
 			switch (length) {
 			case 4:  				// DISC, ACKN or NACK
-				if ((ELinkState::linking == mlink.state) && (from17k == mlink.addr)) {
+				if ((ELinkState::unlinked != mlink.state) && (from17k == mlink.addr)) {
 					if (0 == memcmp(buf, "ACKN", 4)) {
+						std::string msg("Linked to ");
+						msg += mlink.cs.GetCS() + '\n';
+						LogInput.Write(msg);
 						mlink.state = ELinkState::linked;
 						qnDB.UpdateLS(mlink.addr.GetAddress(), mlink.from_mod, mlink.cs.GetCS(8).c_str(), mlink.cs.GetModule(), time(NULL));
 						mlink.receivePingTimer.start();
 					} else if (0 == memcmp(buf, "NACK", 4)) {
 						mlink.state = ELinkState::unlinked;
 						std::string msg("Link request refused from ");
-						msg += mlink.cs.GetCS();
-						LogInput.Write(msg.c_str());
+						msg += mlink.cs.GetCS() + '\n';
+						LogInput.Write(msg);
+						mlink.state = ELinkState::unlinked;
 					} else if (0 == memcmp(buf, "DISC", 4)) {
-						;
+						std::string msg("Unlinked from ");
+						msg += mlink.cs.GetCS() + '\n';
+						LogInput.Write(msg);
+						qnDB.DeleteLS(mlink.addr.GetAddress());
+						mlink.state = ELinkState::unlinked;
 					} else {
 						is_packet = false;
 					}
@@ -246,13 +298,15 @@ void CM17Gateway::Process()
 				break;
 			}
 			if (! is_packet)
-				std::cout << "Unknown packet size=" << length << " from " << from17k.GetAddress() << std::endl;
+				dump("Unknown packet", buf, length);
 		}
 
 		if (keep_running && FD_ISSET(amfd, &fdset)) {
 			SM17Frame frame;
 			length = AM2M17.Read(frame.magic, sizeof(SM17Frame));
 			const CCallsign dest(frame.lich.addr_dst);
+			//printf("DEST=%s=0x%02x%02x%02x%02x%02x%02x\n", dest.GetCS().c_str(), frame.lich.addr_dst[0], frame.lich.addr_dst[1], frame.lich.addr_dst[2], frame.lich.addr_dst[3], frame.lich.addr_dst[4], frame.lich.addr_dst[5]);
+			//std::cout << "Read " << length << " bytes with dest='" << dest.GetCS() << "'" << std::endl;
 			if (0 == dest.GetCS(3).compare("M17")) { // Linking a reflector
 				switch (mlink.state) {
 				case ELinkState::linked:
@@ -261,11 +315,12 @@ void CM17Gateway::Process()
 					}
 					break;
 				case ELinkState::unlinked:
-					if ('L' == dest.GetCS().at(8)) {
+					if ('L' == dest.GetCS().at(7)) {
 						std::string ref(dest.GetCS(7));
 						ref.resize(8, ' ');
 						ref.resize(9, dest.GetModule());
-						SendLinkRequest(ref);
+						const CCallsign d(ref);
+						SendLinkRequest(d);
 					}
 					break;
 				default:
@@ -274,13 +329,19 @@ void CM17Gateway::Process()
 			} else if (0 == dest.GetCS().compare("U        ")) {
 				SM17RefPacket disc;
 				memcpy(disc.magic, "DISC", 4);
-				mlink.cs.GetCode(disc.cs);
+				std::string s(cfg.sM17SourceCallsign);
+				s.resize(8, ' ');
+				s.append(1, cfg.cModule);
+				CCallsign call(s);
+				call.CodeOut(disc.cscode);
 				Write(disc.magic, 10, mlink.addr);
 				qnDB.DeleteLS(mlink.addr.GetAddress());
 			} else {
 				const auto addr = routeMap->Find(dest.GetCS());
 				if (addr)
 					Write(frame.magic, sizeof(SM17Frame), *addr);
+				else
+					std::cout << "Couldn't find an address for destination '" << dest.GetCS() << "'" << std::endl;
 			}
 			FD_CLR(amfd, &fdset);
 		}
@@ -289,7 +350,12 @@ void CM17Gateway::Process()
 
 void CM17Gateway::SendLinkRequest(const CCallsign &ref)
 {
-	mlink.addr.Initialize((std::string::npos == cfg.sM17DestIp.find(':')) ? AF_INET : AF_INET6, 17000, cfg.sM17DestIp.c_str());
+	auto addr = routeMap->FindBase(ref.GetCS());
+	if (nullptr == addr) {
+		std::cerr << "Can't find '" << ref.GetCS() << "' in route map. Aborting link request." << std::endl;
+		return;
+	}
+	mlink.addr = *addr;
 	mlink.cs = ref;
 	mlink.from_mod = cfg.cModule;
 
@@ -300,13 +366,13 @@ void CM17Gateway::SendLinkRequest(const CCallsign &ref)
 	source.resize(8, ' ');
 	source.append(1, cfg.cModule);
 	const CCallsign from(source);
-	from.GetCode(conn.cs);
+	from.CodeOut(conn.cscode);
 	conn.mod = ref.GetModule();
 	Write(conn.magic, 11, mlink.addr);	// send the link request
 
 	// go ahead and make the pong packet
 	memcpy(mlink.pongPacket.magic, "PONG", 4);
-	from.GetCode(mlink.pongPacket.cs);
+	from.CodeOut(mlink.pongPacket.cscode);
 
 	// finish up
 	mlink.state = ELinkState::linking;

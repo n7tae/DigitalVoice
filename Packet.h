@@ -79,6 +79,6 @@ using SM17Frame = struct __attribute__((__packed__)) _ip_frame {
 // reflector packet for linking, unlinking, pinging, etc
 using SM17RefPacket = struct __attribute__((__packed__)) reflector_tag {
 	char magic[4];
-	uint8_t cs[6];
+	uint8_t cscode[6];
 	char mod;
 }; // 11 bytes (but sometimes 4 or 10 bytes)

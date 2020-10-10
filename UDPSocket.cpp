@@ -113,6 +113,7 @@ size_t CUDPSocket::Read(unsigned char *buf, const size_t size, CSockAddress &Ip)
 
 void CUDPSocket::Write(const void *Buffer, const size_t size, const CSockAddress &Ip) const
 {
+	//std::cout << "Sent " << size << " bytes to " << Ip << std::endl;
 	auto rval = sendto(m_fd, Buffer, size, 0, Ip.GetCPointer(), Ip.GetSize());
 	if (0 > rval)
 		std::cerr << "Write error to " << Ip << ", " << strerror(errno) << std::endl;

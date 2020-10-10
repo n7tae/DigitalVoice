@@ -39,7 +39,7 @@ void CConfigure::SetDefaultValues()
 	// mode and module
 	data.bLinkEnable = data.bRouteEnable = true;
 	data.eNetType = EInternetType::ipv4only;
-	data.cModule = 'A';
+	data.cModule = 'D';
 	// station
 	data.bUseMyCall = false;
 	data.sCallsign.clear();
@@ -315,10 +315,8 @@ bool CConfigure::IsOkay()
 {
 	bool audio = (data.sAudioIn.size()>0 && data.sAudioOut.size()>0);
 	if (data.bCodec2Enable) {
-		bool dest = (data.sM17DestCallsign.size() > 2);
-		bool ip = (data.sM17DestIp.size() > 6);
 		bool src = (data.sM17SourceCallsign.size() > 2);
-		return (audio && dest && ip && src);
+		return (audio && src);
 	}
 	bool station = (data.sStation.size() > 0);
 	bool module = isalpha(data.cModule);

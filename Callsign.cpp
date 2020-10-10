@@ -1,4 +1,3 @@
-
 /*
  *   Copyright (c) 2020 by Thomas A. Early N7TAE
  *
@@ -18,7 +17,6 @@
  */
 
 #include <iostream>
-#include <cstring>
 
 #include "Callsign.h"
 
@@ -32,21 +30,21 @@ CCallsign::CCallsign()
 
 CCallsign::CCallsign(const std::string &callsign)
 {
-	SetCS(callsign);
+	CSIn(callsign);
 }
 
 CCallsign::CCallsign(const uint8_t *in)
 {
-	SetCode(in);
+	CodeIn(in);
 }
 
-void CCallsign::SetCS(const std::string &callsign)
+void CCallsign::CSIn(const std::string &callsign)
 {
 	const std::string m17_alphabet(M17CHARACTERS);
-	memset(cs, 0, 10);
+	memset(cs, 0, sizeof(cs));
 	memcpy(cs, callsign.c_str(), (callsign.size()<10) ? callsign.size() : 9);
 	uint64_t encoded = 0;
-	for( int i=0; cs[i]; i++ ) {
+	for( int i=int(callsign.size()-1); i>=0; i-- ) {
 		auto pos = m17_alphabet.find(cs[i]);
 		if (pos == std::string::npos) {
 			pos = 0;
@@ -59,7 +57,7 @@ void CCallsign::SetCS(const std::string &callsign)
 	}
 }
 
-void CCallsign::SetCode(const uint8_t *in)
+void CCallsign::CodeIn(const uint8_t *in)
 {
 	const std::string m17_alphabet(M17CHARACTERS);
 	memset(cs, 0, 10);
@@ -89,8 +87,8 @@ const std::string CCallsign::GetCS(unsigned len) const
 
 char CCallsign::GetModule() const
 {
-	if (cs[9])
-		return cs[9];
+	if (cs[8])
+		return cs[8];
 	else
 		return ' ';
 }

@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <string>
+#include <cstring>
 
 class CCallsign
 {
@@ -27,10 +28,10 @@ public:
 	CCallsign();
 	CCallsign(const std::string &cs);
 	CCallsign(const uint8_t *code);
-	void SetCS(const std::string &cs);
-	void SetCode(const uint8_t *code);
+	void CSIn(const std::string &cs);
+	void CodeIn(const uint8_t *code);
 	const std::string GetCS(unsigned len = 9) const;
-	void GetCode(uint8_t *out) const { memcpy(out, code, 6); };
+	void CodeOut(uint8_t *out) const { memcpy(out, code, 6); };
 	bool operator==(const CCallsign &rhs) const;
 	char GetModule(void) const;
 

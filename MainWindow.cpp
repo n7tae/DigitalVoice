@@ -45,6 +45,7 @@ CMainWindow::CMainWindow() :
 	pSettingsButton(nullptr),
 	pGate(nullptr),
 	pLink(nullptr),
+	pM17Gate(nullptr),
 	bDestCS(false),
 	bDestIP(false),
 	bTransOK(true)
@@ -59,7 +60,7 @@ CMainWindow::CMainWindow() :
 	IPv6RegEx = std::regex("([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)$", std::regex::extended);
 	M17RefRegEx = std::regex("^M17([A-Z0-9-]){4,4}[ ][A-Z]$", std::regex::extended);
 	//M17CallRegEx = std::regex("^[A-Z0-9/\\.-]([ A-Z0-9/\\.-]){0,8}$", std::regex::extended);
-	M17CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][- /\\.]*[ A-RT-Z]$", std::regex::extended);
+	M17CallRegEx = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][- /\\.]*[ A-Z]$", std::regex::extended);
 }
 
 CMainWindow::~CMainWindow()
@@ -92,9 +93,11 @@ void CMainWindow::RunGate()
 void CMainWindow::RunM17()
 {
 	pM17Gate = new CM17Gateway;
+	std::cout << "Starting M17 Gateway..." << std::endl;
 	if (! pM17Gate->Init(cfgdata, &routeMap))
 		pM17Gate->Process();
 	delete pM17Gate;
+	std::cout << "M17 Gateway has stopped." << std::endl;
 	pM17Gate = nullptr;
 }
 
@@ -238,6 +241,8 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 	pM17DestIPEntry->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestIPEntry_changed));
 	pM17DestCallsignComboBox->signal_changed().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestCallsignComboBox_changed));
 	pM17DestActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_M17DestActionButton_clicked));
+	pM17LinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_M17LinkButton_clicked));
+	pM17UnlinkButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_M17UnlinkButton_clicked));
 	pSettingsButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_SettingsButton_clicked));
 	pQuitButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_QuitButton_clicked));
 	pRouteActionButton->signal_clicked().connect(sigc::mem_fun(*this, &CMainWindow::on_RouteActionButton_clicked));
@@ -253,6 +258,12 @@ bool CMainWindow::Init(const Glib::RefPtr<Gtk::Builder> builder, const Glib::ust
 
 	ReadRoutes();
 	routeMap.Open();
+	for (const auto &item : routeMap.GetKeys()) {
+		// std::cout << "Addding " << item << " to M17 ComboBox" << std::endl;
+		pM17DestCallsignComboBox->append(item);
+	}
+	if (routeMap.Size())
+		pM17DestCallsignComboBox->set_active(0);
 	Receive(false);
 	SetState(cfgdata);
 	on_M17DestCallsignComboBox_changed();
@@ -558,8 +569,11 @@ bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 {
 	static auto it = pLogTextBuffer->begin();
 	if (condition & Glib::IO_IN) {
-		char line[256];
-		LogInput.Read(line, 256);
+		char line[256] = { 0 };
+		auto length = LogInput.Read(line, 256);
+		const char *p;
+		if (g_utf8_validate(line, length, &p))
+			std::cout << "bogus charater '" << int(*p) << "' at " << int(p-line) << std::endl;
 		it = pLogTextBuffer->insert(it, line);
 		pLogTextView->scroll_to(it, 0.0, 0.0, 1.0);
 	} else {
@@ -570,10 +584,12 @@ bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 
 bool CMainWindow::TimeoutProcess()
 {
-	// this is all about syncing the LinkFrame widgets to the actual link state of the module
-	// so if pLink is not up, then we don't need to do anything
-	if ((! cfgdata.bLinkEnable) || (nullptr == pLink))
-		return true;
+	if (!cfgdata.bCodec2Enable) { // don't do this test if we are in M17 mode
+		// this is all about syncing the LinkFrame widgets to the actual link state of the module
+		// so if pLink is not up, then we don't need to do anything
+		if ((! cfgdata.bLinkEnable) || (nullptr == pLink))
+			return true;
+	}
 
 	std::list<CLink> linkstatus;
 	if (qnDB.FindLS(cfgdata.cModule, linkstatus))	// get the link status list of our module (there should only be one, or none if it's not linked)
@@ -650,16 +666,17 @@ void CMainWindow::SetDestActionButton(const bool sensitive, const char *label)
 void CMainWindow::on_M17LinkButton_clicked()
 {
 	if (pM17Gate) {
-		std::cout << "Pushed the Link button for " << pM17DestCallsignEntry->get_text().c_str() << '.' << std::endl;
+		//std::cout << "Pushed the Link button for " << pM17DestCallsignEntry->get_text().c_str() << '.' << std::endl;
 		std::string cmd("M17L");
 		cmd.append(pM17DestCallsignEntry->get_text().c_str());
 		AudioManager.Link(cmd);
-	}
+	} else
+		std::cout << "Pushed the link button, but the gateway is not running" << std::endl;
 }
 
 void CMainWindow::on_M17UnlinkButton_clicked()
 {
-	if (pLink) {
+	if (pM17Gate) {
 		std::string cmd("M17U");
 		AudioManager.Link(cmd);
 	}
@@ -726,7 +743,7 @@ void CMainWindow::on_LinkEntry_changed()
 void CMainWindow::on_LinkButton_clicked()
 {
 	if (pLink) {
-		std::cout << "Pushed the Link button for " << pLinkEntry->get_text().c_str() << '.' << std::endl;
+		//std::cout << "Pushed the Link button for " << pLinkEntry->get_text().c_str() << '.' << std::endl;
 		std::string cmd("LINK");
 		cmd.append(pLinkEntry->get_text().c_str());
 		AudioManager.Link(cmd);

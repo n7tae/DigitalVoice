@@ -225,8 +225,8 @@ void CAudioManager::QuickKey(const std::string &d, const std::string &s)
 	CCallsign dest(d), sour(s);
 	memcpy(frame.magic, "M17 ", 4);
 	frame.streamid = random.NewStreamID();
-	dest.GetCode(frame.lich.addr_dst);
-	sour.GetCode(frame.lich.addr_src);
+	dest.CodeOut(frame.lich.addr_dst);
+	sour.CodeOut(frame.lich.addr_src);
 	frame.lich.frametype = htons(0x5u);
 	memset(frame.lich.nonce, 0, 14);
 	const uint8_t quiet[] = { 0x01u, 0x00u, 0x09u, 0x43u, 0x9cu, 0xe4u, 0x21u, 0x08u };
@@ -251,8 +251,8 @@ void CAudioManager::codec2m17gateway(const std::string &dest, const std::string 
 	memcpy(ipframe.magic, "M17 ", 4);
 	ipframe.streamid = random.NewStreamID(); // no need to htons because it's just a random id
 	ipframe.lich.frametype = voiceonly ? 0x5U : 0x7U;
-	source.GetCode(ipframe.lich.addr_src);
-	destination.GetCode(ipframe.lich.addr_dst);
+	source.CodeOut(ipframe.lich.addr_src);
+	destination.CodeOut(ipframe.lich.addr_dst);
 
 	unsigned int count = 0;
 	bool last;
@@ -920,18 +920,20 @@ void CAudioManager::Link(const std::string &linkcmd)
 			link_open = true;
 		}
 	} else if (0 == linkcmd.compare(0, 3, "M17")) { //it's an M17 link/unlink command
+		//std::cout << "got Link cmd '" << linkcmd << "'" << std::endl;
 		SM17Frame frame;
 		if ('L' == linkcmd.at(3)) {
 			if (13 == linkcmd.size()) {
 				std::string sDest(linkcmd.substr(4));
 				sDest[7] = 'L';
 				CCallsign dest(sDest);
-				dest.SetCode(frame.lich.addr_dst);
+				dest.CodeOut(frame.lich.addr_dst);
+				//printf("dest=%s=0x%02x%02x%02x%02x%02x%02x\n", dest.GetCS().c_str(), frame.lich.addr_dst[0], frame.lich.addr_dst[1], frame.lich.addr_dst[2], frame.lich.addr_dst[3], frame.lich.addr_dst[4], frame.lich.addr_dst[5]);
 				AM2M17.Write(frame.magic, sizeof(SM17Frame));
 			}
 		} else if ('U' == linkcmd.at(3)) {
 			CCallsign dest("U");
-			dest.SetCode(frame.lich.addr_dst);
+			dest.CodeOut(frame.lich.addr_dst);
 			AM2M17.Write(frame.magic, sizeof(SM17Frame));
 		}
 	}
