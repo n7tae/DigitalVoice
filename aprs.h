@@ -24,10 +24,11 @@
 
 #include "TypeDefs.h"
 #include "TCPReaderWriterClient.h"
-#include "QnetLog.h"
 #include "Configure.h"
+#include "Base.h"
 
-class CAPRS {
+class CAPRS : CBase
+{
 public:
 	// functions
 	CAPRS();
@@ -45,7 +46,6 @@ private:
 	std::atomic<bool> keep_running;
 
 	// classes
-	CQnetLog log;
 	CConfigure cfg;
 	CTCPReaderWriterClient aprs_sock;
 

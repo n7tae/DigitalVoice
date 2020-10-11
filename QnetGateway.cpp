@@ -90,13 +90,13 @@ void CQnetGateway::UnpackCallsigns(const std::string &str, std::set<std::string>
 
 void CQnetGateway::PrintCallsigns(const std::string &key, const std::set<std::string> &set)
 {
-	log.SendLog("%s = [", key.c_str());
+	SendLog("%s = [", key.c_str());
 	for (auto it=set.begin(); it!=set.end(); it++) {
 		if (it != set.begin())
-			log.SendLog(",");
-		log.SendLog("%s", (*it).c_str());
+			SendLog(",");
+		SendLog("%s", (*it).c_str());
 	}
-	log.SendLog("]\n");
+	SendLog("]\n");
 }
 
 
@@ -285,13 +285,13 @@ int CQnetGateway::open_port(const SPORTIP *pip, int family)
 
 	int sock = socket(family, SOCK_DGRAM, 0);
 	if (0 > sock) {
-		log.SendLog("Failed to create socket on %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
+		SendLog("Failed to create socket on %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
 		return -1;
 	}
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 
 	if (bind(sock, sin.GetPointer(), sizeof(struct sockaddr_storage)) != 0) {
-		log.SendLog("Failed to bind %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
+		SendLog("Failed to bind %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
 		close(sock);
 		return -1;
 	}
@@ -325,10 +325,10 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				not_announced = false;
 			}
 			if (doFind) {
-				log.SendLog("Finding Routes for...\n");
+				SendLog("Finding Routes for...\n");
 				for (auto it=findRoute.begin(); it!=findRoute.end(); it++) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(800));
-					log.SendLog("\t'%s'\n", it->c_str());
+					SendLog("\t'%s'\n", it->c_str());
 					ii[i]->findUser(*it);
 				}
 				doFind = false;
@@ -338,17 +338,17 @@ void CQnetGateway::GetIRCDataThread(const int i)
 		if (threshold >= 100) {
 			if ((rc == 0) || (rc == 10)) {
 				if (last_status != 0) {
-					log.SendLog("irc status=%d, probable disconnect...\n", rc);
+					SendLog("irc status=%d, probable disconnect...\n", rc);
 					last_status = 0;
 				}
 			} else if (rc == 7) {
 				if (last_status != 2) {
-					log.SendLog("irc status=%d, probable connect...\n", rc);
+					SendLog("irc status=%d, probable connect...\n", rc);
 					last_status = 2;
 				}
 			} else {
 				if (last_status != 1) {
-					log.SendLog("irc status=%d, probable connect...\n", rc);
+					SendLog("irc status=%d, probable connect...\n", rc);
 					last_status = 1;
 				}
 			}
@@ -382,7 +382,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 		}	// while (keep_running)
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
-	log.SendLog("GetIRCDataThread[%i] exiting...\n", i);
+	SendLog("GetIRCDataThread[%i] exiting...\n", i);
 	return;
 }
 
@@ -469,7 +469,7 @@ void CQnetGateway::ProcessTimeouts()
 			//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 			//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 			if ((t_now - toRptr.last_time) > TIMING_TIMEOUT_REMOTE_G2) {
-				log.SendLog("Inactivity to local rptr module %c, removing stream id %04x\n", pCFGData->cModule, ntohs(toRptr.streamid));
+				SendLog("Inactivity to local rptr module %c, removing stream id %04x\n", pCFGData->cModule, ntohs(toRptr.streamid));
 
 				// Send end_of_audio to local repeater.
 				// Let the repeater re-initialize
@@ -498,7 +498,7 @@ void CQnetGateway::ProcessTimeouts()
 			if ((t_now - band_txt.last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				/* This local stream never went to a remote system, so trace the timeout */
 				if (to_remote_g2.toDstar.AddressIsZero())
-					log.SendLog("Inactivity from local rptr module %c, removing stream id %04x\n", pCFGData->cModule, ntohs(band_txt.streamID));
+					SendLog("Inactivity from local rptr module %c, removing stream id %04x\n", pCFGData->cModule, ntohs(band_txt.streamID));
 
 				band_txt.streamID = 0;
 				band_txt.flags[0] = band_txt.flags[1] = band_txt.flags[2] = 0x0;
@@ -525,7 +525,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (! to_remote_g2.toDstar.AddressIsZero()) {
 			time(&t_now);
 			if ((t_now - to_remote_g2.last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
-				log.SendLog("Inactivity from local rptr mod %c, removing stream id %04x\n", pCFGData->cModule, ntohs(to_remote_g2.streamid));
+				SendLog("Inactivity from local rptr mod %c, removing stream id %04x\n", pCFGData->cModule, ntohs(to_remote_g2.streamid));
 
 				to_remote_g2.toDstar.Clear();
 				to_remote_g2.streamid = 0;
@@ -597,7 +597,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf)
 				if (0==toRptr.last_time && 0==band_txt.last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
 					superframe.clear();
 					if (LOG_QSO) {
-						log.SendLog("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=[%s]:%u\n", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, fromDstar.GetAddress(), fromDstar.GetPort());
+						SendLog("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=[%s]:%u\n", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, fromDstar.GetAddress(), fromDstar.GetPort());
 					}
 
 					lhcallsign.assign((const char *)g2buf.hdr.mycall, 8);
@@ -637,7 +637,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf)
 					const unsigned int ctrl = g2buf.ctrl & 0x1FU;
 					if (VoicePacketIsSync(g2buf.vasd.text)) {
 						if (superframe.size() > 65U) {
-							log.SendLog("Frame[%c]: %s\n", pCFGData->cModule, superframe.c_str());
+							SendLog("Frame[%c]: %s\n", pCFGData->cModule, superframe.c_str());
 							superframe.clear();
 						}
 						const char *ch = "#abcdefghijklmnopqrstuvwxyz";
@@ -711,11 +711,11 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf)
 					toRptr.streamid = 0;
 					toRptr.addr.ClearAddress();
 					if (LOG_DEBUG && superframe.size()) {
-						log.SendLog("Final[%c]: %s\n", pCFGData->cModule, superframe.c_str());
+						SendLog("Final[%c]: %s\n", pCFGData->cModule, superframe.c_str());
 						superframe.clear();
 					}
 					if (LOG_QSO)
-						log.SendLog("id=%04x END\n", ntohs(g2buf.streamid));
+						SendLog("id=%04x END\n", ntohs(g2buf.streamid));
 
 					if (csroute) {
 						char play[56];
@@ -735,7 +735,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf)
 					if (toRptr.saved_hdr.streamid == g2buf.streamid && toRptr.saved_addr == fromDstar) {
 						/* repeater module is inactive ?  */
 						if (toRptr.last_time==0 && band_txt.last_time==0) {
-							log.SendLog("Re-generating header for streamID=%04x\n", ntohs(g2buf.streamid));
+							SendLog("Re-generating header for streamID=%04x\n", ntohs(g2buf.streamid));
 
 							/* re-generate/send the header */
 							Gate2AM.Write(toRptr.saved_hdr.title, 56);
@@ -769,7 +769,7 @@ void CQnetGateway::ProcessAudio(const SDSVT *packet)
 		if (dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) ) {
 			if (dsvt.config==0x10U) {
 				if (LOG_QSO)
-					log.SendLog("id=%04x start RPTR flag0=%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0],  dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
+					SendLog("id=%04x start RPTR flag0=%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0],  dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
 				if (0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) && Flag_is_ok(dsvt.hdr.flag[0])) {
 
@@ -887,7 +887,7 @@ void CQnetGateway::ProcessAudio(const SDSVT *packet)
 										for (int j=0; j<5; j++)
 											sendto(g2_sock[Index], dsvt.title, 56, 0, to_remote_g2.toDstar.GetPointer(), to_remote_g2.toDstar.GetSize());
 
-										log.SendLog("id=%04x zone route to [%s]:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
+										SendLog("id=%04x zone route to [%s]:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
 										ntohs(dsvt.streamid), to_remote_g2.toDstar.GetAddress(), to_remote_g2.toDstar.GetPort(),
 										dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
@@ -1037,7 +1037,7 @@ void CQnetGateway::ProcessAudio(const SDSVT *packet)
 				}
 
 				if (LOG_QSO && dsvt.ctrl&0x40U)
-					log.SendLog("id=%04x END RPTR\n", ntohs(dsvt.streamid));
+					SendLog("id=%04x END RPTR\n", ntohs(dsvt.streamid));
 			}
 		}
 	}
@@ -1063,7 +1063,7 @@ void CQnetGateway::Process()
 				keep_running = false;
 			}
 			if (keep_running)
-				log.SendLog("get_irc_data thread[%d] started\n", i);
+				SendLog("get_irc_data thread[%d] started\n", i);
 
 			ii[i]->kickWatchdog(GW_VERSION);
 		}
@@ -1095,7 +1095,7 @@ void CQnetGateway::Process()
 				socklen_t fromlen = sizeof(struct sockaddr_storage);
 				ssize_t g2buflen = recvfrom(g2_sock[i], dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
 				if (LOG_QSO && 4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4)) {
-					log.SendLog("Got a pong from [%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
+					SendLog("Got a pong from [%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 				} else {
 					ProcessG2(g2buflen, dsvt);
 				}
@@ -1148,7 +1148,7 @@ bool CQnetGateway::Init(CFGDATA *pData)
 	try {
 		preg = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 	} catch (std::regex_error &e) {
-		log.SendLog("Regular expression error: %s\n", e.what());
+		SendLog("Regular expression error: %s\n", e.what());
 		return true;
 	}
 
@@ -1175,7 +1175,7 @@ bool CQnetGateway::Init(CFGDATA *pData)
 
 	/* process configuration file */
 	if ( Configure() ) {
-		log.SendLog("Failed to process the configuration\n");
+		SendLog("Failed to process the configuration\n");
 		return true;
 	}
 
@@ -1197,23 +1197,23 @@ bool CQnetGateway::Init(CFGDATA *pData)
 	Rptr.mod.call += '-';
 	Rptr.mod.call += pCFGData->cModule;
 	Rptr.mod.band = "DV";
-	log.SendLog("Repeater callsign: [%s]\n", Rptr.mod.call.c_str());
+	SendLog("Repeater callsign: [%s]\n", Rptr.mod.call.c_str());
 
 	for (int j=0; j<2; j++) {
 		if (ircddb[j].ip.empty())
 			continue;
-		log.SendLog("connecting to %s at %u\n", ircddb[j].ip.c_str(), ircddb[j].port);
+		SendLog("connecting to %s at %u\n", ircddb[j].ip.c_str(), ircddb[j].port);
 		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str());
 		if (! ii[j]->open()) {
-			log.SendLog("%s open failed\n", ircddb[j].ip.c_str());
+			SendLog("%s open failed\n", ircddb[j].ip.c_str());
 			return true;
 		}
 
 		int rc = ii[j]->getConnectionState();
-		log.SendLog("Waiting for %s connection status of 2\n", ircddb[j].ip.c_str());
+		SendLog("Waiting for %s connection status of 2\n", ircddb[j].ip.c_str());
 		int i = 0;
 		while (rc < 2) {
-			log.SendLog("%s status=%d\n", ircddb[j].ip.c_str(), rc);
+			SendLog("%s status=%d\n", ircddb[j].ip.c_str(), rc);
 			if (rc < 2) {
 				i++;
 				sleep(5);
@@ -1224,22 +1224,22 @@ bool CQnetGateway::Init(CFGDATA *pData)
 				break;
 
 			if (i > 5) {
-				log.SendLog("We can not wait any longer for %s...\n", ircddb[j].ip.c_str());
+				SendLog("We can not wait any longer for %s...\n", ircddb[j].ip.c_str());
 				break;
 			}
 			rc = ii[j]->getConnectionState();
 		}
 		switch (ii[j]->GetFamily()) {
 		case AF_INET:
-			log.SendLog("IRC server is using IPV4\n");
+			SendLog("IRC server is using IPV4\n");
 			af_family[j] = AF_INET;
 			break;
 		case AF_INET6:
-			log.SendLog("IRC server is using IPV6\n");
+			SendLog("IRC server is using IPV6\n");
 			af_family[j] = AF_INET6;
 			break;
 		default:
-			log.SendLog("%s server is using unknown protocol! Shutting down...\n", ircddb[j].ip.c_str());
+			SendLog("%s server is using unknown protocol! Shutting down...\n", ircddb[j].ip.c_str());
 			return true;
 		}
 	}
@@ -1248,14 +1248,14 @@ bool CQnetGateway::Init(CFGDATA *pData)
 		SPORTIP *pip = (AF_INET == af_family[0]) ? &g2_external : & g2_ipv6_external;
 		g2_sock[0] = open_port(pip, af_family[0]);
 		if (0 > g2_sock[0]) {
-			log.SendLog("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[0].ip.c_str());
+			SendLog("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[0].ip.c_str());
 			return true;
 		}
 		if (ii[1] && (af_family[0] != af_family[1])) {	// we only need to open a second port if the family for the irc servers are different!
 			SPORTIP *pip = (AF_INET == af_family[1]) ? &g2_external : & g2_ipv6_external;
 			g2_sock[1] = open_port(pip, af_family[1]);
 			if (0 > g2_sock[1]) {
-				log.SendLog("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
+				SendLog("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
 				return true;
 			}
 		}
@@ -1263,7 +1263,7 @@ bool CQnetGateway::Init(CFGDATA *pData)
 		SPORTIP *pip = (AF_INET == af_family[1]) ? &g2_external : & g2_ipv6_external;
 		g2_sock[1] = open_port(pip, af_family[1]);
 		if (0 > g2_sock[1]) {
-			log.SendLog("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
+			SendLog("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
 			return true;
 		}
 	}
@@ -1294,14 +1294,14 @@ bool CQnetGateway::Init(CFGDATA *pData)
 	to_remote_g2.streamid = 0;
 	to_remote_g2.last_time = 0;
 
-	log.SendLog("QnetGateway...entering processing loop\n");
+	SendLog("QnetGateway...entering processing loop\n");
 
 	if (GATEWAY_SEND_QRGS_MAP)
 		qrgs_and_maps();
 	return false;
 }
 
-CQnetGateway::CQnetGateway()
+CQnetGateway::CQnetGateway() : CBase()
 {
 	keep_running = false;
 	ii[0] = ii[1] = NULL;

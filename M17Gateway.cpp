@@ -31,53 +31,7 @@
 #define CFG_DIR "/tmp/"
 #endif
 
-static void dump(const char *title, const void *pointer, int length)
-{
-	const unsigned char *data = (const unsigned char *)pointer;
-
-	std::cout << title << std::endl;
-
-	unsigned int offset = 0U;
-
-	while (length > 0) {
-
-		unsigned int bytes = (length > 16) ? 16U : length;
-
-		for (unsigned i = 0U; i < bytes; i++) {
-			if (i)
-				std::cout << " ";
-			std::cout << std::hex << std::setw(2) << std::right << std::setfill('0') << int(data[offset + i]);
-		}
-
-		for (unsigned int i = bytes; i < 16U; i++)
-			std::cout << "   ";
-
-		std::cout << "   *";
-
-		for (unsigned i = 0U; i < bytes; i++) {
-			unsigned char c = data[offset + i];
-
-			if (::isprint(c))
-				std::cout << c;
-			else
-				std::cout << '.';
-		}
-
-		std::cout << '*' << std::endl;
-
-		offset += 16U;
-
-		if (length >= 16)
-			length -= 16;
-		else
-			length = 0;
-	}
-}
-
-CM17Gateway::CM17Gateway()
-{
-
-}
+CM17Gateway::CM17Gateway() : CBase() {}
 
 CM17Gateway::~CM17Gateway()
 {
@@ -95,7 +49,6 @@ bool CM17Gateway::Init(const CFGDATA &cfgdata, CM17RouteMap *map)
 	if (AM2M17.Open("am2m17"))
 		return true;
 	M172AM.SetUp("m172am");
-	LogInput.SetUp("log_input");
 	if (cfgdata.eNetType != EInternetType::ipv6only) {
 		if (ipv4.Open(CSockAddress(AF_INET, 17000, "any")))
 			return true;
@@ -116,9 +69,7 @@ void CM17Gateway::LinkCheck()
 {
 	if (mlink.receivePingTimer.time() > 30) { // is the reflector okay?
 		// looks like we lost contact
-		std::stringstream ss("Unlinked from ");
-		ss << mlink.cs.GetCS() << ", TIMEOUT..." << std::endl;
-		LogInput.Write(ss.str());
+		SendLog("Unlinked from %s, TIMEOUT...\n", mlink.cs.GetCS().c_str());
 		qnDB.DeleteLS(mlink.addr.GetAddress());
 		mlink.state = ELinkState::unlinked;
 		mlink.addr.Clear();
@@ -231,7 +182,6 @@ void CM17Gateway::Process()
 
 		bool is_packet = false;
 		uint8_t buf[100];
-		CSockAddress from17k;
 		socklen_t fromlen = sizeof(struct sockaddr_storage);
 		int length;
 
@@ -252,22 +202,16 @@ void CM17Gateway::Process()
 			case 4:  				// DISC, ACKN or NACK
 				if ((ELinkState::unlinked != mlink.state) && (from17k == mlink.addr)) {
 					if (0 == memcmp(buf, "ACKN", 4)) {
-						std::string msg("Linked to ");
-						msg += mlink.cs.GetCS() + '\n';
-						LogInput.Write(msg);
 						mlink.state = ELinkState::linked;
+						SendLog("Linked to %s\n", mlink.cs.GetCS().c_str());
 						qnDB.UpdateLS(mlink.addr.GetAddress(), mlink.from_mod, mlink.cs.GetCS(8).c_str(), mlink.cs.GetModule(), time(NULL));
 						mlink.receivePingTimer.start();
 					} else if (0 == memcmp(buf, "NACK", 4)) {
 						mlink.state = ELinkState::unlinked;
-						std::string msg("Link request refused from ");
-						msg += mlink.cs.GetCS() + '\n';
-						LogInput.Write(msg);
+						SendLog("Link request refused from %s\n", mlink.cs.GetCS().c_str());
 						mlink.state = ELinkState::unlinked;
 					} else if (0 == memcmp(buf, "DISC", 4)) {
-						std::string msg("Unlinked from ");
-						msg += mlink.cs.GetCS() + '\n';
-						LogInput.Write(msg);
+						SendLog("Unlinked from %s\n", mlink.cs.GetCS().c_str());
 						qnDB.DeleteLS(mlink.addr.GetAddress());
 						mlink.state = ELinkState::unlinked;
 					} else {
@@ -298,7 +242,7 @@ void CM17Gateway::Process()
 				break;
 			}
 			if (! is_packet)
-				dump("Unknown packet", buf, length);
+				Dump("Unknown packet", buf, length);
 		}
 
 		if (keep_running && FD_ISSET(amfd, &fdset)) {
@@ -390,6 +334,7 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 			uint16_t fn = ntohs(frame.framenumber);
 			if (fn & 0x8000u) {
 				currentStream.header.framenumber = 0; // close the stream
+				currentStream.header.streamid = 0;
 			} else {
 				currentStream.lastPacketTime.start();
 			}
@@ -402,6 +347,8 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 		std::cout << "Header Packet crc=0x" << std::hex << frame.crc << " calculate=0x" << std::hex << check;
 		memcpy(currentStream.header.magic, frame.magic, sizeof(SM17Frame));
 		M172AM.Write(frame.magic, sizeof(SM17Frame));
+		const CCallsign call(frame.lich.addr_src);
+		SendLog("New stream from %s at %s\n", call.GetCS().c_str(), from17k.GetAddress());
 		currentStream.lastPacketTime.start();
 	}
 	return true;

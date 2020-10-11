@@ -19,12 +19,15 @@
 
 #include "UnixDgramSocket.h"
 
-class CQnetLog
+class CBase
 {
 public:
-	CQnetLog();
-	~CQnetLog() {}
+	CBase();
+	virtual ~CBase() {}
+
+protected:
 	void SendLog(const char *fmt, ...);
+	void Dump(const char *title, const void *pointer, int length);
 
 private:
 	CUnixDgramWriter LogInput;

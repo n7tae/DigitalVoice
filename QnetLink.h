@@ -32,7 +32,7 @@
 #include "UnixDgramSocket.h"
 #include "Configure.h"
 #include "QnetDB.h"
-#include "QnetLog.h"
+#include "Base.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -58,7 +58,8 @@ using STRACING = struct tracing_tag {
 	time_t last_time;
 };
 
-class CQnetLink {
+class CQnetLink : public CBase
+{
 public:
 	// functions
 	CQnetLink();
@@ -96,15 +97,13 @@ private:
 
 	STRACING tracing;
 
-	CQnetLog log;
-
 	// input from remote
 	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
 	CSockAddress fromDst4;
 
 	// unix socket to the audio unit
 	CUnixDgramReader AM2Link;
-	CUnixDgramWriter Link2AM, LogInput;
+	CUnixDgramWriter Link2AM;
 
 	fd_set fdset;
 	struct timeval tv;

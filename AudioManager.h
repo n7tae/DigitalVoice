@@ -49,7 +49,7 @@ public:
 	void Gateway2AudioMgr(const SDSVT &dsvt);
 	void Link2AudioMgr(const SDSVT &dsvt);
 	void M17_2AudioMgr(const SM17Frame &m17);
-	void KeyOff();
+	void KeyOff(bool isAMBEmode);
 	void PlayFile(const char *filetoplay);
 	void QuickKey(const std::string &urcall);
 	void QuickKey(const std::string &dest, const std::string &sour);
@@ -67,7 +67,7 @@ private:
 	CC2DataQueue c2_queue;
 	DSVTPacketQueue gateway_queue, link_queue;
 	CAmbeSeqQueue a2d_queue, d2a_queue;
-	std::mutex audio_mutex, ambe_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
+	std::mutex audio_mutex, data_mutex, a2d_mutex, d2a_mutex, gateway_mutex, link_mutex, l2am_mutex;
 	std::future<void> r1, r2, r3, r4, p1, p2, p3;
 	bool link_open;
 

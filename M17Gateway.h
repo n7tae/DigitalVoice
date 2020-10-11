@@ -30,6 +30,7 @@
 #include "Timer.h"
 #include "Packet.h"
 #include "QnetDB.h"
+#include "Base.h"
 #include "CRC.h"
 
 enum class ELinkState { unlinked, linking, linked };
@@ -50,7 +51,7 @@ using SStream = struct stream_tag
 	SM17Frame header;
 };
 
-class CM17Gateway
+class CM17Gateway : public CBase
 {
 public:
 	CM17Gateway();
@@ -65,13 +66,14 @@ private:
 	CQnetDB qnDB;
 	CCRC crc;
 	CUnixDgramReader AM2M17;
-	CUnixDgramWriter M172AM, LogInput;
+	CUnixDgramWriter M172AM;
 	CUDPSocket ipv4, ipv6;
 	SM17Link mlink;
 	CTimer linkingTime;
 	SStream currentStream;
 	std::string qnvoice_file;
 	CM17RouteMap *routeMap;
+	CSockAddress from17k;
 
 	void LinkCheck();
 	void Write(const void *buf, const size_t size, const CSockAddress &addr) const;

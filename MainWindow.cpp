@@ -288,7 +288,7 @@ void CMainWindow::on_QuitButton_clicked()
 {
 	CWaitCursor wait;
 	aprs.Close();
-	AudioManager.KeyOff();
+	AudioManager.KeyOff(! cfgdata.bCodec2Enable);
 	StopGate();
 	StopLink();
 	StopM17();
@@ -492,7 +492,7 @@ void CMainWindow::on_PTTButton_toggled()
 		if (pPTTButton->get_active()) {
 			AudioManager.RecordMicThread(E_PTT_Type::m17, dest);
 		} else
-			AudioManager.KeyOff();
+			AudioManager.KeyOff(! cfgdata.bCodec2Enable);
 	} else {
 		const std::string urcall(pRouteEntry->get_text().c_str());
 		bool is_cqcqcq = (0 == urcall.compare(0, 6, "CQCQCQ"));
@@ -507,7 +507,7 @@ void CMainWindow::on_PTTButton_toggled()
 				if (cfgdata.bAPRSEnable)
 					aprs.UpdateUser();
 			} else
-				AudioManager.KeyOff();
+				AudioManager.KeyOff(! cfgdata.bCodec2Enable);
 		}
 	}
 }
@@ -570,10 +570,10 @@ bool CMainWindow::GetLogInput(Glib::IOCondition condition)
 	static auto it = pLogTextBuffer->begin();
 	if (condition & Glib::IO_IN) {
 		char line[256] = { 0 };
-		auto length = LogInput.Read(line, 256);
-		const char *p;
-		if (g_utf8_validate(line, length, &p))
-			std::cout << "bogus charater '" << int(*p) << "' at " << int(p-line) << std::endl;
+		LogInput.Read(line, 256);
+		//const char *p;
+		//if (g_utf8_validate(line, length, &p))
+		//	std::cout << "bogus charater '" << int(*p) << "' at " << int(p-line) << std::endl;
 		it = pLogTextBuffer->insert(it, line);
 		pLogTextView->scroll_to(it, 0.0, 0.0, 1.0);
 	} else {

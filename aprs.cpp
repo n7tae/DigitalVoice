@@ -33,7 +33,7 @@
 #include "aprs.h"
 #include "Utilities.h"
 
-CAPRS::CAPRS() : keep_running(true) {}
+CAPRS::CAPRS() : CBase(), keep_running(true) {}
 
 CAPRS::~CAPRS()
 {
@@ -49,10 +49,10 @@ void CAPRS::Init()
 		try {
 			aprs_future = std::async(std::launch::async, &CAPRS::APRSBeaconThread, this);
 		} catch (const std::exception &e) {
-			log.SendLog("Failed to start the APRSBeaconThread. Exception: %s\n", e.what());
+			SendLog("Failed to start the APRSBeaconThread. Exception: %s\n", e.what());
 		}
 		if (aprs_future.valid())
-			log.SendLog("APRS beacon thread started\n");
+			SendLog("APRS beacon thread started\n");
 	}
 }
 
@@ -95,14 +95,14 @@ void CAPRS::UpdateUser()
 	const char lonc = (cfgdata.dLongitude >= 0.0) ? 'E' : 'W';
 
 	sprintf(aprs_buf, "%s>API51,qAR,%s-%c:!%.2f%c/%.2f%c[/\r\n", trim_copy(cfgdata.sCallsign).c_str(), trim_copy(cfgdata.sStation).c_str(), cfgdata.cModule, lat, latc, lon, lonc);
-	log.SendLog("GPS-A=%s", aprs_buf);
+	SendLog("GPS-A=%s", aprs_buf);
     int rc = aprs_sock.Write((unsigned char *)aprs_buf, strlen(aprs_buf));
 	if (rc == -1) {
 		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) || (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) || (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
-			log.SendLog("CAPRS::ProcessText(): APRS_HOST closed connection, error=%d\n", errno);
+			SendLog("CAPRS::ProcessText(): APRS_HOST closed connection, error=%d\n", errno);
 			aprs_sock.Close();
 		} else /* if it is WOULDBLOCK, we will not go into a loop here */
-			log.SendLog("CAPRS::ProcessText(): send error=%d\n", errno);
+			SendLog("CAPRS::ProcessText(): send error=%d\n", errno);
 	}
 
 	last_time = tnow;
@@ -113,7 +113,7 @@ void CAPRS::Open()
 	char snd_buf[512];
 	char rcv_buf[512];
     while (aprs_sock.Open(cfgdata.sAPRSServer, AF_UNSPEC, std::to_string(cfgdata.usAPRSPort))) {
-        log.SendLog("Failed to open %s, retry in 10 seconds...\n", cfgdata.sAPRSServer.c_str());
+        SendLog("Failed to open %s, retry in 10 seconds...\n", cfgdata.sAPRSServer.c_str());
         std::this_thread::sleep_for(std::chrono::seconds(10));
     }
 
@@ -121,7 +121,7 @@ void CAPRS::Open()
 	//sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
 	sprintf(snd_buf, "user %s pass %d vers QnetGateway-9 ", trim_copy(cfgdata.sStation).c_str(), compute_aprs_hash());
 
-	//log.SendLog("APRS Login command:[%s]\n", snd_buf);
+	//SendLog("APRS Login command:[%s]\n", snd_buf);
 	strcat(snd_buf, "\r\n");
 
 	while (true) {
@@ -131,16 +131,16 @@ void CAPRS::Open()
                 aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			} else {
-				log.SendLog("APRS Login command failed, error=%d\n", errno);
+				SendLog("APRS Login command failed, error=%d\n", errno);
 				break;
 			}
 		} else {
-			// log.SendLog("APRS Login command sent\n");
+			// SendLog("APRS Login command sent\n");
 			break;
 		}
 	}
     aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-	//log.SendLog("APRS Login returned: %s", rcv_buf);
+	//SendLog("APRS Login returned: %s", rcv_buf);
 	return;
 }
 
@@ -149,7 +149,7 @@ void CAPRS::CloseSock()
 	if (cfgdata.bAPRSEnable) {
 		if (aprs_sock.GetFD() != -1) {
 			aprs_sock.Close();
-			log.SendLog("Closed APRS\n");
+			SendLog("Closed APRS\n");
 		}
 	}
 }
@@ -203,7 +203,7 @@ void CAPRS::APRSBeaconThread()
 				modcall.append(1, cfgdata.cModule);
 				sprintf(snd_buf, "%s>APJI23,TCPIP*,qAC,%sS:!%08.2f%cD%08.2f%c&RNG0000 DigitalVoice by_N7TAE",modcall.c_str(),  modcall.c_str(), lat, (cfgdata.dLatitude < 0.0)  ? 'S' : 'N', lon, (cfgdata.dLongitude < 0.0) ? 'W' : 'E');
 
-				// log.SendLog("APRS Beacon =[%s]\n", snd_buf);
+				// SendLog("APRS Beacon =[%s]\n", snd_buf);
 				strcat(snd_buf, "\r\n");
 
 				while (keep_running) {
@@ -217,17 +217,17 @@ void CAPRS::APRSBeaconThread()
 						int rc = aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
 						if (rc < 0) {
 							if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) || (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) || (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
-								log.SendLog("send_aprs_beacon: APRS_HOST closed connection,error=%d\n", errno);
+								SendLog("send_aprs_beacon: APRS_HOST closed connection,error=%d\n", errno);
 								aprs_sock.Close();
 							} else if (errno == EWOULDBLOCK) {
 								std::this_thread::sleep_for(std::chrono::milliseconds(100));
 							} else {
 								/* Cant do nothing about it */
-								log.SendLog("send_aprs_beacon failed, error=%d\n", errno);
+								SendLog("send_aprs_beacon failed, error=%d\n", errno);
 								break;
 							}
 						} else {
-							// log.SendLog("APRS beacon sent\n");
+							// SendLog("APRS beacon sent\n");
 							break;
 						}
 					}
@@ -247,11 +247,11 @@ void CAPRS::APRSBeaconThread()
 		int rc = aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 		if (rc < 0) {
 			if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) || (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) || (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
-				log.SendLog("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n", errno);
+				SendLog("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n", errno);
 				aprs_sock.Close();
 			}
 		} else if (rc == 0) {
-			log.SendLog("send_aprs_beacon: recv: APRS shutdown\n");
+			SendLog("send_aprs_beacon: recv: APRS shutdown\n");
 			aprs_sock.Close();
 		} else
 			THRESHOLD_COUNTDOWN = 15;
@@ -267,7 +267,7 @@ void CAPRS::APRSBeaconThread()
 					THRESHOLD_COUNTDOWN--;
 
 				if (THRESHOLD_COUNTDOWN == 0) {
-					log.SendLog("APRS host keepalive timeout\n");
+					SendLog("APRS host keepalive timeout\n");
 					aprs_sock.Close();
 				}
 			}
@@ -275,7 +275,7 @@ void CAPRS::APRSBeaconThread()
 			time(&last_keepalive_time);
 		}
 	}
-	log.SendLog("APRS beacon thread exiting...\n");
+	SendLog("APRS beacon thread exiting...\n");
 }
 
 int CAPRS::compute_aprs_hash()
@@ -291,6 +291,6 @@ int CAPRS::compute_aprs_hash()
 		hash ^= (*p++) << 8;
 		hash ^= (*p++);
 	}
-	log.SendLog("aprs hash code=[%d] for %s\n", hash, rptr_sign);
+	SendLog("aprs hash code=[%d] for %s\n", hash, rptr_sign);
 	return hash;
 }

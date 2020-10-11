@@ -19,6 +19,7 @@
 #include <map>
 #include <set>
 #include <regex>
+#include <atomic>
 
 #include "IRCDDB.h"
 #include "Packet.h"
@@ -28,7 +29,7 @@
 #include "Configure.h"
 #include "QnetDB.h"
 #include "DStarDecode.h"
-#include "QnetLog.h"
+#include "Base.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -51,7 +52,8 @@ using STOREPEATER = struct torepeater_tag {
 	unsigned char sequence;
 };
 
-class CQnetGateway {
+class CQnetGateway : CBase
+{
 public:
 	CQnetGateway();
 	~CQnetGateway();
@@ -110,9 +112,6 @@ private:
 
 	// for talking with the irc server
 	CIRCDDB *ii[2];
-
-	// logging
-	CQnetLog log;
 
 	// text coming from local repeater bands
 	SBANDTXT band_txt;
