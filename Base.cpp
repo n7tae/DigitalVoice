@@ -38,7 +38,7 @@ void CBase::SendLog(const char *fmt, ...)
 	time(&ltime);
 	localtime_r(&ltime, &tm);
 
-	std::snprintf(buf ,255,"%d:%02d:%02d: ", tm.tm_hour, tm.tm_min, tm.tm_sec);
+	std::snprintf(buf ,255,"%d:%02d:%02d ", tm.tm_hour, tm.tm_min, tm.tm_sec);
 
 	va_list args;
 	va_start(args,fmt);
