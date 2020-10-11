@@ -19,6 +19,8 @@
 
 #include <cstdint>
 
+#include <arpa/inet.h>
+
 // for the g2 external port and between QnetGateway programs
 using SDSVT = struct __attribute__((__packed__)) dsvt_tag
 {
@@ -74,6 +76,14 @@ using SM17Frame = struct __attribute__((__packed__)) _ip_frame {
 	uint16_t framenumber;
 	uint8_t  payload[16];
 	uint16_t  crc; 	//16 bit CRC
+	uint16_t GetCRC        (void) const        { return ntohs(crc);            }
+	uint16_t GetFrameType  (void) const        { return ntohs(lich.frametype); }
+	uint16_t GetStreamID   (void) const        { return ntohs(streamid);       }
+	uint16_t GetFrameNumber(void) const        { return ntohs(framenumber);    }
+	void     SetCRC        (const uint16_t cr) { crc            = htons(cr);   }
+	void     SetFrameType  (const uint16_t ft) { lich.frametype = htons(ft);   }
+	void     SetFrameNumber(const uint16_t fn) { framenumber    = htons(fn);   }
+
 }; // 4 + 2 + 28 + 2 + 16 + 2 = 54 bytes = 432 bits
 
 // reflector packet for linking, unlinking, pinging, etc

@@ -79,10 +79,10 @@ void CM17Gateway::LinkCheck()
 void CM17Gateway::StreamTimeout()
 {
 	// set the frame number
-	uint16_t fn = (currentStream.header.framenumber + 1) % 0x8000u;
-	currentStream.header.framenumber = fn | 0x8000u;
+	uint16_t fn = (currentStream.header.GetFrameNumber() + 1) % 0x8000u;
+	currentStream.header.SetFrameNumber(fn | 0x8000u);
 	// fill in a silent codec2
-	switch (currentStream.header.lich.frametype & 0x6u) {
+	switch (currentStream.header.GetFrameType() & 0x6u) {
 	case 0x4u: { //3200
 			uint8_t silent[] = { 0x01u, 0x00u, 0x09u, 0x43u, 0x9cu, 0xe4u, 0x21u, 0x08u };
 			memcpy(currentStream.header.payload,   silent, 8);
@@ -98,7 +98,7 @@ void CM17Gateway::StreamTimeout()
 		break;
 	}
 	// calculate the crc
-	currentStream.header.crc = crc.CalcCRC(currentStream.header);
+	currentStream.header.SetCRC(crc.CalcCRC(currentStream.header));
 	// send the packet
 	M172AM.Write(currentStream.header.magic, sizeof(SM17Frame));
 	// close the stream;
@@ -330,10 +330,11 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 	if (currentStream.header.streamid) {
 		if (currentStream.header.streamid == frame.streamid) {
 			M172AM.Write(frame.magic, sizeof(SM17Frame));
-			currentStream.header.framenumber = frame.framenumber;
-			uint16_t fn = ntohs(frame.framenumber);
+			currentStream.header.SetFrameNumber(frame.GetFrameNumber());
+			uint16_t fn = frame.GetFrameNumber();
 			if (fn & 0x8000u) {
-				currentStream.header.framenumber = 0; // close the stream
+				SendLog("Close stream id=0x%04x, duration=%.2f sec\n", frame.GetStreamID(), 0.04f * fn);
+				currentStream.header.SetFrameNumber(0); // close the stream
 				currentStream.header.streamid = 0;
 			} else {
 				currentStream.lastPacketTime.start();
@@ -344,11 +345,11 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 	} else {
 		// here comes a first packet, so init the currentStream
 		auto check = crc.CalcCRC(frame);
-		std::cout << "Header Packet crc=0x" << std::hex << frame.crc << " calculate=0x" << std::hex << check;
+		std::cout << "Header Packet crc=0x" << std::hex << frame.GetCRC() << " calculate=0x" << std::hex << check;
 		memcpy(currentStream.header.magic, frame.magic, sizeof(SM17Frame));
 		M172AM.Write(frame.magic, sizeof(SM17Frame));
 		const CCallsign call(frame.lich.addr_src);
-		SendLog("New stream from %s at %s\n", call.GetCS().c_str(), from17k.GetAddress());
+		SendLog("Open stream id=0x%04x from %s at %s\n", frame.GetStreamID(), call.GetCS().c_str(), from17k.GetAddress());
 		currentStream.lastPacketTime.start();
 	}
 	return true;

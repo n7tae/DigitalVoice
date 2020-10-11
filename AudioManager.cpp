@@ -172,7 +172,7 @@ void CAudioManager::makeheader(SDSVT &c, const std::string &urcall, unsigned cha
 	c.config = 0x10U;
 	c.id = 0x20U;
 	c.flagb[2] = 1U;
-	c.streamid = htons(random.NewStreamID());
+	c.streamid = random.NewStreamID();
 	c.ctrl = 0x80U;
 	memset(c.hdr.flag+3, ' ', 36);
 	memcpy(c.hdr.rpt1, cfgdata->sStation.c_str(), cfgdata->sStation.size());
@@ -227,14 +227,14 @@ void CAudioManager::QuickKey(const std::string &d, const std::string &s)
 	frame.streamid = random.NewStreamID();
 	dest.CodeOut(frame.lich.addr_dst);
 	sour.CodeOut(frame.lich.addr_src);
-	frame.lich.frametype = htons(0x5u);
+	frame.SetFrameType(0x5u);
 	memset(frame.lich.nonce, 0, 14);
 	const uint8_t quiet[] = { 0x01u, 0x00u, 0x09u, 0x43u, 0x9cu, 0xe4u, 0x21u, 0x08u };
 	memcpy(frame.payload,     quiet, 8);
 	memcpy(frame.payload + 8, quiet, 8);
 	for (uint16_t i=0; i<5; i++) {
-		frame.framenumber = htons(i);
-		frame.crc = htons(crc.CalcCRC(frame));
+		frame.SetFrameNumber((i < 4) ? i : i & 0x8000u);
+		frame.SetCRC(crc.CalcCRC(frame));
 		AM2M17.Write(frame.magic, sizeof(SM17Frame));
 	}
 	hot_mic = false;
@@ -250,7 +250,7 @@ void CAudioManager::codec2m17gateway(const std::string &dest, const std::string 
 	SM17Frame ipframe;
 	memcpy(ipframe.magic, "M17 ", 4);
 	ipframe.streamid = random.NewStreamID(); // no need to htons because it's just a random id
-	ipframe.lich.frametype = voiceonly ? 0x5U : 0x7U;
+	ipframe.SetFrameType(voiceonly ? 0x5U : 0x7U);
 	destination.CodeOut(ipframe.lich.addr_dst);
 	source.CodeOut(ipframe.lich.addr_src);
 
@@ -286,7 +286,7 @@ void CAudioManager::codec2m17gateway(const std::string &dest, const std::string 
 		uint16_t fn = count++ % 0x8000u;
 		if (last)
 			fn |= 0x8000u;
-		ipframe.framenumber = htons(fn);
+		ipframe.SetFrameNumber(fn);
 
 		// TODO: calculate crc
 
@@ -650,10 +650,10 @@ void CAudioManager::M17_2AudioMgr(const SM17Frame &m17)
 {
 	static bool is_3200;
 	if (! play_file) {
-		if (0U==m17_sid_in && 0U==(m17.framenumber & 0x8000u)) {	// don't start if it's the last audio frame
+		if (0U==m17_sid_in && 0U==(m17.GetFrameNumber() & 0x8000u)) {	// don't start if it's the last audio frame
 			// here comes a new stream
 			m17_sid_in = m17.streamid;
-			is_3200 = ((m17.lich.frametype & 0x7u) == 0x5u);
+			is_3200 = ((m17.GetFrameType() & 0x6u) == 0x4u);
 			pMainWindow->Receive(true);
 			// launch the audio processing threads
 			p1 = std::async(std::launch::async, &CAudioManager::codec2audio, this, is_3200);
@@ -663,7 +663,7 @@ void CAudioManager::M17_2AudioMgr(const SM17Frame &m17)
 			return;
 		auto payload = m17.payload;
 		CC2DataFrame dataframe(payload);
-		auto last = (0x8000u == (m17.framenumber & 0x8000u));
+		auto last = (0x8000u == (m17.GetFrameNumber() & 0x8000u));
 		dataframe.SetFlag(is_3200 ? false : last);
 		data_mutex.lock();
 		c2_queue.Push(dataframe);

@@ -476,7 +476,7 @@ void CMainWindow::Receive(bool is_rx)
 	bool ppt_okay;
 	bTransOK = ! is_rx;
 	if (cfgdata.bCodec2Enable) {
-		ppt_okay = bTransOK && bDestCS && bDestCS;
+		ppt_okay = bTransOK && bDestCS && bDestIP;
 	} else {
 		ppt_okay = bTransOK && (pRouteEntry->get_text().size() > 0);
 	}
