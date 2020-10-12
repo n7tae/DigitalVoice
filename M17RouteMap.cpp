@@ -46,11 +46,14 @@ const std::shared_ptr<CSockAddress> CM17RouteMap::Find(const std::string &callsi
 	return rval;
 }
 
-const std::shared_ptr<CSockAddress> CM17RouteMap::FindBase(const std::string &base) const
+const std::shared_ptr<CSockAddress> CM17RouteMap::FindBase(const std::string &call) const
 {
 	std::shared_ptr<CSockAddress> rval = nullptr;
+	auto pos = call.find_first_of(" ./");
+	if (pos < 3)
+		return rval;
+	const std::string b(call, 0, pos);
 	mux.lock();
-	std::string b(base, 0, 7);
 	const auto it = baseMap.find(b);
 	if (it != baseMap.end())
 		rval = it->second;
@@ -61,10 +64,13 @@ const std::shared_ptr<CSockAddress> CM17RouteMap::FindBase(const std::string &ba
 void CM17RouteMap::Update(const std::string &callsign, const std::string &address)
 {
 	std::string base;
+	auto pos = callsign.find_first_of(" /.");
+	if (pos < 3)
+		return;
 	mux.lock();
 	auto cit = cs2baseMap.find(callsign);
 	if (cs2baseMap.end() == cit) {
-		base.assign(callsign, 0, 7);
+		base.assign(callsign, 0, pos);
 		cs2baseMap[callsign] = base;
 	} else {
 		base.assign(cit->second);

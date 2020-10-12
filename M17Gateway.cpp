@@ -333,7 +333,7 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 			currentStream.header.SetFrameNumber(frame.GetFrameNumber());
 			uint16_t fn = frame.GetFrameNumber();
 			if (fn & 0x8000u) {
-				SendLog("Close stream id=0x%04x, duration=%.2f sec\n", frame.GetStreamID(), 0.04f * fn);
+				SendLog("Close stream id=0x%04x, duration=%.2f sec\n", frame.GetStreamID(), 0.04f * (0x7fffu & fn));
 				currentStream.header.SetFrameNumber(0); // close the stream
 				currentStream.header.streamid = 0;
 			} else {
@@ -345,7 +345,7 @@ bool CM17Gateway::ProcessFrame(const uint8_t *buf)
 	} else {
 		// here comes a first packet, so init the currentStream
 		auto check = crc.CalcCRC(frame);
-		std::cout << "Header Packet crc=0x" << std::hex << frame.GetCRC() << " calculate=0x" << std::hex << check;
+		std::cout << "Header Packet crc=0x" << std::hex << frame.GetCRC() << " calculate=0x" << std::hex << check << std::endl;
 		memcpy(currentStream.header.magic, frame.magic, sizeof(SM17Frame));
 		M172AM.Write(frame.magic, sizeof(SM17Frame));
 		const CCallsign call(frame.lich.addr_src);

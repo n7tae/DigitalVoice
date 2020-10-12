@@ -32,7 +32,7 @@ public:
 	CM17RouteMap() {}
 	~CM17RouteMap();
 	const std::shared_ptr<CSockAddress> Find(const std::string &cs) const;
-	const std::shared_ptr<CSockAddress> FindBase(const std::string &base) const;
+	const std::shared_ptr<CSockAddress> FindBase(const std::string &call) const;
 	void Update(const std::string &cs, const std::string &addr);
 	void Open();
 	void Save() const;

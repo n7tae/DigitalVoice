@@ -608,7 +608,8 @@ bool CMainWindow::TimeoutProcess()
 		std::string s(pLinkEntry->get_text().c_str());
 		pLinkButton->set_sensitive((8==s.size() && isalpha(s.at(7)) && qnDB.FindGW(s.c_str())) ? true : false);
 		// M17
-		pM17DestIPEntry->set_sensitive(true);
+		// pM17DestCallsignEntry->set_sensitive(true);
+		// pM17DestIPEntry->set_sensitive(true);
 		pM17UnlinkButton->set_sensitive(false);
 		s.assign(pM17DestCallsignEntry->get_text().c_str());
 		pM17LinkButton->set_sensitive(std::regex_match(s, M17RefRegEx));
@@ -618,7 +619,8 @@ bool CMainWindow::TimeoutProcess()
 		pLinkButton->set_sensitive(false);
 		pUnlinkButton->set_sensitive(true);
 		// M17
-		pM17DestCallsignEntry->set_sensitive(false);
+		// pM17DestCallsignEntry->set_sensitive(false);
+		// pM17DestIPEntry->set_sensitive(false);
 		pM17LinkButton->set_sensitive(false);
 		pM17UnlinkButton->set_sensitive(true);
 	}
