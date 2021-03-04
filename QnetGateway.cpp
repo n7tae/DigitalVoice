@@ -185,7 +185,7 @@ bool CQnetGateway::Configure()
 
 	switch (pCFGData->eNetType) {
 		case EQuadNetType::ipv4only:
-			ircddb[0].ip.assign("rr.openquad.net");
+			ircddb[0].ip.assign("ircv4.openquad.net");
 			ircddb[0].port = 9007U;
 			IRCDDB_PASSWORD[0].clear();
 			ircddb[1].ip.clear();
@@ -193,7 +193,7 @@ bool CQnetGateway::Configure()
 			IRCDDB_PASSWORD[1].clear();
 			break;
 		case EQuadNetType::ipv6only:
-			ircddb[0].ip.assign("rrv6.openquad.net");
+			ircddb[0].ip.assign("ircv6.openquad.net");
 			ircddb[0].port = 9007U;
 			IRCDDB_PASSWORD[0].clear();
 			ircddb[1].ip.clear();
@@ -201,10 +201,10 @@ bool CQnetGateway::Configure()
 			IRCDDB_PASSWORD[1].clear();
 			break;
 		case EQuadNetType::dualstack:
-			ircddb[0].ip.assign("rrv6.openquad.net");
+			ircddb[0].ip.assign("ircv6.openquad.net");
 			ircddb[0].port = 9007U;
 			IRCDDB_PASSWORD[0].clear();
-			ircddb[1].ip.assign("rr.openquad.net");
+			ircddb[1].ip.assign("ircv4.openquad.net");
 			ircddb[1].port = 9007U;
 			IRCDDB_PASSWORD[1].clear();
 			break;
