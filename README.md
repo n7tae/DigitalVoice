@@ -25,7 +25,7 @@ sudo apt install -y git build-essential libgtkmm-3.0-dev libasound2-dev libsqlit
 
 Then you can download and build qdv:
 ```
-git clone git://github.com/n7tae/DigitalVoice.git
+git clone https://github.com/n7tae/DigitalVoice.git
 cd DigitalVoice
 make
 ```
